@@ -1,0 +1,177 @@
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\HasSoftDeletesWithUser;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+
+/**
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsToMany organizations()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany organizationUsers()
+ */
+class User extends Authenticatable
+{
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasFactory, Notifiable, HasSoftDeletesWithUser;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'full_name',
+        'email',
+        'password_hash',
+        'status',
+        'deleted_by',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password_hash',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'last_login_at' => 'datetime',
+            'status' => 'integer',
+        ];
+    }
+
+    public function getAuthPassword()
+    {
+        return $this->password_hash;
+    }
+
+    /**
+     * Get the roles that belong to the user.
+     */
+    public function userRoles()
+    {
+        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
+    }
+
+    /**
+     * Get the user's primary role.
+     */
+    public function primaryRole()
+    {
+        return $this->userRoles()->first();
+    }
+
+    /**
+     * Get the salary contracts for the user.
+     */
+    public function salaryContracts()
+    {
+        return $this->hasMany(SalaryContract::class);
+    }
+
+    /**
+     * Get the active salary contract for the user.
+     */
+    public function activeSalaryContract()
+    {
+        return $this->hasOne(SalaryContract::class)->where('status', 'active')->latest('effective_from');
+    }
+
+    /**
+     * Get the properties assigned to the user.
+     */
+    public function assignedProperties()
+    {
+        return $this->belongsToMany(Property::class, 'properties_user')
+            ->withPivot('role_key', 'assigned_at')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the commission events for the user.
+     */
+    public function commissionEvents()
+    {
+        return $this->hasMany(CommissionEvent::class, 'agent_id');
+    }
+
+    /**
+     * Get the commission event splits for the user.
+     */
+    public function commissionEventSplits()
+    {
+        return $this->hasMany(CommissionEventSplit::class);
+    }
+
+    /**
+     * Get the organizations the user belongs to.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function organizations()
+    {
+        return $this->belongsToMany(Organization::class, 'organization_users')
+            ->withPivot('role_id', 'status')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the organization users pivot records.
+     */
+    public function organizationUsers()
+    {
+        return $this->hasMany(\App\Models\OrganizationUser::class);
+    }
+
+    /**
+     * Get the leases where user is tenant.
+     */
+    public function leasesAsTenant()
+    {
+        return $this->hasMany(Lease::class, 'tenant_id');
+    }
+
+    /**
+     * Get the leases where user is agent.
+     */
+    public function leasesAsAgent()
+    {
+        return $this->hasMany(Lease::class, 'agent_id');
+    }
+
+    /**
+     * Get the viewings where user is agent.
+     */
+    public function viewingsAsAgent()
+    {
+        return $this->hasMany(Viewing::class, 'agent_id');
+    }
+
+    /**
+     * Get the payments made by user.
+     */
+    public function payments()
+    {
+        return $this->hasMany(Payment::class, 'payer_user_id');
+    }
+
+    /**
+     * Get the booking deposits where user is tenant.
+     */
+    public function bookingDepositsAsTenant()
+    {
+        return $this->hasMany(BookingDeposit::class, 'tenant_user_id');
+    }
+}

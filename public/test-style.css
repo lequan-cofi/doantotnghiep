@@ -1,0 +1,10 @@
+/* Test CSS File */
+body {
+    background-color: #f0f0f0 !important;
+}
+
+.test-class {
+    color: red;
+    font-size: 24px;
+    font-weight: bold;
+}
