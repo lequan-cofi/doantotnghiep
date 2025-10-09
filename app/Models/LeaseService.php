@@ -20,6 +20,8 @@ class LeaseService extends Model
         'meta_json' => 'array',
     ];
 
+    public $timestamps = false;
+
     public function lease()
     {
         return $this->belongsTo(Lease::class);

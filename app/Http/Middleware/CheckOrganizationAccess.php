@@ -30,7 +30,7 @@ class CheckOrganizationAccess
         }
 
         // Lấy organization của user
-        $userOrganization = $user->organizations()->first();
+        $userOrganization = \App\Models\OrganizationUser::where('user_id', $user->id)->first()?->organization;
         
         if (!$userOrganization) {
             return response()->json([

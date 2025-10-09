@@ -4,13 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasSoftDeletesWithUser;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Unit extends Model
 {
-    use SoftDeletes, HasSoftDeletesWithUser;
-
-    protected $table = 'units';
+    use HasSoftDeletesWithUser;
 
     protected $fillable = [
         'property_id',
@@ -23,13 +20,14 @@ class Unit extends Model
         'max_occupancy',
         'status',
         'note',
-        'deleted_by',
     ];
 
     protected $casts = [
         'area_m2' => 'decimal:2',
         'base_rent' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
+        'max_occupancy' => 'integer',
+        'floor' => 'integer',
     ];
 
     public function property()
@@ -40,5 +38,20 @@ class Unit extends Model
     public function leases()
     {
         return $this->hasMany(Lease::class);
+    }
+
+    public function listings()
+    {
+        return $this->hasMany(Listing::class);
+    }
+
+    public function meters()
+    {
+        return $this->hasMany(Meter::class);
+    }
+
+    public function amenities()
+    {
+        return $this->belongsToMany(Amenity::class, 'unit_amenities');
     }
 }

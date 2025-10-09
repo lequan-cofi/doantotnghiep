@@ -56,4 +56,34 @@ class Lease extends Model
     {
         return $this->belongsTo(User::class, 'agent_id');
     }
+
+    public function residents()
+    {
+        return $this->hasMany(LeaseResident::class);
+    }
+
+    public function services()
+    {
+        return $this->hasMany(LeaseService::class);
+    }
+
+    public function leaseServices()
+    {
+        return $this->hasMany(LeaseService::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function bookingDeposits()
+    {
+        return $this->hasMany(BookingDeposit::class);
+    }
+
+    public function commissionEvents()
+    {
+        return $this->hasMany(CommissionEvent::class);
+    }
 }

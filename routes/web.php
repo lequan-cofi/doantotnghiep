@@ -8,6 +8,7 @@ if (app()->environment('local')) {
 }
 use App\Http\Controllers\Auth\EmailAuthController;
 use App\Http\Controllers\Manager\PropertyController;
+use App\Http\Controllers\Manager\LeaseController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +48,11 @@ Route::prefix('api/geo')->group(function () {
     Route::get('/districts/{provinceCode}', [PropertyController::class, 'getDistricts']);
     Route::get('/wards/{districtCode}', [PropertyController::class, 'getWards']);
     Route::get('/wards-2025/{provinceCode}', [PropertyController::class, 'getWards2025']);
+});
+
+// API endpoints for properties
+Route::prefix('api/properties')->group(function () {
+    Route::get('/{propertyId}/units', [LeaseController::class, 'getUnits']);
 });
 
 /*
@@ -135,6 +141,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/users/{id}', [\App\Http\Controllers\Manager\UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{id}', [\App\Http\Controllers\Manager\UserController::class, 'destroy'])->name('users.destroy');
         
+        // Leases CRUD
+        Route::resource('leases', LeaseController::class);
+        
         
         // Staff (CTV/Nhân viên) management
         // Staff Management
@@ -144,9 +153,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/staff/{id}/assign-properties', [\App\Http\Controllers\Manager\StaffController::class, 'assignProperties'])->name('staff.assign-properties');
         
         // Leases
-        Route::get('/leases', function () {
-            return view('manager.leases.index');
-        })->name('leases.index');
+        Route::resource('leases', \App\Http\Controllers\Manager\LeaseController::class);
         
         // Invoices
         Route::get('/invoices', function () {
