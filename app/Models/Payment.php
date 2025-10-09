@@ -11,6 +11,8 @@ class Payment extends Model
     use SoftDeletes, HasSoftDeletesWithUser;
 
     protected $table = 'payments';
+    
+    public $timestamps = false;
 
     protected $fillable = [
         'invoice_id',

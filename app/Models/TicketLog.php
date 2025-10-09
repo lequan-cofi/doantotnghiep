@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class TicketLog extends Model
 {
     protected $table = 'ticket_logs';
+    
+    public $timestamps = false;
+    
+    protected $casts = [
+        'cost_amount' => 'decimal:2',
+    ];
+    
+    public function getCreatedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value) : null;
+    }
 
     protected $fillable = [
         'ticket_id',
@@ -17,10 +28,6 @@ class TicketLog extends Model
         'cost_note',
         'charge_to',
         'linked_invoice_id',
-    ];
-
-    protected $casts = [
-        'cost_amount' => 'decimal:2',
     ];
 
     public function ticket()

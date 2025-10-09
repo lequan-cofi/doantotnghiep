@@ -43,17 +43,6 @@ Route::get('/test', function () {
     return view('test');
 })->name('test');
 
-// API endpoints for geo data (cascading dropdowns)
-Route::prefix('api/geo')->group(function () {
-    Route::get('/districts/{provinceCode}', [PropertyController::class, 'getDistricts']);
-    Route::get('/wards/{districtCode}', [PropertyController::class, 'getWards']);
-    Route::get('/wards-2025/{provinceCode}', [PropertyController::class, 'getWards2025']);
-});
-
-// API endpoints for properties
-Route::prefix('api/properties')->group(function () {
-    Route::get('/{propertyId}/units', [LeaseController::class, 'getUnits']);
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -156,14 +145,11 @@ Route::middleware('auth')->group(function () {
         Route::resource('leases', \App\Http\Controllers\Manager\LeaseController::class);
         
         // Invoices
-        Route::get('/invoices', function () {
-                return view('manager.invoices.index');
-        })->name('invoices.index');
+        Route::resource('invoices', \App\Http\Controllers\Manager\InvoiceController::class);
         
-        // Tickets
-        Route::get('/tickets', function () {
-            return view('manager.tickets.index');
-        })->name('tickets.index');
+        // Ticket management
+        Route::resource('tickets', \App\Http\Controllers\Manager\TicketController::class);
+        Route::post('tickets/{ticket}/logs', [\App\Http\Controllers\Manager\TicketController::class, 'addLog'])->name('tickets.addLog');
         
         // Reports
         Route::get('/reports/revenue', function () {
@@ -216,6 +202,28 @@ Route::middleware('auth')->group(function () {
         Route::get('/rooms/{id}', function ($id) {
             return view('manager.rooms.show', compact('id'));
         })->name('rooms.show');
+        // API endpoints for geo data (cascading dropdowns)
+        Route::prefix('api/geo')->group(function () {
+            Route::get('/districts/{provinceCode}', [PropertyController::class, 'getDistricts']);
+            Route::get('/wards/{districtCode}', [PropertyController::class, 'getWards']);
+            Route::get('/wards-2025/{provinceCode}', [PropertyController::class, 'getWards2025']);
+        });
+
+        // API endpoints for properties
+        Route::prefix('api/properties')->group(function () {
+            Route::get('/{propertyId}/units', [LeaseController::class, 'getUnits']);
+        });
+
+        // API endpoints for invoices
+        Route::prefix('api/invoices')->group(function () {
+            Route::get('/leases/{leaseId}/details', [\App\Http\Controllers\Manager\InvoiceController::class, 'getLeaseDetails']);
+        });
+
+        Route::prefix('api/tickets')->group(function () {
+            Route::get('/properties/{propertyId}/units', [\App\Http\Controllers\Manager\TicketController::class, 'getUnits']);
+            Route::get('/units/{unitId}/leases', [\App\Http\Controllers\Manager\TicketController::class, 'getLeases']);
+});
+
     });
 
     /*
