@@ -19,6 +19,57 @@ Route::get('/', function () {
     return view('home');
 })->name('home');
 
+// Public rooms route
+Route::get('/rooms', function () {
+    $type = request('type');
+    
+    // Sample data for demonstration
+    $rooms = collect([
+        (object)[
+            'id' => 1,
+            'title' => 'Phòng trọ chung chủ gần trường',
+            'address' => '123 Đường ABC, Quận 1, TP.HCM',
+            'type' => 'Nhà trọ chung chủ',
+            'price' => 2500000,
+            'bedrooms' => 1,
+            'bathrooms' => 1,
+            'area' => 25,
+            'image' => '/assets/images/room1.jpg'
+        ],
+        (object)[
+            'id' => 2,
+            'title' => 'Chung cư mini hiện đại',
+            'address' => '456 Đường XYZ, Quận 2, TP.HCM',
+            'type' => 'Chung cư mini',
+            'price' => 3500000,
+            'bedrooms' => 2,
+            'bathrooms' => 1,
+            'area' => 35,
+            'image' => '/assets/images/room2.jpg'
+        ],
+        (object)[
+            'id' => 3,
+            'title' => 'Căn hộ cao cấp view sông',
+            'address' => '789 Đường DEF, Quận 7, TP.HCM',
+            'type' => 'Căn hộ cao cấp',
+            'price' => 8000000,
+            'bedrooms' => 2,
+            'bathrooms' => 2,
+            'area' => 60,
+            'image' => '/assets/images/room3.jpg'
+        ]
+    ]);
+    
+    // Filter by type if specified
+    if ($type) {
+        $rooms = $rooms->filter(function($room) use ($type) {
+            return strpos(strtolower($room->type), strtolower($type)) !== false;
+        });
+    }
+    
+    return view('tenant.rooms.index', compact('type', 'rooms'));
+})->name('rooms.index');
+
 Route::get('/demo/preloader', function () {
     return view('demo.preloader');
 })->name('demo.preloader');
@@ -42,6 +93,9 @@ Route::get('/detail/{id?}', function ($id = 1) {
 Route::get('/test', function () {
     return view('test');
 })->name('test');
+Route::get('/notifications', function () {
+    return view('notifications');
+})->name('notifications');
 
 
 /*
@@ -99,14 +153,46 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | SUPER ADMIN Routes (superadmin)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('superadmin')->name('superadmin.')->middleware(['auth', 'ensure.admin'])->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\SuperAdmin\SuperAdminController::class, 'index'])->name('dashboard');
+        Route::post('/clear-cache', [\App\Http\Controllers\SuperAdmin\SuperAdminController::class, 'clearCache'])->name('clear-cache');
+        
+        // Organizations Management
+        Route::get('/organizations', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'index'])->name('organizations.index');
+        Route::get('/organizations/create', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'create'])->name('organizations.create');
+        Route::post('/organizations', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'store'])->name('organizations.store');
+        Route::get('/organizations/{organization}', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'show'])->name('organizations.show');
+        Route::get('/organizations/{organization}/edit', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'edit'])->name('organizations.edit');
+        Route::put('/organizations/{organization}', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'update'])->name('organizations.update');
+        Route::delete('/organizations/{organization}', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'destroy'])->name('organizations.destroy');
+        Route::post('/organizations/{organization}/toggle-status', [\App\Http\Controllers\SuperAdmin\OrganizationController::class, 'toggleStatus'])->name('organizations.toggle-status');
+        
+        // Users Management  
+        // Route::get('/users', [\App\Http\Controllers\SuperAdmin\UserController::class, 'index'])->name('users.index');
+        
+        // Revenue Analytics
+        // Route::get('/revenue', [\App\Http\Controllers\SuperAdmin\RevenueController::class, 'index'])->name('revenue.index');
+        
+        // System Management
+        // Route::get('/system/health', [\App\Http\Controllers\SuperAdmin\SystemController::class, 'health'])->name('system.health');
+        
+        // Support
+        // Route::get('/support/tickets', [\App\Http\Controllers\SuperAdmin\SupportController::class, 'tickets'])->name('support.tickets');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | MANAGER Routes (ensure.manager)
     |--------------------------------------------------------------------------
     */
     Route::prefix('manager')->name('manager.')->middleware(['ensure.manager', 'check.organization'])->group(function () {
-        // Dashboard
-        Route::get('/dashboard', function () {
-            return view('manager.dashboard');
-        })->name('dashboard');
+    // Dashboard
+    Route::get('/dashboard', [\App\Http\Controllers\Manager\DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/clear-cache', [\App\Http\Controllers\Manager\DashboardController::class, 'clearCache'])->name('dashboard.clear-cache');
 
         // Properties CRUD
         Route::get('/properties', [PropertyController::class, 'index'])->name('properties.index');
@@ -175,14 +261,16 @@ Route::middleware('auth')->group(function () {
         Route::post('salary-advances/{salaryAdvance}/reject', [\App\Http\Controllers\Manager\SalaryAdvanceController::class, 'reject'])->name('salary-advances.reject');
         Route::post('salary-advances/{salaryAdvance}/repayment', [\App\Http\Controllers\Manager\SalaryAdvanceController::class, 'addRepayment'])->name('salary-advances.repayment');
         
-        // Reports
-        Route::get('/reports/revenue', function () {
-            return view('manager.reports.revenue');
-        })->name('reports.revenue');
+    // Salary Contracts
+    Route::resource('salary-contracts', \App\Http\Controllers\Manager\SalaryContractController::class);
+    Route::post('salary-contracts/{salaryContract}/terminate', [\App\Http\Controllers\Manager\SalaryContractController::class, 'terminate'])->name('salary-contracts.terminate');
+    Route::post('salary-contracts/{salaryContract}/activate', [\App\Http\Controllers\Manager\SalaryContractController::class, 'activate'])->name('salary-contracts.activate');
+
+    // Revenue Reports
+    Route::get('revenue-reports', [\App\Http\Controllers\Manager\RevenueReportController::class, 'index'])->name('revenue-reports.index');
+    Route::get('revenue-reports/detail', [\App\Http\Controllers\Manager\RevenueReportController::class, 'detail'])->name('revenue-reports.detail');
         
-        Route::get('/reports/occupancy', function () {
-            return view('manager.reports.occupancy');
-        })->name('reports.occupancy');
+        // Reports - using new revenue reports system
         
         Route::get('/reports/payments', function () {
             return view('manager.reports.payments');
@@ -198,34 +286,8 @@ Route::middleware('auth')->group(function () {
             return view('manager.settings.general');
         })->name('settings.general');
         
-        // Legacy rooms routes (admin context)
-        Route::get('/rooms', function () {
-            return view('manager.rooms.index');
-        })->name('rooms.index');
-        
-        Route::get('/rooms/create', function () {
-            return view('manager.rooms.create');
-        })->name('rooms.create');
-        
-        Route::post('/rooms', function () {
-            return response()->json(['success' => true, 'message' => 'Phòng đã được tạo thành công!']);
-        })->name('rooms.store');
-        
-        Route::get('/rooms/{id}/edit', function ($id) {
-            return view('manager.rooms.edit', compact('id'));
-        })->name('rooms.edit');
-        
-        Route::put('/rooms/{id}', function ($id) {
-            return response()->json(['success' => true, 'message' => 'Phòng đã được cập nhật thành công!']);
-        })->name('rooms.update');
-        
-        Route::delete('/rooms/{id}', function ($id) {
-            return response()->json(['success' => true, 'message' => 'Phòng đã được xóa thành công!']);
-        })->name('rooms.destroy');
-        
-        Route::get('/rooms/{id}', function ($id) {
-            return view('manager.rooms.show', compact('id'));
-        })->name('rooms.show');
+        // Legacy rooms routes (admin context) - REMOVED FOR NOW
+        // Will be re-implemented later when needed
         // API endpoints for geo data (cascading dropdowns)
         Route::prefix('api/geo')->group(function () {
             Route::get('/districts/{provinceCode}', [PropertyController::class, 'getDistricts']);
@@ -246,6 +308,10 @@ Route::middleware('auth')->group(function () {
         Route::prefix('api/tickets')->group(function () {
             Route::get('/properties/{propertyId}/units', [\App\Http\Controllers\Manager\TicketController::class, 'getUnits']);
             Route::get('/units/{unitId}/leases', [\App\Http\Controllers\Manager\TicketController::class, 'getLeases']);
+        });
+        Route::prefix('api/revenue-reports')->group(function () {
+            Route::get('/detailed', [\App\Http\Controllers\Manager\RevenueReportController::class, 'getDetailedData']);
+        });
 });
 
     });
@@ -266,34 +332,9 @@ Route::middleware('auth')->group(function () {
         })->name('profile');
 
         // Rooms management
-    Route::get('/rooms', function () {
-            return view('agent.rooms.index');
-    })->name('rooms.index');
-    
-    Route::get('/rooms/create', function () {
-            return view('agent.rooms.create');
-    })->name('rooms.create');
-    
-    Route::post('/rooms', function () {
-        return response()->json(['success' => true, 'message' => 'Phòng đã được tạo thành công!']);
-    })->name('rooms.store');
-    
-    Route::get('/rooms/{id}/edit', function ($id) {
-            return view('agent.rooms.edit', compact('id'));
-    })->name('rooms.edit');
-    
-    Route::put('/rooms/{id}', function ($id) {
-        return response()->json(['success' => true, 'message' => 'Phòng đã được cập nhật thành công!']);
-    })->name('rooms.update');
-    
-    Route::delete('/rooms/{id}', function ($id) {
-        return response()->json(['success' => true, 'message' => 'Phòng đã được xóa thành công!']);
-    })->name('rooms.destroy');
-    
-    Route::get('/rooms/{id}', function ($id) {
-            return view('agent.rooms.show', compact('id'));
-    })->name('rooms.show');
-});
+    // Agent rooms routes - REMOVED FOR NOW
+    // Will be re-implemented later when needed
+
 
     /*
     |--------------------------------------------------------------------------
@@ -377,11 +418,8 @@ Route::middleware('auth')->group(function () {
             return view('tenant.notifications');
         })->name('notifications');
 
-        // Rooms listing
-        Route::get('/rooms', function () {
-            $type = request('type');
-            return view('tenant.rooms.index', compact('type'));
-        })->name('rooms.index');
+        // Rooms listing - REMOVED FOR NOW
+        // Will be re-implemented later when needed
 
         // News
         Route::get('/news', function () {
@@ -435,9 +473,7 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('tenant.notifications');
     });
 
-    Route::get('/rooms', function () {
-        return redirect()->route('tenant.rooms.index', request()->query());
-    })->name('rooms.index');
+    // Main rooms route - MOVED TO PUBLIC ROUTES
 
     Route::get('/notifications', function () {
         return redirect()->route('tenant.notifications');

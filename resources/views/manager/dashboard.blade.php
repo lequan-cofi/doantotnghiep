@@ -11,6 +11,10 @@
                 <p>Tổng quan hoạt động kinh doanh và hiệu suất</p>
             </div>
             <div class="header-actions">
+                <button onclick="clearDashboardCache()" class="btn btn-outline-secondary me-2" title="Làm mới dữ liệu">
+                    <i class="fas fa-sync-alt"></i>
+                    Làm mới
+                </button>
                 <a href="{{ route('manager.properties.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Thêm BĐS mới
@@ -27,7 +31,7 @@
                     <span class="stat-title">BĐS Quản lý</span>
                     <i class="fas fa-building stat-icon"></i>
                 </div>
-                <div class="stat-value">{{ DB::table('properties')->count() }}</div>
+                <div class="stat-value">{{ $dashboardData['stats']['properties_count'] }}</div>
                 <div class="stat-footer">
                     <span class="stat-label">Tổng tài sản</span>
                 </div>
@@ -38,14 +42,9 @@
                     <span class="stat-title">Tỷ lệ lấp đầy</span>
                     <i class="fas fa-chart-pie stat-icon"></i>
                 </div>
-                @php
-                    $totalUnits = DB::table('units')->count();
-                    $occupiedUnits = DB::table('units')->where('status', 'occupied')->count();
-                    $occupancyRate = $totalUnits > 0 ? round(($occupiedUnits / $totalUnits) * 100, 1) : 0;
-                @endphp
-                <div class="stat-value">{{ $occupancyRate }}%</div>
+                <div class="stat-value">{{ $dashboardData['stats']['occupancy_rate'] }}%</div>
                 <div class="stat-footer">
-                    <span class="stat-label">{{ $occupiedUnits }}/{{ $totalUnits }} phòng</span>
+                    <span class="stat-label">{{ $dashboardData['stats']['occupied_units'] }}/{{ $dashboardData['stats']['total_units'] }} phòng</span>
                 </div>
             </div>
             
@@ -54,13 +53,7 @@
                     <span class="stat-title">Lịch xem phòng</span>
                     <i class="fas fa-calendar-check stat-icon"></i>
                 </div>
-                @php
-                    $upcomingViewings = DB::table('viewings')
-                        ->where('schedule_at', '>=', now())
-                        ->where('status', 'confirmed')
-                        ->count();
-                @endphp
-                <div class="stat-value">{{ $upcomingViewings }}</div>
+                <div class="stat-value">{{ $dashboardData['stats']['upcoming_viewings'] }}</div>
                 <div class="stat-footer">
                     <span class="stat-label">Lịch hẹn sắp tới</span>
                 </div>
@@ -71,14 +64,9 @@
                     <span class="stat-title">Tỷ lệ chuyển đổi</span>
                     <i class="fas fa-percentage stat-icon"></i>
                 </div>
-                @php
-                    $totalLeads = DB::table('leads')->count();
-                    $convertedLeads = DB::table('leads')->where('status', 'converted')->count();
-                    $conversionRate = $totalLeads > 0 ? round(($convertedLeads / $totalLeads) * 100, 1) : 0;
-                @endphp
-                <div class="stat-value">{{ $conversionRate }}%</div>
+                <div class="stat-value">{{ $dashboardData['stats']['conversion_rate'] }}%</div>
                 <div class="stat-footer">
-                    <span class="stat-label">{{ $convertedLeads }}/{{ $totalLeads }} leads</span>
+                    <span class="stat-label">{{ $dashboardData['stats']['converted_leads'] }}/{{ $dashboardData['stats']['total_leads'] }} leads</span>
                 </div>
             </div>
         </div>
@@ -93,17 +81,10 @@
                     </div>
                     <i class="fas fa-dollar-sign stat-icon-large"></i>
                 </div>
-                @php
-                    $monthlyRevenue = DB::table('invoices')
-                        ->where('status', 'paid')
-                        ->whereYear('issue_date', now()->year)
-                        ->whereMonth('issue_date', now()->month)
-                        ->sum('total_amount');
-                @endphp
-                <div class="stat-value-large">{{ number_format($monthlyRevenue / 1000000, 1) }}M</div>
-                <div class="stat-trend up">
-                    <i class="fas fa-arrow-up"></i>
-                    <span>+15% so với tháng trước</span>
+                <div class="stat-value-large">{{ number_format($dashboardData['revenue']['monthly_revenue'] / 1000000, 1) }}M</div>
+                <div class="stat-trend {{ $dashboardData['revenue']['revenue_growth'] >= 0 ? 'up' : 'down' }}">
+                    <i class="fas fa-arrow-{{ $dashboardData['revenue']['revenue_growth'] >= 0 ? 'up' : 'down' }}"></i>
+                    <span>{{ $dashboardData['revenue']['revenue_growth'] >= 0 ? '+' : '' }}{{ $dashboardData['revenue']['revenue_growth'] }}% so với tháng trước</span>
                 </div>
             </div>
 
@@ -115,16 +96,10 @@
                     </div>
                     <i class="fas fa-hand-holding-usd stat-icon-large"></i>
                 </div>
-                @php
-                    $monthlyCommission = DB::table('commission_events')
-                        ->whereYear('occurred_at', now()->year)
-                        ->whereMonth('occurred_at', now()->month)
-                        ->sum('commission_total');
-                @endphp
-                <div class="stat-value-large">{{ number_format($monthlyCommission / 1000000, 1) }}M</div>
-                <div class="stat-trend up">
-                    <i class="fas fa-arrow-up"></i>
-                    <span>+8% so với tháng trước</span>
+                <div class="stat-value-large">{{ number_format($dashboardData['revenue']['monthly_commission'] / 1000000, 1) }}M</div>
+                <div class="stat-trend {{ $dashboardData['revenue']['commission_growth'] >= 0 ? 'up' : 'down' }}">
+                    <i class="fas fa-arrow-{{ $dashboardData['revenue']['commission_growth'] >= 0 ? 'up' : 'down' }}"></i>
+                    <span>{{ $dashboardData['revenue']['commission_growth'] >= 0 ? '+' : '' }}{{ $dashboardData['revenue']['commission_growth'] }}% so với tháng trước</span>
                 </div>
             </div>
 
@@ -136,13 +111,9 @@
                     </div>
                     <i class="fas fa-exclamation-circle stat-icon-large"></i>
                 </div>
-                @php
-                    $pendingInvoices = DB::table('invoices')->whereIn('status', ['issued','overdue'])->count();
-                    $openTickets = DB::table('tickets')->whereIn('status', ['open','in_progress'])->count();
-                @endphp
-                <div class="stat-value-large">{{ $pendingInvoices + $openTickets }}</div>
+                <div class="stat-value-large">{{ $dashboardData['revenue']['pending_invoices'] + $dashboardData['revenue']['open_tickets'] }}</div>
                 <div class="stat-details">
-                    <span>{{ $pendingInvoices }} hóa đơn, {{ $openTickets }} tickets</span>
+                    <span>{{ $dashboardData['revenue']['pending_invoices'] }} hóa đơn, {{ $dashboardData['revenue']['open_tickets'] }} tickets</span>
                 </div>
             </div>
         </div>
@@ -173,37 +144,31 @@
                     </div>
                     <div class="card-content">
                         <div class="occupancy-grid">
-                            @php
-                                $unitsByStatus = DB::table('units')
-                                    ->select('status', DB::raw('count(*) as count'))
-                                    ->groupBy('status')
-                                    ->pluck('count', 'status');
-                            @endphp
                             <div class="occupancy-item available">
                                 <div class="occupancy-icon"><i class="fas fa-check-circle"></i></div>
                                 <div class="occupancy-info">
-                                    <div class="occupancy-value">{{ $unitsByStatus['available'] ?? 0 }}</div>
+                                    <div class="occupancy-value">{{ $dashboardData['occupancy']['available'] }}</div>
                                     <div class="occupancy-label">Trống</div>
                                 </div>
                             </div>
                             <div class="occupancy-item occupied">
                                 <div class="occupancy-icon"><i class="fas fa-users"></i></div>
                                 <div class="occupancy-info">
-                                    <div class="occupancy-value">{{ $unitsByStatus['occupied'] ?? 0 }}</div>
+                                    <div class="occupancy-value">{{ $dashboardData['occupancy']['occupied'] }}</div>
                                     <div class="occupancy-label">Đã thuê</div>
                                 </div>
                             </div>
                             <div class="occupancy-item reserved">
                                 <div class="occupancy-icon"><i class="fas fa-clock"></i></div>
                                 <div class="occupancy-info">
-                                    <div class="occupancy-value">{{ $unitsByStatus['reserved'] ?? 0 }}</div>
+                                    <div class="occupancy-value">{{ $dashboardData['occupancy']['reserved'] }}</div>
                                     <div class="occupancy-label">Đặt cọc</div>
                                 </div>
                             </div>
                             <div class="occupancy-item maintenance">
                                 <div class="occupancy-icon"><i class="fas fa-tools"></i></div>
                                 <div class="occupancy-info">
-                                    <div class="occupancy-value">{{ $unitsByStatus['maintenance'] ?? 0 }}</div>
+                                    <div class="occupancy-value">{{ $dashboardData['occupancy']['maintenance'] }}</div>
                                     <div class="occupancy-label">Bảo trì</div>
                                 </div>
                             </div>
@@ -217,19 +182,8 @@
                         <h3><i class="fas fa-trophy"></i> Top CTV/Nhân viên</h3>
                     </div>
                     <div class="card-content">
-                        @php
-                            $topAgents = DB::table('commission_event_splits')
-                                ->join('users', 'users.id', '=', 'commission_event_splits.user_id')
-                                ->select('users.id', 'users.full_name', DB::raw('SUM(commission_event_splits.amount) as total_commission'), DB::raw('COUNT(*) as deals'))
-                                ->whereYear('commission_event_splits.created_at', now()->year)
-                                ->whereMonth('commission_event_splits.created_at', now()->month)
-                                ->groupBy('users.id', 'users.full_name')
-                                ->orderByDesc('total_commission')
-                                ->limit(5)
-                                ->get();
-                        @endphp
                         <div class="top-agents-list">
-                            @forelse ($topAgents as $index => $agent)
+                            @forelse ($dashboardData['topPerformers'] as $index => $agent)
                             <div class="agent-item">
                                 <div class="agent-rank rank-{{ $index + 1 }}">{{ $index + 1 }}</div>
                                 <div class="agent-avatar">{{ substr($agent->full_name, 0, 1) }}</div>
@@ -267,7 +221,7 @@
                             <i class="fas fa-user-tie"></i>
                             <span>Gán nhân viên</span>
                         </a>
-                        <a href="{{ route('manager.reports.revenue') }}" class="quick-action-btn">
+                        <a href="{{ route('manager.revenue-reports.index') }}" class="quick-action-btn">
                             <i class="fas fa-chart-bar"></i>
                             <span>Xem báo cáo</span>
                         </a>
@@ -280,21 +234,11 @@
                         <h3><i class="fas fa-bell"></i> Cần xử lý ngay</h3>
                     </div>
                     <div class="card-content">
-                        @php
-                            $overdueInvoices = DB::table('invoices')->where('status', 'overdue')->count();
-                            $expiringLeases = DB::table('leases')
-                                ->where('end_date', '<=', now()->addDays(30))
-                                ->where('status', 'active')
-                                ->count();
-                            $pendingViewings = DB::table('viewings')
-                                ->where('status', 'requested')
-                                ->count();
-                        @endphp
                         <div class="alert-item urgent">
                             <i class="fas fa-exclamation-triangle"></i>
                             <div class="alert-content">
                                 <div class="alert-title">Hóa đơn quá hạn</div>
-                                <div class="alert-value">{{ $overdueInvoices }} hóa đơn</div>
+                                <div class="alert-value">{{ $dashboardData['urgentTasks']['overdue_invoices'] }} hóa đơn</div>
                             </div>
                             <a href="{{ route('manager.invoices.index') }}" class="alert-action">
                                 <i class="fas fa-arrow-right"></i>
@@ -305,7 +249,7 @@
                             <i class="fas fa-file-contract"></i>
                             <div class="alert-content">
                                 <div class="alert-title">HĐ sắp hết hạn</div>
-                                <div class="alert-value">{{ $expiringLeases }} hợp đồng</div>
+                                <div class="alert-value">{{ $dashboardData['urgentTasks']['expiring_leases'] }} hợp đồng</div>
                             </div>
                             <a href="{{ route('manager.leases.index') }}" class="alert-action">
                                 <i class="fas fa-arrow-right"></i>
@@ -316,7 +260,7 @@
                             <i class="fas fa-calendar"></i>
                             <div class="alert-content">
                                 <div class="alert-title">Lịch hẹn chờ duyệt</div>
-                                <div class="alert-value">{{ $pendingViewings }} lịch</div>
+                                <div class="alert-value">{{ $dashboardData['urgentTasks']['pending_viewings'] }} lịch</div>
                             </div>
                             <a href="#" class="alert-action">
                                 <i class="fas fa-arrow-right"></i>
@@ -331,16 +275,8 @@
                         <h3><i class="fas fa-history"></i> Hoạt động gần đây</h3>
                     </div>
                     <div class="card-content">
-                        @php
-                            $recentActivities = DB::table('audit_logs')
-                                ->join('users', 'users.id', '=', 'audit_logs.actor_id')
-                                ->orderBy('audit_logs.created_at', 'desc')
-                                ->limit(5)
-                                ->select('audit_logs.*', 'users.full_name')
-                                ->get();
-                        @endphp
                         <div class="activity-list">
-                            @forelse ($recentActivities as $activity)
+                            @forelse ($dashboardData['recentActivities'] as $activity)
                             <div class="activity-item">
                                 <div class="activity-avatar">{{ substr($activity->full_name ?? 'U', 0, 1) }}</div>
                                 <div class="activity-details">
@@ -382,12 +318,7 @@
                             </div>
                             <div class="analytics-info">
                                 <div class="analytics-label">Leads mới</div>
-                                @php
-                                    $newLeads = DB::table('leads')
-                                        ->where('created_at', '>=', now()->subDays(30))
-                                        ->count();
-                                @endphp
-                                <div class="analytics-value">{{ $newLeads }}</div>
+                                <div class="analytics-value">{{ $dashboardData['analytics']['new_leads'] }}</div>
                                 <div class="analytics-trend">+12% vs tháng trước</div>
                             </div>
                         </div>
@@ -398,12 +329,7 @@
                             </div>
                             <div class="analytics-info">
                                 <div class="analytics-label">Lượt xem phòng</div>
-                                @php
-                                    $totalViewings = DB::table('viewings')
-                                        ->where('created_at', '>=', now()->subDays(30))
-                                        ->count();
-                                @endphp
-                                <div class="analytics-value">{{ $totalViewings }}</div>
+                                <div class="analytics-value">{{ $dashboardData['analytics']['total_viewings'] }}</div>
                                 <div class="analytics-trend">+8% vs tháng trước</div>
                             </div>
                         </div>
@@ -414,12 +340,7 @@
                             </div>
                             <div class="analytics-info">
                                 <div class="analytics-label">Hợp đồng ký mới</div>
-                                @php
-                                    $newLeases = DB::table('leases')
-                                        ->where('created_at', '>=', now()->subDays(30))
-                                        ->count();
-                                @endphp
-                                <div class="analytics-value">{{ $newLeases }}</div>
+                                <div class="analytics-value">{{ $dashboardData['analytics']['new_leases'] }}</div>
                                 <div class="analytics-trend">+5% vs tháng trước</div>
                             </div>
                         </div>
@@ -430,13 +351,7 @@
                             </div>
                             <div class="analytics-info">
                                 <div class="analytics-label">Đặt cọc mới</div>
-                                @php
-                                    $newDeposits = DB::table('booking_deposits')
-                                        ->where('created_at', '>=', now()->subDays(30))
-                                        ->where('payment_status', 'paid')
-                                        ->count();
-                                @endphp
-                                <div class="analytics-value">{{ $newDeposits }}</div>
+                                <div class="analytics-value">{{ $dashboardData['analytics']['new_deposits'] }}</div>
                                 <div class="analytics-trend">+3% vs tháng trước</div>
                             </div>
                         </div>
@@ -446,4 +361,70 @@
         </div>
     </div>
 </main>
+
+@push('scripts')
+<script>
+function clearDashboardCache() {
+    if (typeof Notify !== 'undefined') {
+        Notify.confirm(
+            'Làm mới dữ liệu',
+            'Bạn có chắc chắn muốn làm mới dữ liệu dashboard? Thao tác này sẽ xóa cache và tải lại dữ liệu mới nhất.',
+            function() {
+                // Show loading
+                Notify.toast('Đang làm mới dữ liệu...', 'info');
+                
+                // Make AJAX request to clear cache
+                fetch('{{ route("manager.dashboard.clear-cache") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Notify.toast('Dữ liệu đã được làm mới thành công!', 'success');
+                        // Reload page to show updated data
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        Notify.toast('Có lỗi xảy ra khi làm mới dữ liệu', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Notify.toast('Có lỗi xảy ra khi làm mới dữ liệu', 'error');
+                });
+            }
+        );
+    } else {
+        // Fallback if Notify is not available
+        if (confirm('Bạn có chắc chắn muốn làm mới dữ liệu dashboard?')) {
+            fetch('{{ route("manager.dashboard.clear-cache") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Dữ liệu đã được làm mới thành công!');
+                    window.location.reload();
+                } else {
+                    alert('Có lỗi xảy ra khi làm mới dữ liệu');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi làm mới dữ liệu');
+            });
+        }
+    }
+}
+</script>
+@endpush
 @endsection

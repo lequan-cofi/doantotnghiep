@@ -83,17 +83,29 @@ class Property extends Model
     // Helper methods for occupancy calculation
     public function getOccupiedUnitsCount()
     {
-        return $this->units()->where('status', 'occupied')->count();
+        // Count units that have active leases instead of units.status
+        return $this->units()->whereHas('leases', function($query) {
+            $query->where('status', 'active')->whereNull('deleted_at');
+        })->count();
     }
 
     public function getAvailableUnitsCount()
     {
-        return $this->units()->where('status', 'available')->count();
+        // Available = total - occupied - reserved - maintenance
+        $total = $this->getTotalUnitsCount();
+        $occupied = $this->getOccupiedUnitsCount();
+        $reserved = $this->getReservedUnitsCount();
+        $maintenance = $this->getMaintenanceUnitsCount();
+        
+        return max(0, $total - $occupied - $reserved - $maintenance);
     }
 
     public function getReservedUnitsCount()
     {
-        return $this->units()->where('status', 'reserved')->count();
+        // Count units that have pending leases
+        return $this->units()->whereHas('leases', function($query) {
+            $query->where('status', 'pending')->whereNull('deleted_at');
+        })->count();
     }
 
     public function getMaintenanceUnitsCount()

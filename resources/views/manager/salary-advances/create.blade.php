@@ -36,7 +36,7 @@
                                         <option value="">Chọn nhân viên</option>
                                         @foreach($users as $user)
                                             <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>
-                                                {{ $user->name }} ({{ $user->email }})
+                                                {{ $user->full_name ?? 'N/A' }} ({{ $user->email }})
                                             </option>
                                         @endforeach
                                     </select>

@@ -14,9 +14,11 @@ class SalaryContractController extends Controller
 {
     public function index(Request $request)
     {
-        $organization = Auth::user()->organizations()->first();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $organizationId = $user->organizations()->first()?->id;
         
-        $query = SalaryContract::where('organization_id', $organization->id)
+        $query = SalaryContract::where('organization_id', $organizationId)
             ->with(['user']);
 
         // Filter by status
@@ -27,11 +29,6 @@ class SalaryContractController extends Controller
         // Filter by user
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
-        }
-
-        // Filter by pay cycle
-        if ($request->filled('pay_cycle')) {
-            $query->where('pay_cycle', $request->pay_cycle);
         }
 
         // Filter by date range
@@ -55,31 +52,27 @@ class SalaryContractController extends Controller
         $salaryContracts = $query->orderBy('created_at', 'desc')->paginate(15);
 
         // Get users for filter dropdown
-        $users = User::whereHas('organizations', function($q) use ($organization) {
-            $q->where('organization_id', $organization->id);
+        $users = User::whereHas('organizations', function($q) use ($organizationId) {
+            $q->where('organization_id', $organizationId);
         })->get();
 
         $statuses = [
             'active' => 'Đang hoạt động',
-            'inactive' => 'Không hoạt động',
+            'inactive' => 'Tạm dừng',
             'terminated' => 'Đã chấm dứt'
         ];
 
-        $payCycles = [
-            'monthly' => 'Hàng tháng',
-            'weekly' => 'Hàng tuần',
-            'daily' => 'Hàng ngày'
-        ];
-
-        return view('manager.salary-contracts.index', compact('salaryContracts', 'users', 'statuses', 'payCycles'));
+        return view('manager.salary-contracts.index', compact('salaryContracts', 'users', 'statuses'));
     }
 
     public function create()
     {
-        $organization = Auth::user()->organizations()->first();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $organizationId = $user->organizations()->first()?->id;
         
-        $users = User::whereHas('organizations', function($q) use ($organization) {
-            $q->where('organization_id', $organization->id);
+        $users = User::whereHas('organizations', function($q) use ($organizationId) {
+            $q->where('organization_id', $organizationId);
         })->get();
 
         $payCycles = [
@@ -88,13 +81,12 @@ class SalaryContractController extends Controller
             'daily' => 'Hàng ngày'
         ];
 
-        $currencies = [
-            'VND' => 'Việt Nam Đồng (VND)',
-            'USD' => 'US Dollar (USD)',
-            'EUR' => 'Euro (EUR)'
+        $statuses = [
+            'active' => 'Đang hoạt động',
+            'inactive' => 'Tạm dừng'
         ];
 
-        return view('manager.salary-contracts.create', compact('users', 'payCycles', 'currencies'));
+        return view('manager.salary-contracts.create', compact('users', 'payCycles', 'statuses'));
     }
 
     public function store(Request $request)
@@ -105,42 +97,56 @@ class SalaryContractController extends Controller
             'currency' => 'required|string|max:3',
             'pay_cycle' => 'required|in:monthly,weekly,daily',
             'pay_day' => 'required|integer|min:1|max:31',
-            'allowances' => 'nullable|array',
-            'allowances.*' => 'nullable|numeric|min:0',
-            'kpi_targets' => 'nullable|array',
-            'kpi_targets.*' => 'nullable|numeric|min:0',
+            'allowances_json' => 'nullable|string',
+            'kpi_target_json' => 'nullable|string',
             'effective_from' => 'required|date',
             'effective_to' => 'nullable|date|after:effective_from',
-            'status' => 'required|in:active,inactive,terminated'
+            'status' => 'required|in:active,inactive'
         ]);
 
         try {
             DB::beginTransaction();
 
-            $organization = Auth::user()->organizations()->first();
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            $organizationId = $user->organizations()->first()?->id;
 
-            // Process allowances
-            $allowances = [];
-            if ($request->has('allowances')) {
-                foreach ($request->allowances as $key => $value) {
-                    if (!empty($value) && $value > 0) {
-                        $allowances[$key] = $value;
-                    }
+            // Check if user already has an active contract
+            $existingContract = SalaryContract::where('user_id', $request->user_id)
+                ->where('organization_id', $organizationId)
+                ->where('status', 'active')
+                ->where(function($q) use ($request) {
+                    $q->where('effective_from', '<=', $request->effective_from)
+                      ->where(function($q2) use ($request) {
+                          $q2->whereNull('effective_to')
+                             ->orWhere('effective_to', '>=', $request->effective_from);
+                      });
+                })
+                ->first();
+
+            if ($existingContract) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Nhân viên này đã có hợp đồng lương đang hoạt động trong khoảng thời gian này'
+                    ], 400);
                 }
+                return back()->withInput()->with('error', 'Nhân viên này đã có hợp đồng lương đang hoạt động trong khoảng thời gian này');
             }
 
-            // Process KPI targets
+            // Parse JSON data
+            $allowances = [];
+            if ($request->allowances_json) {
+                $allowances = json_decode($request->allowances_json, true) ?: [];
+            }
+            
             $kpiTargets = [];
-            if ($request->has('kpi_targets')) {
-                foreach ($request->kpi_targets as $key => $value) {
-                    if (!empty($value) && $value > 0) {
-                        $kpiTargets[$key] = $value;
-                    }
-                }
+            if ($request->kpi_target_json) {
+                $kpiTargets = json_decode($request->kpi_target_json, true) ?: [];
             }
 
             $salaryContract = SalaryContract::create([
-                'organization_id' => $organization->id,
+                'organization_id' => $organizationId,
                 'user_id' => $request->user_id,
                 'base_salary' => $request->base_salary,
                 'currency' => $request->currency,
@@ -184,7 +190,9 @@ class SalaryContractController extends Controller
     public function show(SalaryContract $salaryContract)
     {
         // Check if user belongs to the same organization
-        if ($salaryContract->organization_id !== Auth::user()->organizations()->first()?->id) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if ($salaryContract->organization_id !== $user->organizations()->first()?->id) {
             abort(403, 'Unauthorized access to salary contract.');
         }
 
@@ -196,14 +204,23 @@ class SalaryContractController extends Controller
     public function edit(SalaryContract $salaryContract)
     {
         // Check if user belongs to the same organization
-        if ($salaryContract->organization_id !== Auth::user()->organizations()->first()?->id) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if ($salaryContract->organization_id !== $user->organizations()->first()?->id) {
             abort(403, 'Unauthorized access to salary contract.');
         }
 
-        $organization = Auth::user()->organizations()->first();
+        // Only allow editing if status is 'active' or 'inactive'
+        if ($salaryContract->status === 'terminated') {
+            return back()->with('error', 'Không thể chỉnh sửa hợp đồng lương đã chấm dứt.');
+        }
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $organizationId = $user->organizations()->first()?->id;
         
-        $users = User::whereHas('organizations', function($q) use ($organization) {
-            $q->where('organization_id', $organization->id);
+        $users = User::whereHas('organizations', function($q) use ($organizationId) {
+            $q->where('organization_id', $organizationId);
         })->get();
 
         $payCycles = [
@@ -212,20 +229,26 @@ class SalaryContractController extends Controller
             'daily' => 'Hàng ngày'
         ];
 
-        $currencies = [
-            'VND' => 'Việt Nam Đồng (VND)',
-            'USD' => 'US Dollar (USD)',
-            'EUR' => 'Euro (EUR)'
+        $statuses = [
+            'active' => 'Đang hoạt động',
+            'inactive' => 'Tạm dừng'
         ];
 
-        return view('manager.salary-contracts.edit', compact('salaryContract', 'users', 'payCycles', 'currencies'));
+        return view('manager.salary-contracts.edit', compact('salaryContract', 'users', 'payCycles', 'statuses'));
     }
 
     public function update(Request $request, SalaryContract $salaryContract)
     {
         // Check if user belongs to the same organization
-        if ($salaryContract->organization_id !== Auth::user()->organizations()->first()?->id) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if ($salaryContract->organization_id !== $user->organizations()->first()?->id) {
             abort(403, 'Unauthorized access to salary contract.');
+        }
+
+        // Only allow editing if status is 'active' or 'inactive'
+        if ($salaryContract->status === 'terminated') {
+            return back()->with('error', 'Không thể chỉnh sửa hợp đồng lương đã chấm dứt.');
         }
 
         $request->validate([
@@ -234,36 +257,49 @@ class SalaryContractController extends Controller
             'currency' => 'required|string|max:3',
             'pay_cycle' => 'required|in:monthly,weekly,daily',
             'pay_day' => 'required|integer|min:1|max:31',
-            'allowances' => 'nullable|array',
-            'allowances.*' => 'nullable|numeric|min:0',
-            'kpi_targets' => 'nullable|array',
-            'kpi_targets.*' => 'nullable|numeric|min:0',
+            'allowances_json' => 'nullable|string',
+            'kpi_target_json' => 'nullable|string',
             'effective_from' => 'required|date',
             'effective_to' => 'nullable|date|after:effective_from',
-            'status' => 'required|in:active,inactive,terminated'
+            'status' => 'required|in:active,inactive'
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Process allowances
-            $allowances = [];
-            if ($request->has('allowances')) {
-                foreach ($request->allowances as $key => $value) {
-                    if (!empty($value) && $value > 0) {
-                        $allowances[$key] = $value;
-                    }
+            // Check if user already has an active contract (excluding current one)
+            $existingContract = SalaryContract::where('user_id', $request->user_id)
+                ->where('organization_id', $salaryContract->organization_id)
+                ->where('id', '!=', $salaryContract->id)
+                ->where('status', 'active')
+                ->where(function($q) use ($request) {
+                    $q->where('effective_from', '<=', $request->effective_from)
+                      ->where(function($q2) use ($request) {
+                          $q2->whereNull('effective_to')
+                             ->orWhere('effective_to', '>=', $request->effective_from);
+                      });
+                })
+                ->first();
+
+            if ($existingContract) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Nhân viên này đã có hợp đồng lương đang hoạt động trong khoảng thời gian này'
+                    ], 400);
                 }
+                return back()->withInput()->with('error', 'Nhân viên này đã có hợp đồng lương đang hoạt động trong khoảng thời gian này');
             }
 
-            // Process KPI targets
+            // Parse JSON data
+            $allowances = [];
+            if ($request->allowances_json) {
+                $allowances = json_decode($request->allowances_json, true) ?: [];
+            }
+            
             $kpiTargets = [];
-            if ($request->has('kpi_targets')) {
-                foreach ($request->kpi_targets as $key => $value) {
-                    if (!empty($value) && $value > 0) {
-                        $kpiTargets[$key] = $value;
-                    }
-                }
+            if ($request->kpi_target_json) {
+                $kpiTargets = json_decode($request->kpi_target_json, true) ?: [];
             }
 
             $salaryContract->update([
@@ -310,8 +346,21 @@ class SalaryContractController extends Controller
     public function destroy(SalaryContract $salaryContract)
     {
         // Check if user belongs to the same organization
-        if ($salaryContract->organization_id !== Auth::user()->organizations()->first()?->id) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if ($salaryContract->organization_id !== $user->organizations()->first()?->id) {
             abort(403, 'Unauthorized access to salary contract.');
+        }
+
+        // Only allow deleting if status is 'inactive'
+        if ($salaryContract->status === 'active') {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể xóa hợp đồng lương đang hoạt động. Hãy tạm dừng trước.'
+                ], 400);
+            }
+            return back()->with('error', 'Không thể xóa hợp đồng lương đang hoạt động. Hãy tạm dừng trước.');
         }
 
         try {
@@ -341,10 +390,12 @@ class SalaryContractController extends Controller
         }
     }
 
-    public function terminate(Request $request, SalaryContract $salaryContract)
+    public function terminate(SalaryContract $salaryContract)
     {
         // Check if user belongs to the same organization
-        if ($salaryContract->organization_id !== Auth::user()->organizations()->first()?->id) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if ($salaryContract->organization_id !== $user->organizations()->first()?->id) {
             abort(403, 'Unauthorized access to salary contract.');
         }
 
@@ -390,7 +441,9 @@ class SalaryContractController extends Controller
     public function activate(SalaryContract $salaryContract)
     {
         // Check if user belongs to the same organization
-        if ($salaryContract->organization_id !== Auth::user()->organizations()->first()?->id) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if ($salaryContract->organization_id !== $user->organizations()->first()?->id) {
             abort(403, 'Unauthorized access to salary contract.');
         }
 
@@ -402,6 +455,16 @@ class SalaryContractController extends Controller
                 ], 400);
             }
             return back()->with('error', 'Hợp đồng lương đã đang hoạt động');
+        }
+
+        if ($salaryContract->status === 'terminated') {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể kích hoạt hợp đồng lương đã chấm dứt'
+                ], 400);
+            }
+            return back()->with('error', 'Không thể kích hoạt hợp đồng lương đã chấm dứt');
         }
 
         try {

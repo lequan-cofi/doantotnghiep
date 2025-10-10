@@ -261,7 +261,10 @@
                 <div class="card-body">
                     @php
                         $totalUnits = $property->units->count();
-                        $occupiedUnits = $property->units->where('status', 'occupied')->count();
+                        // Count units with active leases instead of units.status
+                        $occupiedUnits = $property->units->filter(function($unit) {
+                            return $unit->leases()->where('status', 'active')->whereNull('deleted_at')->exists();
+                        })->count();
                         $occupancyRate = $totalUnits > 0 ? round(($occupiedUnits / $totalUnits) * 100, 1) : 0;
                         $totalRooms = $property->total_rooms ?? 0;
                         $occupancyRateByRooms = $totalRooms > 0 ? round(($totalUnits / $totalRooms) * 100, 1) : 0;

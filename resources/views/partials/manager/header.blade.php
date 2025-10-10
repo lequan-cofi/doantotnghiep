@@ -100,6 +100,10 @@
                     <i class="fas fa-chevron-down submenu-arrow"></i>
                 </a>
                 <div class="submenu">
+                    <a href="{{ route('manager.salary-contracts.index') }}" class="submenu-item">
+                        <i class="fas fa-file-contract"></i>
+                        <span>Hợp đồng lương</span>
+                    </a>
                     <a href="{{ route('manager.payroll-cycles.index') }}" class="submenu-item">
                         <i class="fas fa-calendar-alt"></i>
                         <span>Kỳ lương</span>
@@ -123,13 +127,9 @@
                     <i class="fas fa-chevron-down submenu-arrow"></i>
                 </a>
                 <div class="submenu">
-                    <a href="{{ route('manager.reports.revenue') }}" class="submenu-item">
-                        <i class="fas fa-dollar-sign"></i>
-                        <span>Doanh thu</span>
-                    </a>
-                    <a href="{{ route('manager.reports.occupancy') }}" class="submenu-item">
-                        <i class="fas fa-percent"></i>
-                        <span>Tỷ lệ lấp đầy</span>
+                    <a href="{{ route('manager.revenue-reports.index') }}" class="submenu-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Báo cáo doanh thu</span>
                     </a>
                     <a href="{{ route('manager.reports.payments') }}" class="submenu-item">
                         <i class="fas fa-money-bill-wave"></i>

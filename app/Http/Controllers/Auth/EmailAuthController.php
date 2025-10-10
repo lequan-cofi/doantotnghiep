@@ -65,7 +65,7 @@ class EmailAuthController extends Controller
         // Redirect per role key to specific dashboards
         $roleKey = $role['key_code'] ?? null;
         $routeByRole = [
-            'admin' => 'admin.dashboard',
+            'admin' => 'superadmin.dashboard', // Redirect admin to Super Admin dashboard
             'manager' => 'manager.dashboard',
             'agent' => 'agent.dashboard',
             'landlord' => 'landlord.dashboard',
@@ -130,7 +130,7 @@ class EmailAuthController extends Controller
         // Redirect per role key to specific dashboards
         $roleKey = $role['key_code'] ?? null;
         $routeByRole = [
-            'admin' => 'admin.dashboard',
+            'admin' => 'superadmin.dashboard', // Redirect admin to Super Admin dashboard
             'manager' => 'manager.dashboard',
             'agent' => 'agent.dashboard',
             'landlord' => 'landlord.dashboard',

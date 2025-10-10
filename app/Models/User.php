@@ -77,6 +77,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias for userRoles() for backward compatibility.
+     */
+    public function roles()
+    {
+        return $this->userRoles();
+    }
+
+    /**
+     * Get the roles of the user in a specific organization.
+     */
+    public function organizationRoles($organizationId = null)
+    {
+        $query = $this->belongsToMany(Role::class, 'organization_users', 'user_id', 'role_id')
+            ->withPivot('organization_id', 'status')
+            ->withTimestamps();
+        
+        if ($organizationId) {
+            $query->wherePivot('organization_id', $organizationId);
+        }
+        
+        return $query;
+    }
+
+    /**
      * Get the user's primary role.
      */
     public function primaryRole()

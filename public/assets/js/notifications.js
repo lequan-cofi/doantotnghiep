@@ -6,7 +6,9 @@
  * @version 1.0.0
  */
 
-class NotificationSystem {
+// Check if NotificationSystem is already defined
+if (typeof NotificationSystem === 'undefined') {
+    class NotificationSystem {
     constructor() {
         this.init();
     }
@@ -573,3 +575,5 @@ window.testNoHide = () => window.testToastDuration(0);
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = NotificationSystem;
 }
+
+} // End of NotificationSystem class definition
