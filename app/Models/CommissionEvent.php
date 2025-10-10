@@ -6,6 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasSoftDeletesWithUser;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsTo policy()
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsTo organization()
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsTo agent()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany splits()
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsTo lease()
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsTo listing()
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsTo unit()
+ */
 class CommissionEvent extends Model
 {
     use SoftDeletes, HasSoftDeletesWithUser;

@@ -11,6 +11,17 @@ use Illuminate\Notifications\Notifiable;
 /**
  * @method \Illuminate\Database\Eloquent\Relations\BelongsToMany organizations()
  * @method \Illuminate\Database\Eloquent\Relations\HasMany organizationUsers()
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsToMany userRoles()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany commissionEvents()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany commissionEventSplits()
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsToMany assignedProperties()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany salaryContracts()
+ * @method \Illuminate\Database\Eloquent\Relations\HasOne activeSalaryContract()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany leasesAsTenant()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany leasesAsAgent()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany viewingsAsAgent()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany payments()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany bookingDepositsAsTenant()
  */
 class User extends Authenticatable
 {

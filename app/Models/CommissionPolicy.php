@@ -6,6 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasSoftDeletesWithUser;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @method \Illuminate\Database\Eloquent\Relations\BelongsTo organization()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany events()
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany splits()
+ */
 class CommissionPolicy extends Model
 {
     use SoftDeletes, HasSoftDeletesWithUser;

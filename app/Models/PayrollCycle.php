@@ -8,7 +8,7 @@ class PayrollCycle extends Model
 {
     protected $table = 'payroll_cycles';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'organization_id',

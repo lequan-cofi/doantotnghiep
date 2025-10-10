@@ -8,7 +8,7 @@ class PayrollItem extends Model
 {
     protected $table = 'payroll_items';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'payroll_cycle_id',

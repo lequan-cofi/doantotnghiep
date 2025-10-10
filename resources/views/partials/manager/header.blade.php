@@ -75,6 +75,46 @@
                 <i class="fas fa-tools"></i>
                 <span>Tickets</span>
             </a>
+            <div class="nav-group" data-group="commission">
+                <a href="#" class="nav-item has-submenu nav-parent">
+                    <i class="fas fa-percentage"></i>
+                    <span>Hoa hồng</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('manager.commission-policies.index') }}" class="submenu-item">
+                        <i class="fas fa-cogs"></i>
+                        <span>Chính sách hoa hồng</span>
+                    </a>
+                    <a href="{{ route('manager.commission-events.index') }}" class="submenu-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Sự kiện hoa hồng</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="nav-group" data-group="payroll">
+                <a href="#" class="nav-item has-submenu nav-parent">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Lương</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('manager.payroll-cycles.index') }}" class="submenu-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Kỳ lương</span>
+                    </a>
+                    <a href="{{ route('manager.payroll-payslips.index') }}" class="submenu-item">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <span>Phiếu lương</span>
+                    </a>
+                    <a href="{{ route('manager.salary-advances.index') }}" class="submenu-item">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <span>Ứng lương</span>
+                    </a>
+                </div>
+            </div>
+            
             
             <div class="nav-group" data-group="reports">
                 <a href="#" class="nav-item has-submenu nav-parent">

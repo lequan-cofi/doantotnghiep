@@ -151,6 +151,30 @@ Route::middleware('auth')->group(function () {
         Route::resource('tickets', \App\Http\Controllers\Manager\TicketController::class);
         Route::post('tickets/{ticket}/logs', [\App\Http\Controllers\Manager\TicketController::class, 'addLog'])->name('tickets.addLog');
         
+        // Commission Policies
+        Route::resource('commission-policies', \App\Http\Controllers\Manager\CommissionPolicyController::class);
+        
+        // Commission Events
+        Route::resource('commission-events', \App\Http\Controllers\Manager\CommissionEventController::class);
+        Route::post('commission-events/{commissionEvent}/approve', [\App\Http\Controllers\Manager\CommissionEventController::class, 'approve'])->name('commission-events.approve');
+        Route::post('commission-events/{commissionEvent}/mark-as-paid', [\App\Http\Controllers\Manager\CommissionEventController::class, 'markAsPaid'])->name('commission-events.mark-as-paid');
+        
+        // Payroll Cycles
+        Route::resource('payroll-cycles', \App\Http\Controllers\Manager\PayrollCycleController::class);
+        Route::post('payroll-cycles/{payrollCycle}/lock', [\App\Http\Controllers\Manager\PayrollCycleController::class, 'lock'])->name('payroll-cycles.lock');
+        Route::post('payroll-cycles/{payrollCycle}/generate-payslips', [\App\Http\Controllers\Manager\PayrollCycleController::class, 'generatePayslips'])->name('payroll-cycles.generate-payslips');
+        
+        // Payroll Payslips
+        Route::resource('payroll-payslips', \App\Http\Controllers\Manager\PayrollPayslipController::class);
+        Route::post('payroll-payslips/{payrollPayslip}/mark-as-paid', [\App\Http\Controllers\Manager\PayrollPayslipController::class, 'markAsPaid'])->name('payroll-payslips.mark-as-paid');
+        Route::post('payroll-payslips/{payrollPayslip}/recalculate', [\App\Http\Controllers\Manager\PayrollPayslipController::class, 'recalculate'])->name('payroll-payslips.recalculate');
+        
+        // Salary Advances
+        Route::resource('salary-advances', \App\Http\Controllers\Manager\SalaryAdvanceController::class);
+        Route::post('salary-advances/{salaryAdvance}/approve', [\App\Http\Controllers\Manager\SalaryAdvanceController::class, 'approve'])->name('salary-advances.approve');
+        Route::post('salary-advances/{salaryAdvance}/reject', [\App\Http\Controllers\Manager\SalaryAdvanceController::class, 'reject'])->name('salary-advances.reject');
+        Route::post('salary-advances/{salaryAdvance}/repayment', [\App\Http\Controllers\Manager\SalaryAdvanceController::class, 'addRepayment'])->name('salary-advances.repayment');
+        
         // Reports
         Route::get('/reports/revenue', function () {
             return view('manager.reports.revenue');

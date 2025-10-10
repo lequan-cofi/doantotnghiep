@@ -50,6 +50,18 @@ class EmailAuthController extends Controller
             $request->session()->put('auth_role_key', $role['key_code']);
         }
 
+        // Store organization information in session for access control
+        try {
+            /** @var \App\Models\User $user */
+            $organization = $user->organizations()->first();
+            if ($organization) {
+                $request->session()->put('auth_organization_id', $organization->id);
+                $request->session()->put('auth_organization_name', $organization->name);
+            }
+        } catch (\Exception $e) {
+            // User might not have organizations method or no organizations
+        }
+
         // Redirect per role key to specific dashboards
         $roleKey = $role['key_code'] ?? null;
         $routeByRole = [
@@ -103,6 +115,18 @@ class EmailAuthController extends Controller
             $request->session()->put('auth_role_key', $role['key_code']);
         }
 
+        // Store organization information in session for access control
+        try {
+            /** @var \App\Models\User $user */
+            $organization = $user->organizations()->first();
+            if ($organization) {
+                $request->session()->put('auth_organization_id', $organization->id);
+                $request->session()->put('auth_organization_name', $organization->name);
+            }
+        } catch (\Exception $e) {
+            // User might not have organizations method or no organizations
+        }
+
         // Redirect per role key to specific dashboards
         $roleKey = $role['key_code'] ?? null;
         $routeByRole = [
@@ -122,6 +146,10 @@ class EmailAuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        
+        // Clear organization information from session
+        $request->session()->forget(['auth_organization_id', 'auth_organization_name']);
+        
         return redirect()->route('home');
     }
 
