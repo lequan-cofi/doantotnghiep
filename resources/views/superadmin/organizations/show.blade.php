@@ -437,11 +437,21 @@
         <div class="row mt-4">
             <div class="col-12">
                 <div class="details-card">
-                    <div class="card-header">
-                        <h5 class="card-title">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
                             <i class="fas fa-users"></i>
                             Danh sách người dùng ({{ $organization->users_count ?? 0 }})
                         </h5>
+                        <div class="btn-group">
+                            <a href="{{ route('superadmin.users.create') }}?organization_id={{ $organization->id }}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="fas fa-user-plus me-1"></i>Thêm User
+                            </a>
+                            <a href="{{ route('superadmin.users.index') }}?organization_id={{ $organization->id }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-list me-1"></i>Xem tất cả
+                            </a>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -452,6 +462,7 @@
                                         <th>Email</th>
                                         <th>Vai trò</th>
                                         <th>Ngày tham gia</th>
+                                        <th width="100">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -476,6 +487,18 @@
                                             @endif
                                         </td>
                                         <td>{{ $user->created_at->format('d/m/Y') }}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ route('superadmin.users.show', $user) }}" 
+                                                   class="btn btn-outline-info btn-sm" title="Xem chi tiết">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{{ route('superadmin.users.edit', $user) }}" 
+                                                   class="btn btn-outline-warning btn-sm" title="Chỉnh sửa">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
                                     </tr>
                                     @endforeach
                                 </tbody>

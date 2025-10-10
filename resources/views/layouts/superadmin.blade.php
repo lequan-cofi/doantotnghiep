@@ -67,17 +67,17 @@
                     </a>
                 </div>
 
-                <!-- Users Management - TO BE IMPLEMENTED -->
+                <!-- Users Management -->
                 <div class="nav-section">
                     <div class="nav-section-title">
                         <i class="fas fa-users"></i>
                         <span>Users</span>
                     </div>
-                    <a href="#" class="nav-item disabled" onclick="return false;">
+                    <a href="{{ route('superadmin.users.index') }}" class="nav-item {{ request()->routeIs('superadmin.users.*') ? 'active' : '' }}">
                         <i class="fas fa-list"></i>
                         <span>All Users</span>
                     </a>
-                    <a href="#" class="nav-item disabled" onclick="return false;">
+                    <a href="{{ route('superadmin.users.create') }}" class="nav-item">
                         <i class="fas fa-user-plus"></i>
                         <span>Add User</span>
                     </a>
