@@ -129,7 +129,7 @@
                                     <td>{{ $lease->id }}</td>
                                     <td>
                                         @if($lease->contract_no)
-                                            <code class="bg-light px-2 py-1 rounded">{{ $lease->contract_no }}</code>
+                                            <span class="badge bg-primary">{{ $lease->contract_no }}</span>
                                         @else
                                             <span class="text-muted">Chưa có</span>
                                         @endif
@@ -149,6 +149,9 @@
                                             <span class="badge bg-info">{{ $lease->unit->code ?? 'Phòng ' . $lease->unit->id }}</span>
                                             @if($lease->unit->floor)
                                                 <br><small class="text-muted">Tầng {{ $lease->unit->floor }}</small>
+                                            @endif
+                                            @if($lease->status === 'active')
+                                                <br><small class="text-success"><i class="fas fa-check-circle"></i> Đang có hợp đồng hoạt động</small>
                                             @endif
                                         @else
                                             <span class="text-muted">-</span>

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use App\Models\User_role;
+use App\Models\OrganizationUser;
 
 class EmailAuthController extends Controller
 {
@@ -96,12 +96,18 @@ class EmailAuthController extends Controller
         $user->status = 1;
         $user->save();
 
-        // Attach default tenant role
+        // Attach default tenant role to default organization
         $tenantRoleId = DB::table('roles')->where('key_code', 'tenant')->value('id');
-        if ($tenantRoleId) {
-            User_role::updateOrCreate(
-                ['user_id' => $user->id, 'role_id' => $tenantRoleId],
-                []
+        $defaultOrganizationId = DB::table('organizations')->where('name', 'Default Organization')->value('id');
+        
+        if ($tenantRoleId && $defaultOrganizationId) {
+            OrganizationUser::updateOrCreate(
+                [
+                    'user_id' => $user->id, 
+                    'role_id' => $tenantRoleId,
+                    'organization_id' => $defaultOrganizationId
+                ],
+                ['status' => 'active']
             );
         }
 
@@ -155,9 +161,10 @@ class EmailAuthController extends Controller
 
     private function resolvePrimaryRole(User $user): ?array
     {
-        $record = DB::table('user_roles')
-            ->join('roles', 'roles.id', '=', 'user_roles.role_id')
-            ->where('user_roles.user_id', $user->id)
+        $record = DB::table('organization_users')
+            ->join('roles', 'roles.id', '=', 'organization_users.role_id')
+            ->where('organization_users.user_id', $user->id)
+            ->where('organization_users.status', 'active')
             ->orderBy('roles.id')
             ->select('roles.id', 'roles.key_code')
             ->first();

@@ -311,6 +311,237 @@ body {
     overflow: hidden;
 }
 
+/* Dashboard Content */
+.dashboard-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Top Header */
+.top-header {
+    background: rgba(248, 250, 252, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.mobile-menu-toggle:hover {
+    background: #f1f5f9;
+}
+
+.breadcrumb {
+    font-size: 14px;
+    color: #64748b;
+}
+
+/* Notification Dropdown */
+.notification-dropdown {
+    position: relative;
+}
+
+.notification-btn {
+    position: relative;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.notification-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #dc2626;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.notification-menu {
+    min-width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.notification-header h6 {
+    margin: 0;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.view-all {
+    font-size: 12px;
+    color: #dc2626;
+    text-decoration: none;
+}
+
+.view-all:hover {
+    text-decoration: underline;
+}
+
+.notification-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-content p {
+    margin: 0;
+    font-size: 14px;
+    color: #64748b;
+}
+
+/* User Dropdown */
+.user-dropdown {
+    position: relative;
+}
+
+.user-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.user-btn:hover {
+    background: #f1f5f9;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background: #dc2626;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.2;
+}
+
+.user-menu {
+    min-width: 200px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #64748b;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: #f8fafc;
+    color: #1e293b;
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+}
+
+.logout-btn {
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 8px 0;
+}
+
 /* Header */
 .header {
     background: rgba(248, 250, 252, 0.95);
@@ -695,6 +926,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    .dashboard-container {
+        grid-template-columns: 1fr;
+    }
+    
     .sidebar {
         position: fixed;
         left: 0;
@@ -705,11 +940,19 @@ body {
         transition: transform 0.3s ease;
     }
     
-    .sidebar.open {
+    .sidebar.mobile-open {
         transform: translateX(0);
     }
     
+    .mobile-menu-toggle {
+        display: block;
+    }
+    
     .main-content {
+        margin-left: 0;
+    }
+    
+    .dashboard-content {
         margin-left: 0;
     }
     

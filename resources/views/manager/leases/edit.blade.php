@@ -36,7 +36,7 @@
                                 <select name="property_id" id="propertySelect" class="form-select" required>
                                     <option value="">Chọn bất động sản</option>
                                     @foreach ($properties as $property)
-                                    <option value="{{ $property->id }}" {{ $property->id == $lease->unit->property_id ? 'selected' : '' }}>
+                                    <option value="{{ $property->id }}" {{ $property->id == old('property_id', $lease->unit->property_id) ? 'selected' : '' }}>
                                         {{ $property->name }}
                                     </option>
                                     @endforeach
@@ -48,7 +48,7 @@
                                 <select name="unit_id" id="unitSelect" class="form-select" required>
                                     <option value="">Chọn phòng</option>
                                     @foreach ($units as $unit)
-                                    <option value="{{ $unit->id }}" {{ $unit->id == $lease->unit_id ? 'selected' : '' }}>
+                                    <option value="{{ $unit->id }}" {{ $unit->id == old('unit_id', $lease->unit_id) ? 'selected' : '' }}>
                                         {{ $unit->code ?? 'Phòng ' . $unit->id }}
                                         @if ($unit->floor) (Tầng {{ $unit->floor }}) @endif
                                     </option>
@@ -61,7 +61,7 @@
                                 <select name="tenant_id" class="form-select" required>
                                     <option value="">Chọn khách thuê</option>
                                     @foreach ($tenants as $tenant)
-                                    <option value="{{ $tenant->id }}" {{ $tenant->id == $lease->tenant_id ? 'selected' : '' }}>
+                                    <option value="{{ $tenant->id }}" {{ $tenant->id == old('tenant_id', $lease->tenant_id) ? 'selected' : '' }}>
                                         {{ $tenant->full_name }} ({{ $tenant->email }})
                                     </option>
                                     @endforeach
@@ -73,7 +73,7 @@
                                 <select name="agent_id" class="form-select">
                                     <option value="">Chọn nhân viên</option>
                                     @foreach ($agents as $agent)
-                                    <option value="{{ $agent->id }}" {{ $agent->id == $lease->agent_id ? 'selected' : '' }}>
+                                    <option value="{{ $agent->id }}" {{ $agent->id == old('agent_id', $lease->agent_id) ? 'selected' : '' }}>
                                         {{ $agent->full_name }}
                                     </option>
                                     @endforeach
@@ -82,9 +82,15 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Số hợp đồng</label>
-                                <input type="text" name="contract_no" class="form-control" 
-                                       value="{{ old('contract_no', $lease->contract_no) }}" 
-                                       placeholder="Nhập số hợp đồng">
+                                <div class="input-group">
+                                    <input type="text" name="contract_no" class="form-control" 
+                                           value="{{ old('contract_no', $lease->contract_no) }}" 
+                                           placeholder="Nhập số hợp đồng">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-file-contract text-primary"></i>
+                                    </span>
+                                </div>
+                                <small class="form-text text-muted">Mã hợp đồng hiện tại: {{ $lease->contract_no ?? 'Chưa có' }}</small>
                             </div>
                         </div>
 
@@ -96,12 +102,12 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Ngày bắt đầu <span class="text-danger">*</span></label>
                                     <input type="date" name="start_date" class="form-control" 
-                                           value="{{ old('start_date', $lease->start_date) }}" required>
+                                           value="{{ old('start_date', $lease->start_date ? $lease->start_date->format('Y-m-d') : '') }}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Ngày kết thúc <span class="text-danger">*</span></label>
                                     <input type="date" name="end_date" class="form-control" 
-                                           value="{{ old('end_date', $lease->end_date) }}" required>
+                                           value="{{ old('end_date', $lease->end_date ? $lease->end_date->format('Y-m-d') : '') }}" required>
                                 </div>
                             </div>
 
@@ -129,7 +135,7 @@
                                 <label class="form-label">Ngày thanh toán hàng tháng</label>
                                 <select name="billing_day" class="form-select">
                                     @for ($i = 1; $i <= 28; $i++)
-                                    <option value="{{ $i }}" {{ $i == $lease->billing_day ? 'selected' : '' }}>
+                                    <option value="{{ $i }}" {{ $i == old('billing_day', $lease->billing_day) ? 'selected' : '' }}>
                                         Ngày {{ $i }}
                                     </option>
                                     @endfor
@@ -139,17 +145,17 @@
                             <div class="mb-3">
                                 <label class="form-label">Trạng thái <span class="text-danger">*</span></label>
                                 <select name="status" class="form-select" required>
-                                    <option value="draft" {{ $lease->status == 'draft' ? 'selected' : '' }}>Nháp</option>
-                                    <option value="active" {{ $lease->status == 'active' ? 'selected' : '' }}>Đang hoạt động</option>
-                                    <option value="terminated" {{ $lease->status == 'terminated' ? 'selected' : '' }}>Đã chấm dứt</option>
-                                    <option value="expired" {{ $lease->status == 'expired' ? 'selected' : '' }}>Đã hết hạn</option>
+                                    <option value="draft" {{ old('status', $lease->status) == 'draft' ? 'selected' : '' }}>Nháp</option>
+                                    <option value="active" {{ old('status', $lease->status) == 'active' ? 'selected' : '' }}>Đang hoạt động</option>
+                                    <option value="terminated" {{ old('status', $lease->status) == 'terminated' ? 'selected' : '' }}>Đã chấm dứt</option>
+                                    <option value="expired" {{ old('status', $lease->status) == 'expired' ? 'selected' : '' }}>Đã hết hạn</option>
                                 </select>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Ngày ký hợp đồng</label>
                                 <input type="date" name="signed_at" class="form-control" 
-                                       value="{{ old('signed_at', $lease->signed_at) }}">
+                                       value="{{ old('signed_at', $lease->signed_at ? $lease->signed_at->format('Y-m-d') : '') }}">
                             </div>
                         </div>
                     </div>
@@ -255,10 +261,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Fetch units for selected property
-        fetch(`/api/properties/${propertyId}/units`)
-            .then(response => response.json())
+        fetch(`/manager/api/properties/${propertyId}/units`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 unitSelect.innerHTML = '<option value="">Chọn phòng</option>';
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 data.forEach(unit => {
                     const option = document.createElement('option');
                     option.value = unit.id;
@@ -266,6 +286,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (unit.floor) {
                         option.textContent += ` (Tầng ${unit.floor})`;
                     }
+                    
+                    // Kiểm tra nếu phòng đã có hợp đồng hoạt động (trừ phòng hiện tại của hợp đồng này)
+                    const currentUnitId = {{ $lease->unit_id }};
+                    if (unit.has_active_lease && unit.id !== currentUnitId) {
+                        option.textContent += ' - Đã có hợp đồng hoạt động';
+                        option.disabled = true;
+                        option.style.color = '#dc3545';
+                    }
+                    
                     unitSelect.appendChild(option);
                 });
                 unitSelect.disabled = false;
@@ -273,6 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error fetching units:', error);
                 unitSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+                Notify.error('Không thể tải danh sách phòng. Vui lòng thử lại.', 'Lỗi tải dữ liệu');
             });
     });
 
@@ -315,6 +345,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form submission
     document.getElementById('leaseForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        // Kiểm tra phòng đã có hợp đồng hoạt động (trừ phòng hiện tại)
+        const selectedUnit = unitSelect.options[unitSelect.selectedIndex];
+        const currentUnitId = {{ $lease->unit_id }};
+        if (selectedUnit && selectedUnit.disabled && selectedUnit.value != currentUnitId) {
+            Notify.error('Phòng này đã có hợp đồng hoạt động. Vui lòng chọn phòng khác hoặc chấm dứt hợp đồng hiện tại trước.', 'Không thể cập nhật hợp đồng');
+            return;
+        }
         
         if (window.Preloader) {
             window.Preloader.show();

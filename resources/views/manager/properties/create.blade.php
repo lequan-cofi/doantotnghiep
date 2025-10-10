@@ -228,7 +228,7 @@ document.getElementById('provinceSelect').addEventListener('change', function() 
         return;
     }
     
-    fetch(`/api/geo/districts/${provinceCode}`)
+    fetch(`/manager/api/geo/districts/${provinceCode}`)
         .then(r => r.json())
         .then(data => {
             data.forEach(d => {
@@ -252,7 +252,7 @@ document.getElementById('districtSelect').addEventListener('change', function() 
         return;
     }
     
-    fetch(`/api/geo/wards/${districtCode}`)
+    fetch(`/manager/api/geo/wards/${districtCode}`)
         .then(r => r.json())
         .then(data => {
             data.forEach(w => {
@@ -277,7 +277,7 @@ document.getElementById('provinceSelect2025').addEventListener('change', functio
         return;
     }
     
-    fetch(`/api/geo/wards-2025/${provinceCode}`)
+    fetch(`/manager/api/geo/wards-2025/${provinceCode}`)
         .then(r => r.json())
         .then(data => {
             data.forEach(w => {

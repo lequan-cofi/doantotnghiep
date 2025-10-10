@@ -147,7 +147,7 @@
                 <i class="fas fa-shield-alt me-2"></i>Vai trò toàn cục
             </h5>
             <div class="row">
-                @foreach($roles as $role)
+                @forelse($roles as $role)
                 <div class="col-md-4 col-lg-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="roles[]" value="{{ $role->id }}" id="role_{{ $role->id }}">
@@ -156,7 +156,14 @@
                         </label>
                     </div>
                 </div>
-                @endforeach
+                @empty
+                <div class="col-12">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Không có vai trò nào được tìm thấy. Vui lòng tạo vai trò trước khi thêm người dùng.
+                    </div>
+                </div>
+                @endforelse
             </div>
         </div>
 
@@ -193,17 +200,21 @@ function addOrganization() {
                 <label class="form-label">Tổ chức</label>
                 <select class="form-select" name="organizations[]" required>
                     <option value="">Chọn tổ chức</option>
-                    @foreach($organizations as $org)
+                    @forelse($organizations as $org)
                         <option value="{{ $org->id }}">{{ $org->name }}</option>
-                    @endforeach
+                    @empty
+                        <option value="" disabled>Không có tổ chức nào</option>
+                    @endforelse
                 </select>
             </div>
             <div class="col-md-5">
                 <label class="form-label">Vai trò trong tổ chức</label>
                 <select class="form-select" name="org_roles[]">
-                    @foreach($roles as $role)
+                    @forelse($roles as $role)
                         <option value="{{ $role->id }}">{{ $role->name }}</option>
-                    @endforeach
+                    @empty
+                        <option value="" disabled>Không có vai trò nào</option>
+                    @endforelse
                 </select>
             </div>
             <div class="col-md-2">

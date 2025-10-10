@@ -171,7 +171,14 @@
                             <li><a class="dropdown-item" href="#"><i class="fas fa-user"></i> Profile</a></li>
                             <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ route('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item border-0 bg-transparent w-100 text-start">
+                                        <i class="fas fa-sign-out-alt"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
                         </ul>
                     </div>
                 </div>

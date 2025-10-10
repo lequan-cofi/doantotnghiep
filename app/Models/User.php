@@ -36,6 +36,7 @@ class User extends Authenticatable
     protected $fillable = [
         'full_name',
         'email',
+        'phone',
         'password_hash',
         'status',
         'deleted_by',
@@ -69,23 +70,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the roles that belong to the user.
-     */
-    public function userRoles()
-    {
-        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
-    }
-
-    /**
-     * Alias for userRoles() for backward compatibility.
-     */
-    public function roles()
-    {
-        return $this->userRoles();
-    }
-
-    /**
-     * Get the roles of the user in a specific organization.
+     * Get the roles that belong to the user through organization_users.
      */
     public function organizationRoles($organizationId = null)
     {
@@ -101,11 +86,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias for organizationRoles() for backward compatibility.
+     */
+    public function roles()
+    {
+        return $this->organizationRoles();
+    }
+
+    /**
+     * Legacy method - redirects to organizationRoles for backward compatibility.
+     */
+    public function userRoles()
+    {
+        return $this->organizationRoles();
+    }
+
+    /**
      * Get the user's primary role.
      */
     public function primaryRole()
     {
-        return $this->userRoles()->first();
+        return $this->organizationRoles()->first();
     }
 
     /**

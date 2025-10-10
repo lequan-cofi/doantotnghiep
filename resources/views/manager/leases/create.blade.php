@@ -69,7 +69,13 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Số hợp đồng</label>
-                                <input type="text" name="contract_no" class="form-control" placeholder="Nhập số hợp đồng">
+                                <div class="input-group">
+                                    <input type="text" name="contract_no" id="contractNo" class="form-control" placeholder="Nhập số hợp đồng" readonly>
+                                    <button type="button" id="generateContractNo" class="btn btn-outline-primary">
+                                        <i class="fas fa-sync-alt"></i> Tự sinh
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">Mã hợp đồng sẽ được tự động sinh theo format HD + số tăng dần</small>
                             </div>
                         </div>
 
@@ -80,11 +86,13 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Ngày bắt đầu <span class="text-danger">*</span></label>
-                                    <input type="date" name="start_date" class="form-control" required>
+                                    <input type="date" name="start_date" class="form-control" 
+                                           value="{{ old('start_date', now()->format('Y-m-d')) }}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Ngày kết thúc <span class="text-danger">*</span></label>
-                                    <input type="date" name="end_date" class="form-control" required>
+                                    <input type="date" name="end_date" class="form-control" 
+                                           value="{{ old('end_date', now()->addYear()->format('Y-m-d')) }}" required>
                                 </div>
                             </div>
 
@@ -125,7 +133,8 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Ngày ký hợp đồng</label>
-                                <input type="date" name="signed_at" class="form-control">
+                                <input type="date" name="signed_at" class="form-control" 
+                                       value="{{ old('signed_at', now()->format('Y-m-d')) }}">
                             </div>
                         </div>
                     </div>
@@ -189,7 +198,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const unitSelect = document.getElementById('unitSelect');
     const addServiceBtn = document.getElementById('addService');
     const servicesContainer = document.getElementById('servicesContainer');
+    const contractNoInput = document.getElementById('contractNo');
+    const generateContractNoBtn = document.getElementById('generateContractNo');
     let serviceIndex = 1;
+
+    // Tự động sinh mã hợp đồng khi trang load
+    generateContractNumber();
+
+    // Generate contract number function
+    function generateContractNumber() {
+        fetch('/manager/api/leases/next-contract-number', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            contractNoInput.value = data.contract_no;
+        })
+        .catch(error => {
+            console.error('Error generating contract number:', error);
+            Notify.error('Không thể sinh mã hợp đồng. Vui lòng thử lại.', 'Lỗi sinh mã');
+        });
+    }
+
+    // Generate contract number button click handler
+    generateContractNoBtn.addEventListener('click', function() {
+        generateContractNumber();
+    });
 
     // Property change handler
     propertySelect.addEventListener('change', function() {
@@ -202,10 +248,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Fetch units for selected property
-        fetch(`/api/properties/${propertyId}/units`)
-            .then(response => response.json())
+        fetch(`/manager/api/properties/${propertyId}/units`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 unitSelect.innerHTML = '<option value="">Chọn phòng</option>';
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 data.forEach(unit => {
                     const option = document.createElement('option');
                     option.value = unit.id;
@@ -213,6 +273,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (unit.floor) {
                         option.textContent += ` (Tầng ${unit.floor})`;
                     }
+                    
+                    // Kiểm tra nếu phòng đã có hợp đồng hoạt động
+                    if (unit.has_active_lease) {
+                        option.textContent += ' - Đã có hợp đồng hoạt động';
+                        option.disabled = true;
+                        option.style.color = '#dc3545';
+                    }
+                    
                     unitSelect.appendChild(option);
                 });
                 unitSelect.disabled = false;
@@ -220,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error fetching units:', error);
                 unitSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+                Notify.error('Không thể tải danh sách phòng. Vui lòng thử lại.', 'Lỗi tải dữ liệu');
             });
     });
 
@@ -262,6 +331,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form submission
     document.getElementById('leaseForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        // Kiểm tra phòng đã có hợp đồng hoạt động
+        const selectedUnit = unitSelect.options[unitSelect.selectedIndex];
+        if (selectedUnit && selectedUnit.disabled) {
+            Notify.error('Phòng này đã có hợp đồng hoạt động. Vui lòng chọn phòng khác hoặc chấm dứt hợp đồng hiện tại trước.', 'Không thể tạo hợp đồng');
+            return;
+        }
         
         if (window.Preloader) {
             window.Preloader.show();

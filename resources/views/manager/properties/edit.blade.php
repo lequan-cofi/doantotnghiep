@@ -113,7 +113,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Phường/Xã</label>
-                            <select name="ward_code" id="wardSelect" class="form-select" {{ !$property->location?->district_code ? 'disabled' : '' }}>
+                            <select name="ward_code" id="wardSelect" class="form-select">
                                 <option value="">-- Chọn phường/xã --</option>
                                 @foreach ($wards as $ward)
                                 <option value="{{ $ward->code }}" {{ ($property->location?->ward_code ?? '') == $ward->code ? 'selected' : '' }}>
@@ -147,7 +147,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Phường/Xã</label>
-                            <select name="ward_code_2025" id="wardSelect2025" class="form-select" {{ !$property->location2025?->province_code ? 'disabled' : '' }}>
+                            <select name="ward_code_2025" id="wardSelect2025" class="form-select">
                                 <option value="">-- Chọn phường/xã --</option>
                                 @foreach ($wards2025 as $ward)
                                 <option value="{{ $ward->code }}" {{ ($property->location2025?->ward_code ?? '') == $ward->code ? 'selected' : '' }}>
@@ -246,14 +246,13 @@ document.getElementById('provinceSelect').addEventListener('change', function() 
     
     districtSelect.innerHTML = '<option value="">-- Chọn quận/huyện --</option>';
     wardSelect.innerHTML = '<option value="">-- Chọn phường/xã --</option>';
-    wardSelect.disabled = true;
     
     if (!provinceCode) {
         districtSelect.disabled = true;
         return;
     }
     
-    fetch(`/api/geo/districts/${provinceCode}`)
+    fetch(`/manager/api/geo/districts/${provinceCode}`)
         .then(r => r.json())
         .then(data => {
             data.forEach(d => {
@@ -273,11 +272,10 @@ document.getElementById('districtSelect').addEventListener('change', function() 
     wardSelect.innerHTML = '<option value="">-- Chọn phường/xã --</option>';
     
     if (!districtCode) {
-        wardSelect.disabled = true;
         return;
     }
     
-    fetch(`/api/geo/wards/${districtCode}`)
+    fetch(`/manager/api/geo/wards/${districtCode}`)
         .then(r => r.json())
         .then(data => {
             data.forEach(w => {
@@ -286,7 +284,6 @@ document.getElementById('districtSelect').addEventListener('change', function() 
                 opt.textContent = w.name_local || w.name;
                 wardSelect.appendChild(opt);
             });
-            wardSelect.disabled = false;
         });
 });
 
@@ -298,11 +295,10 @@ document.getElementById('provinceSelect2025').addEventListener('change', functio
     wardSelect2025.innerHTML = '<option value="">-- Chọn phường/xã --</option>';
     
     if (!provinceCode) {
-        wardSelect2025.disabled = true;
         return;
     }
     
-    fetch(`/api/geo/wards-2025/${provinceCode}`)
+    fetch(`/manager/api/geo/wards-2025/${provinceCode}`)
         .then(r => r.json())
         .then(data => {
             data.forEach(w => {
@@ -311,7 +307,6 @@ document.getElementById('provinceSelect2025').addEventListener('change', functio
                 opt.textContent = w.name_local || w.name;
                 wardSelect2025.appendChild(opt);
             });
-            wardSelect2025.disabled = false;
         });
 });
 </script>

@@ -112,7 +112,7 @@
                                     </div>
                                 </td>
                                 <td>
-                                    @foreach($member->userRoles as $role)
+                                    @foreach($member->organizationRoles as $role)
                                     <span class="badge bg-info">{{ $role->name }}</span>
                                     @endforeach
                                 </td>

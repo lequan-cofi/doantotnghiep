@@ -91,11 +91,13 @@
                 <label for="organization_id" class="form-label">Tổ chức</label>
                 <select class="form-select" id="organization_id" name="organization_id">
                     <option value="">Tất cả tổ chức</option>
-                    @foreach($organizations as $org)
+                    @forelse($organizations as $org)
                         <option value="{{ $org->id }}" {{ request('organization_id') == $org->id ? 'selected' : '' }}>
                             {{ $org->name }}
                         </option>
-                    @endforeach
+                    @empty
+                        <option value="" disabled>Không có tổ chức nào</option>
+                    @endforelse
                 </select>
             </div>
             <div class="col-md-2">
@@ -159,7 +161,11 @@
                                         @endphp
                                         @if($role)
                                             <span class="badge bg-info role-badge">{{ $role->name }}</span>
+                                        @else
+                                            <span class="badge bg-secondary role-badge">Không có vai trò</span>
                                         @endif
+                                    @else
+                                        <span class="badge bg-secondary role-badge">Không có vai trò</span>
                                     @endif
                                 </div>
                             @endforeach

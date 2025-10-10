@@ -319,7 +319,7 @@ class PropertyController extends Controller
         if ($property->location2025) {
             if ($property->location2025->province_code) {
                 $wards2025 = DB::table('geo_wards_2025')
-                    ->where('province_code', $property->location2025->province_code)
+                    ->where('district_code', $property->location2025->province_code)
                     ->get();
             }
         }
@@ -539,7 +539,7 @@ class PropertyController extends Controller
     public function getWards2025($provinceCode)
     {
         $wards = DB::table('geo_wards_2025')
-            ->where('province_code', $provinceCode)
+            ->where('district_code', $provinceCode)
             ->get();
 
         return response()->json($wards);

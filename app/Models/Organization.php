@@ -38,6 +38,16 @@ class Organization extends Model
     }
 
     /**
+     * Get the roles for the organization through organization_users pivot table.
+     */
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class, 'organization_users', 'organization_id', 'role_id')
+            ->withPivot('user_id', 'status')
+            ->withTimestamps();
+    }
+
+    /**
      * Get the properties for the organization.
      */
     public function properties()

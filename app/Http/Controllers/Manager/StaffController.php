@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Property;
-use App\Models\SalaryContract;
 use App\Models\CommissionPolicy;
 use App\Models\Organization;
 use Illuminate\Http\Request;
@@ -37,12 +36,10 @@ class StaffController extends Controller
             ])->with('error', 'Manager chưa được gắn vào tổ chức nào!');
         }
 
-        $query = User::with(['userRoles', 'salaryContracts', 'assignedProperties'])
-            ->whereHas('userRoles', function($q) {
-                $q->whereIn('key_code', ['agent', 'manager']);
-            })
-            ->whereHas('organizationUsers', function($q) use ($managerOrganization) {
-                $q->where('organization_id', $managerOrganization->id);
+        $query = User::with(['organizationRoles', 'salaryContracts', 'assignedProperties'])
+            ->whereHas('organizationRoles', function($q) use ($managerOrganization) {
+                $q->where('organization_id', $managerOrganization->id)
+                  ->whereIn('key_code', ['agent', 'manager']);
             });
 
         // Search filter
@@ -57,8 +54,9 @@ class StaffController extends Controller
 
         // Role filter
         if ($request->filled('role_id')) {
-            $query->whereHas('userRoles', function($q) use ($request) {
-                $q->where('role_id', $request->role_id);
+            $query->whereHas('organizationRoles', function($q) use ($request, $managerOrganization) {
+                $q->where('organization_id', $managerOrganization->id)
+                  ->where('role_id', $request->role_id);
             });
         }
 
@@ -134,7 +132,6 @@ class StaffController extends Controller
             'password' => 'required|string|min:6',
             'role_id' => 'required|exists:roles,id',
             'status' => 'required|boolean',
-            'base_salary' => 'nullable|numeric|min:0',
             'properties' => 'nullable|array',
             'properties.*' => 'exists:properties,id',
         ]);
@@ -150,8 +147,7 @@ class StaffController extends Controller
                 'status' => $request->status,
             ]);
 
-            // Assign role
-            $user->userRoles()->attach($request->role_id);
+            // Assign role through organization_users (already handled above)
 
             // Assign to organization (tự động gắn tổ chức của manager)
             DB::table('organization_users')->insert([
@@ -163,19 +159,6 @@ class StaffController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Create salary contract if base salary is provided
-            if ($request->filled('base_salary')) {
-                SalaryContract::create([
-                    'organization_id' => $managerOrganization->id,
-                    'user_id' => $user->id,
-                    'base_salary' => $request->base_salary,
-                    'currency' => 'VND',
-                    'pay_cycle' => 'monthly',
-                    'pay_day' => $request->pay_day ?? 5,
-                    'effective_from' => $request->effective_from ?? now()->toDateString(),
-                    'status' => 'active',
-                ]);
-            }
 
             // Assign properties
             if ($request->filled('properties')) {
@@ -235,7 +218,7 @@ class StaffController extends Controller
         }
 
         $staff = User::with([
-            'userRoles',
+            'organizationRoles',
             'salaryContracts.organization',
             'assignedProperties.propertyType',
             'assignedProperties.location',
@@ -288,7 +271,7 @@ class StaffController extends Controller
                 ->with('error', 'Manager chưa được gắn vào tổ chức nào!');
         }
 
-        $staff = User::with(['userRoles', 'salaryContracts', 'assignedProperties'])->findOrFail($id);
+        $staff = User::with(['organizationRoles', 'salaryContracts', 'assignedProperties'])->findOrFail($id);
 
         // Kiểm tra nhân viên có thuộc tổ chức của manager không
         $staffOrganization = $staff->organizationUsers()->where('organization_id', $managerOrganization->id)->first();
@@ -310,13 +293,7 @@ class StaffController extends Controller
         // Get assigned property IDs
         $assignedPropertyIds = $staff->assignedProperties->pluck('id')->toArray();
 
-        // Get current salary contract
-        $currentSalary = $staff->salaryContracts()
-            ->where('status', 'active')
-            ->latest('effective_from')
-            ->first();
-
-        return view('manager.staff.edit', compact('staff', 'roles', 'managerOrganization', 'properties', 'commissionPolicies', 'assignedPropertyIds', 'currentSalary'));
+        return view('manager.staff.edit', compact('staff', 'roles', 'managerOrganization', 'properties', 'commissionPolicies', 'assignedPropertyIds'));
     }
 
     /**
@@ -359,7 +336,6 @@ class StaffController extends Controller
             'password' => 'nullable|string|min:6',
             'role_id' => 'required|exists:roles,id',
             'status' => 'required|boolean',
-            'base_salary' => 'nullable|numeric|min:0',
             'properties' => 'nullable|array',
             'properties.*' => 'exists:properties,id',
         ]);
@@ -379,8 +355,7 @@ class StaffController extends Controller
                 $staff->update(['password_hash' => Hash::make($request->password)]);
             }
 
-            // Update role
-            $staff->userRoles()->sync([$request->role_id]);
+            // Update role through organization_users (handled below)
 
             // Update organization (tự động gắn tổ chức của manager)
             DB::table('organization_users')
@@ -396,28 +371,6 @@ class StaffController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Update salary contract
-            if ($request->filled('base_salary')) {
-                // End current active contracts
-                SalaryContract::where('user_id', $id)
-                    ->where('status', 'active')
-                    ->update([
-                        'status' => 'ended',
-                        'effective_to' => now()->toDateString()
-                    ]);
-
-                // Create new contract
-                SalaryContract::create([
-                    'organization_id' => $managerOrganization->id,
-                    'user_id' => $staff->id,
-                    'base_salary' => $request->base_salary,
-                    'currency' => 'VND',
-                    'pay_cycle' => 'monthly',
-                    'pay_day' => $request->pay_day ?? 5,
-                    'effective_from' => $request->effective_from ?? now()->toDateString(),
-                    'status' => 'active',
-                ]);
-            }
 
             // Update properties assignment
             DB::table('properties_user')

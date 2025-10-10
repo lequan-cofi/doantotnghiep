@@ -73,7 +73,7 @@
                                     <select name="role_id" class="form-select @error('role_id') is-invalid @enderror" required>
                                         <option value="">-- Chọn vai trò --</option>
                                         @foreach($roles as $role)
-                                        <option value="{{ $role->id }}" {{ old('role_id', $staff->userRoles->first()?->id) == $role->id ? 'selected' : '' }}>
+                                        <option value="{{ $role->id }}" {{ old('role_id', $staff->organizationRoles->first()?->id) == $role->id ? 'selected' : '' }}>
                                             {{ $role->name }}
                                         </option>
                                         @endforeach
@@ -94,55 +94,6 @@
                         </div>
                     </div>
 
-                    <!-- Salary Contract -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> Hợp đồng lương</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Lương cơ bản (VNĐ)</label>
-                                    <input type="number" name="base_salary" class="form-control @error('base_salary') is-invalid @enderror" value="{{ old('base_salary', $currentSalary?->base_salary ?? 0) }}" min="0" step="100000">
-                                    @error('base_salary')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Ngày trả lương</label>
-                                    <select name="pay_day" class="form-select">
-                                        @for($i = 1; $i <= 28; $i++)
-                                        <option value="{{ $i }}" {{ old('pay_day', $currentSalary?->pay_day ?? 5) == $i ? 'selected' : '' }}>Ngày {{ $i }}</option>
-                                        @endfor
-                                    </select>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Hiệu lực từ ngày</label>
-                                    <input type="date" name="effective_from" class="form-control" value="{{ old('effective_from', $currentSalary?->effective_from?->toDateString() ?? now()->toDateString()) }}">
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tổ chức</label>
-                                    <input type="text" class="form-control" value="{{ $managerOrganization?->name ?? 'Chưa có tổ chức' }}" readonly>
-                                    <input type="hidden" name="organization_id" value="{{ $managerOrganization?->id }}">
-                                    <small class="text-muted">Tự động gán tổ chức của manager</small>
-                                </div>
-                            </div>
-
-                            @if($currentSalary)
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i>
-                                <strong>Hợp đồng hiện tại:</strong> 
-                                {{ number_format($currentSalary->base_salary, 0, ',', '.') }} VNĐ từ {{ $currentSalary->effective_from->format('d/m/Y') }}
-                                @if($currentSalary->effective_to)
-                                đến {{ $currentSalary->effective_to->format('d/m/Y') }}
-                                @endif
-                            </div>
-                            @endif
-                        </div>
-                    </div>
 
                     <!-- Property Assignment -->
                     <div class="card shadow-sm mb-4">
@@ -207,12 +158,6 @@
                                 <small class="text-muted">BĐS đang quản lý:</small>
                                 <div><span class="badge bg-primary">{{ $staff->assignedProperties->count() }} BĐS</span></div>
                             </div>
-                            @if($currentSalary)
-                            <div class="mb-2">
-                                <small class="text-muted">Lương hiện tại:</small>
-                                <div class="text-success fw-bold">{{ number_format($currentSalary->base_salary, 0, ',', '.') }} VNĐ</div>
-                            </div>
-                            @endif
                         </div>
                     </div>
 
@@ -223,11 +168,10 @@
                         </div>
                         <div class="card-body">
                             <ul class="small mb-0">
-                                <li>Thay đổi lương sẽ tạo hợp đồng mới</li>
-                                <li>Hợp đồng cũ sẽ được kết thúc</li>
                                 <li>Gắn BĐS mới sẽ thay thế danh sách cũ</li>
                                 <li>Thay đổi vai trò có thể ảnh hưởng quyền hạn</li>
                                 <li>Mật khẩu để trống = giữ nguyên</li>
+                                <li>Quản lý hợp đồng lương tại mục riêng</li>
                             </ul>
                         </div>
                     </div>

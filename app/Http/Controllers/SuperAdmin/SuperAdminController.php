@@ -442,8 +442,9 @@ class SuperAdminController extends Controller
             
             // Users by role
             $usersByRole = DB::table('users')
-                ->join('user_roles', 'users.id', '=', 'user_roles.user_id')
-                ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->join('organization_users', 'users.id', '=', 'organization_users.user_id')
+                ->join('roles', 'roles.id', '=', 'organization_users.role_id')
+                ->where('organization_users.status', 'active')
                 ->select('roles.name', DB::raw('count(*) as count'))
                 ->groupBy('roles.id', 'roles.name')
                 ->pluck('count', 'name');

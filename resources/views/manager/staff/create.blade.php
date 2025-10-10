@@ -88,44 +88,6 @@
                         </div>
                     </div>
 
-                    <!-- Salary Contract -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> Hợp đồng lương</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Lương cơ bản (VNĐ)</label>
-                                    <input type="number" name="base_salary" class="form-control @error('base_salary') is-invalid @enderror" value="{{ old('base_salary', 0) }}" min="0" step="100000">
-                                    @error('base_salary')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Ngày trả lương</label>
-                                    <select name="pay_day" class="form-select">
-                                        @for($i = 1; $i <= 28; $i++)
-                                        <option value="{{ $i }}" {{ old('pay_day', 5) == $i ? 'selected' : '' }}>Ngày {{ $i }}</option>
-                                        @endfor
-                                    </select>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Hiệu lực từ ngày</label>
-                                    <input type="date" name="effective_from" class="form-control" value="{{ old('effective_from', now()->toDateString()) }}">
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tổ chức</label>
-                                    <input type="text" class="form-control" value="{{ $managerOrganization?->name ?? 'Chưa có tổ chức' }}" readonly>
-                                    <input type="hidden" name="organization_id" value="{{ $managerOrganization?->id }}">
-                                    <small class="text-muted">Tự động gán tổ chức của manager</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Property Assignment -->
                     <div class="card shadow-sm mb-4">
@@ -179,8 +141,8 @@
                                 <li>Các trường có dấu <span class="text-danger">*</span> là bắt buộc</li>
                                 <li>Email phải là duy nhất trong hệ thống</li>
                                 <li>Mật khẩu tối thiểu 6 ký tự</li>
-                                <li>Lương cơ bản có thể để 0 nếu chưa xác định</li>
                                 <li>Có thể gắn nhiều bất động sản cùng lúc</li>
+                                <li>Hợp đồng lương có thể thiết lập sau khi tạo</li>
                                 <li>Hoa hồng và KPI có thể thiết lập sau khi tạo</li>
                             </ul>
                         </div>

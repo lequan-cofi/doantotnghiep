@@ -58,7 +58,7 @@
 					<div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationsDropdown">
 						<div class="notification-header">
 							<h6>Thông báo</h6>
-							<a href="{{ route('notifications') }}" class="view-all">Xem tất cả</a>
+							<a href="{{ route('tenant.notifications') }}" class="view-all">Xem tất cả</a>
 						</div>
 						<div class="notification-items">
 							<div class="notification-item unread">

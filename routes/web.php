@@ -93,9 +93,6 @@ Route::get('/detail/{id?}', function ($id = 1) {
 Route::get('/test', function () {
     return view('test');
 })->name('test');
-Route::get('/notifications', function () {
-    return view('notifications');
-})->name('notifications');
 
 
 /*
@@ -108,6 +105,7 @@ Route::post('/login', [EmailAuthController::class, 'login'])->name('login.store'
 Route::get('/register', [EmailAuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [EmailAuthController::class, 'register'])->name('register.store');
 Route::post('/logout', [EmailAuthController::class, 'logout'])->name('logout');
+Route::get('/logout', [EmailAuthController::class, 'logout'])->name('logout.get');
 
 /*
 |--------------------------------------------------------------------------
@@ -120,9 +118,10 @@ Route::middleware('auth')->group(function () {
         $roleKey = session('auth_role_key');
         if (! $roleKey && \Illuminate\Support\Facades\Auth::check()) {
             $userId = \Illuminate\Support\Facades\Auth::id();
-            $record = \Illuminate\Support\Facades\DB::table('user_roles')
-                ->join('roles', 'roles.id', '=', 'user_roles.role_id')
-                ->where('user_roles.user_id', $userId)
+            $record = \Illuminate\Support\Facades\DB::table('organization_users')
+                ->join('roles', 'roles.id', '=', 'organization_users.role_id')
+                ->where('organization_users.user_id', $userId)
+                ->where('organization_users.status', 'active')
                 ->orderBy('roles.id')
                 ->select('roles.key_code')
                 ->first();
@@ -130,7 +129,7 @@ Route::middleware('auth')->group(function () {
         }
 
         $routeByRole = [
-            'admin' => 'admin.dashboard',
+            'admin' => 'superadmin.dashboard',
             'manager' => 'manager.dashboard',
             'agent' => 'agent.dashboard',
             'landlord' => 'landlord.dashboard',
@@ -307,6 +306,11 @@ Route::middleware('auth')->group(function () {
             Route::get('/{propertyId}/units', [LeaseController::class, 'getUnits']);
         });
 
+        // API endpoints for leases
+        Route::prefix('api/leases')->group(function () {
+            Route::get('/next-contract-number', [LeaseController::class, 'getNextContractNumber']);
+        });
+
         // API endpoints for invoices
         Route::prefix('api/invoices')->group(function () {
             Route::get('/leases/{leaseId}/details', [\App\Http\Controllers\Manager\InvoiceController::class, 'getLeaseDetails']);
@@ -319,8 +323,6 @@ Route::middleware('auth')->group(function () {
         Route::prefix('api/revenue-reports')->group(function () {
             Route::get('/detailed', [\App\Http\Controllers\Manager\RevenueReportController::class, 'getDetailedData']);
         });
-});
-
     });
 
     /*
@@ -329,19 +331,17 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('agent')->name('agent.')->middleware('ensure.agent')->group(function () {
-        Route::get('/dashboard', function () {
-            return view('agent.dashboard');
-        })->name('dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\Agent\DashboardController::class, 'index'])->name('dashboard');
 
         // Profile
         Route::get('/profile', function () {
             return view('agent.profile');
         })->name('profile');
 
-        // Rooms management
-    // Agent rooms routes - REMOVED FOR NOW
-    // Will be re-implemented later when needed
-
+        // Properties management (read-only)
+        Route::get('/properties', [\App\Http\Controllers\Agent\PropertyController::class, 'index'])->name('properties.index');
+        Route::get('/properties/{id}', [\App\Http\Controllers\Agent\PropertyController::class, 'show'])->name('properties.show');
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -481,8 +481,4 @@ Route::middleware('auth')->group(function () {
     });
 
     // Main rooms route - MOVED TO PUBLIC ROUTES
-
-    Route::get('/notifications', function () {
-        return redirect()->route('tenant.notifications');
-    })->name('notifications');
 });

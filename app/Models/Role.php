@@ -14,10 +14,12 @@ class Role extends Model
     public $timestamps = true;
 
     /**
-     * Get the users that have this role.
+     * Get the users that have this role through organization_users.
      */
     public function users()
     {
-        return $this->belongsToMany(User::class, 'user_roles', 'role_id', 'user_id');
+        return $this->belongsToMany(User::class, 'organization_users', 'role_id', 'user_id')
+            ->withPivot('organization_id', 'status')
+            ->withTimestamps();
     }
 }

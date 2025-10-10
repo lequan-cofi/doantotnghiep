@@ -15,10 +15,22 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
+        // Get current manager's organization
+        $currentUser = Auth::user();
+        $managerOrganization = $currentUser->organizations->first();
+        
+        if (!$managerOrganization) {
+            abort(403, 'Bạn chưa được gán vào tổ chức nào. Vui lòng liên hệ Admin để được hỗ trợ.');
+        }
+
         $query = User::with(['userRoles', 'assignedProperties' => function($q) {
             // Temporarily disable organization scope for assigned properties
             $q->withoutGlobalScope('organization');
-        }]);
+        }])
+        // Only show users from the same organization as the manager
+        ->whereHas('organizations', function($q) use ($managerOrganization) {
+            $q->where('organizations.id', $managerOrganization->id);
+        });
 
         // Exclude admin users for manager role
         $query->whereDoesntHave('userRoles', function($q) {
@@ -87,6 +99,17 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
+            // Get current manager's organization
+            $currentUser = Auth::user();
+            $managerOrganization = $currentUser->organizations->first();
+            
+            if (!$managerOrganization) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn chưa được gán vào tổ chức nào. Vui lòng liên hệ Admin để được hỗ trợ.'
+                ], 403);
+            }
+
             $validated = $request->validate([
                 'full_name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email',
@@ -115,8 +138,11 @@ class UserController extends Controller
                     'status' => $validated['status'] ?? 1,
                 ]);
 
-                // Assign role
-                $user->userRoles()->attach($validated['role_id']);
+                // Assign user to manager's organization with role
+                $user->organizations()->attach($managerOrganization->id, [
+                    'role_id' => $validated['role_id'],
+                    'status' => 'active'
+                ]);
 
                 DB::commit();
 
@@ -144,7 +170,19 @@ class UserController extends Controller
 
     public function show($id)
     {
-        $user = User::with(['userRoles'])->findOrFail($id);
+        // Get current manager's organization
+        $currentUser = Auth::user();
+        $managerOrganization = $currentUser->organizations->first();
+        
+        if (!$managerOrganization) {
+            abort(403, 'Bạn chưa được gán vào tổ chức nào. Vui lòng liên hệ Admin để được hỗ trợ.');
+        }
+
+        $user = User::with(['userRoles'])
+            ->whereHas('organizations', function($q) use ($managerOrganization) {
+                $q->where('organizations.id', $managerOrganization->id);
+            })
+            ->findOrFail($id);
         
         // Check if user is admin - manager cannot view admin users
         if ($user->userRoles->where('key_code', 'admin')->count() > 0) {
@@ -156,7 +194,19 @@ class UserController extends Controller
 
     public function edit($id)
     {
-        $user = User::with(['userRoles'])->findOrFail($id);
+        // Get current manager's organization
+        $currentUser = Auth::user();
+        $managerOrganization = $currentUser->organizations->first();
+        
+        if (!$managerOrganization) {
+            abort(403, 'Bạn chưa được gán vào tổ chức nào. Vui lòng liên hệ Admin để được hỗ trợ.');
+        }
+
+        $user = User::with(['userRoles'])
+            ->whereHas('organizations', function($q) use ($managerOrganization) {
+                $q->where('organizations.id', $managerOrganization->id);
+            })
+            ->findOrFail($id);
         
         // Check if user is admin - manager cannot edit admin users
         if ($user->userRoles->where('key_code', 'admin')->count() > 0) {
@@ -169,7 +219,22 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
-        $user = User::with(['userRoles'])->findOrFail($id);
+        // Get current manager's organization
+        $currentUser = Auth::user();
+        $managerOrganization = $currentUser->organizations->first();
+        
+        if (!$managerOrganization) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn chưa được gán vào tổ chức nào. Vui lòng liên hệ Admin để được hỗ trợ.'
+            ], 403);
+        }
+
+        $user = User::with(['userRoles'])
+            ->whereHas('organizations', function($q) use ($managerOrganization) {
+                $q->where('organizations.id', $managerOrganization->id);
+            })
+            ->findOrFail($id);
         
         // Check if user is admin - manager cannot update admin users
         if ($user->userRoles->where('key_code', 'admin')->count() > 0) {
@@ -216,6 +281,11 @@ class UserController extends Controller
 
                 // Update role
                 $user->userRoles()->sync([$validated['role_id']]);
+                
+                // Update organization role
+                $user->organizations()->updateExistingPivot($managerOrganization->id, [
+                    'role_id' => $validated['role_id']
+                ]);
 
                 DB::commit();
 
@@ -244,7 +314,22 @@ class UserController extends Controller
     {
         DB::beginTransaction();
         try {
-            $user = User::with(['userRoles'])->findOrFail($id);
+            // Get current manager's organization
+            $currentUser = Auth::user();
+            $managerOrganization = $currentUser->organizations->first();
+            
+            if (!$managerOrganization) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn chưa được gán vào tổ chức nào. Vui lòng liên hệ Admin để được hỗ trợ.'
+                ], 403);
+            }
+
+            $user = User::with(['userRoles'])
+                ->whereHas('organizations', function($q) use ($managerOrganization) {
+                    $q->where('organizations.id', $managerOrganization->id);
+                })
+                ->findOrFail($id);
             
             // Check if user is admin - manager cannot delete admin users
             if ($user->userRoles->where('key_code', 'admin')->count() > 0) {

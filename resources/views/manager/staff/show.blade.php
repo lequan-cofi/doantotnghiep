@@ -58,7 +58,7 @@
                             <div class="col-md-6 mb-3">
                                 <label class="text-muted small">Vai trò</label>
                                 <div>
-                                    @foreach($staff->userRoles as $role)
+                                    @foreach($staff->organizationRoles as $role)
                                     <span class="badge bg-info">{{ $role->name }}</span>
                                     @endforeach
                                 </div>

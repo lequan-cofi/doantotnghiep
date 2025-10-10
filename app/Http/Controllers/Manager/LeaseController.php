@@ -182,6 +182,27 @@ class LeaseController extends Controller
                 'services.*.price' => 'required_with:services|numeric|min:0',
             ]);
 
+            // Tự động sinh mã hợp đồng nếu không được cung cấp
+            if (empty($validated['contract_no'])) {
+                $validated['contract_no'] = $this->generateContractNumber();
+            }
+
+            // Kiểm tra phòng đã có hợp đồng hoạt động
+            $hasActiveLease = Lease::where('unit_id', $validated['unit_id'])
+                ->where('status', 'active')
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($hasActiveLease) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Phòng này đã có hợp đồng hoạt động. Vui lòng chọn phòng khác hoặc chấm dứt hợp đồng hiện tại trước.'
+                    ], 422);
+                }
+                return back()->withInput()->with('error', 'Phòng này đã có hợp đồng hoạt động. Vui lòng chọn phòng khác hoặc chấm dứt hợp đồng hiện tại trước.');
+            }
+
             DB::beginTransaction();
 
             // Get organization from current user
@@ -333,6 +354,25 @@ class LeaseController extends Controller
                 'services.*.price' => 'required_with:services|numeric|min:0',
             ]);
 
+            // Kiểm tra phòng mới đã có hợp đồng hoạt động (trừ hợp đồng hiện tại)
+            if ($validated['unit_id'] != $lease->unit_id) {
+                $hasActiveLease = Lease::where('unit_id', $validated['unit_id'])
+                    ->where('status', 'active')
+                    ->where('id', '!=', $id)
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if ($hasActiveLease) {
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Phòng này đã có hợp đồng hoạt động. Vui lòng chọn phòng khác hoặc chấm dứt hợp đồng hiện tại trước.'
+                        ], 422);
+                    }
+                    return back()->withInput()->with('error', 'Phòng này đã có hợp đồng hoạt động. Vui lòng chọn phòng khác hoặc chấm dứt hợp đồng hiện tại trước.');
+                }
+            }
+
             DB::beginTransaction();
 
             // Update lease
@@ -420,13 +460,61 @@ class LeaseController extends Controller
         }
     }
 
+    // Method to generate contract number
+    private function generateContractNumber()
+    {
+        // Tìm số hợp đồng cao nhất hiện tại
+        $lastContract = Lease::where('contract_no', 'like', 'HD%')
+            ->whereNotNull('contract_no')
+            ->orderBy('contract_no', 'desc')
+            ->first();
+
+        if ($lastContract && $lastContract->contract_no) {
+            // Lấy số từ mã hợp đồng cuối cùng
+            $lastNumber = (int) substr($lastContract->contract_no, 2);
+            $newNumber = $lastNumber + 1;
+        } else {
+            // Nếu chưa có hợp đồng nào, bắt đầu từ 1
+            $newNumber = 1;
+        }
+
+        return 'HD' . str_pad($newNumber, 6, '0', STR_PAD_LEFT);
+    }
+
+    // API method to get next contract number
+    public function getNextContractNumber()
+    {
+        try {
+            $contractNumber = $this->generateContractNumber();
+            return response()->json(['contract_no' => $contractNumber]);
+        } catch (\Exception $e) {
+            \Log::error('Error generating contract number: ' . $e->getMessage());
+            return response()->json(['error' => 'Có lỗi xảy ra khi sinh mã hợp đồng'], 500);
+        }
+    }
+
     // API method to get units for a property
     public function getUnits($propertyId)
     {
-        $units = Unit::where('property_id', $propertyId)
-            ->where('status', 'available')
-            ->get();
+        try {
+            $units = Unit::where('property_id', $propertyId)
+                ->where('status', 'available')
+                ->get()
+                ->map(function ($unit) {
+                    // Kiểm tra xem phòng có hợp đồng hoạt động không
+                    $hasActiveLease = Lease::where('unit_id', $unit->id)
+                        ->where('status', 'active')
+                        ->whereNull('deleted_at')
+                        ->exists();
+                    
+                    $unit->has_active_lease = $hasActiveLease;
+                    return $unit;
+                });
 
-        return response()->json($units);
+            return response()->json($units);
+        } catch (\Exception $e) {
+            \Log::error('Error in getUnits: ' . $e->getMessage());
+            return response()->json(['error' => 'Có lỗi xảy ra khi tải dữ liệu phòng'], 500);
+        }
     }
 }
