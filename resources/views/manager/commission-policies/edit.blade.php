@@ -162,51 +162,6 @@
                 </div>
             </div>
 
-            <!-- Commission Splits -->
-            <div class="col-lg-4">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Phân chia hoa hồng</h6>
-                        <button type="button" class="btn btn-sm btn-primary" onclick="addSplit()">
-                            <i class="fas fa-plus"></i> Thêm
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div id="splits-container">
-                            @foreach($commissionPolicy->splits as $index => $split)
-                            <div class="split-item mb-3 p-3 border rounded" data-index="{{ $index }}">
-                                <div class="row">
-                                    <div class="col-6">
-                                        <label class="form-label">Vai trò</label>
-                                        <select class="form-select" name="splits[{{ $index }}][role_key]" required>
-                                            <option value="">Chọn vai trò</option>
-                                            <option value="agent" {{ $split->role_key == 'agent' ? 'selected' : '' }}>Nhân viên/CTV</option>
-                                            <option value="manager" {{ $split->role_key == 'manager' ? 'selected' : '' }}>Quản lý</option>
-                                            <option value="supervisor" {{ $split->role_key == 'supervisor' ? 'selected' : '' }}>Giám sát</option>
-                                            <option value="team_lead" {{ $split->role_key == 'team_lead' ? 'selected' : '' }}>Trưởng nhóm</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-4">
-                                        <label class="form-label">Phần trăm (%)</label>
-                                        <input type="number" class="form-control" name="splits[{{ $index }}][percent_share]" 
-                                               value="{{ $split->percent_share }}" min="0" max="100" step="0.01" required>
-                                    </div>
-                                    <div class="col-2">
-                                        <label class="form-label">&nbsp;</label>
-                                        <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeSplit({{ $index }})">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                        <div class="text-muted small">
-                            <i class="fas fa-info-circle"></i>
-                            Tổng phần trăm phải bằng 100%
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Actions -->
                 <div class="card shadow">
@@ -227,55 +182,6 @@
 
 @push('scripts')
 <script>
-// Role options for splits
-const roleOptions = [
-    { value: 'agent', label: 'Nhân viên/CTV' },
-    { value: 'manager', label: 'Quản lý' },
-    { value: 'supervisor', label: 'Giám sát' },
-    { value: 'team_lead', label: 'Trưởng nhóm' }
-];
-
-let splitIndex = {{ $commissionPolicy->splits->count() }};
-
-function addSplit() {
-    const container = document.getElementById('splits-container');
-    const splitHtml = `
-        <div class="split-item mb-3 p-3 border rounded" data-index="${splitIndex}">
-            <div class="row">
-                <div class="col-6">
-                    <label class="form-label">Vai trò</label>
-                    <select class="form-select" name="splits[${splitIndex}][role_key]" required>
-                        <option value="">Chọn vai trò</option>
-                        ${roleOptions.map(role => 
-                            `<option value="${role.value}">${role.label}</option>`
-                        ).join('')}
-                    </select>
-                </div>
-                <div class="col-4">
-                    <label class="form-label">Phần trăm (%)</label>
-                    <input type="number" class="form-control" name="splits[${splitIndex}][percent_share]" 
-                           min="0" max="100" step="0.01" required>
-                </div>
-                <div class="col-2">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeSplit(${splitIndex})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    container.insertAdjacentHTML('beforeend', splitHtml);
-    splitIndex++;
-}
-
-function removeSplit(index) {
-    const splitItem = document.querySelector(`[data-index="${index}"]`);
-    if (splitItem) {
-        splitItem.remove();
-    }
-}
 
 // Show/hide calculation fields based on calc_type
 document.getElementById('calc_type').addEventListener('change', function() {

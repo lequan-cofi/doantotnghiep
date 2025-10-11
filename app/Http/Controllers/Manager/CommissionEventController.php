@@ -58,7 +58,21 @@ class CommissionEventController extends Controller
             $query->whereDate('occurred_at', '<=', $request->date_to);
         }
 
-        $events = $query->orderBy('occurred_at', 'desc')->paginate(15);
+        // Get events with sorting
+        $sortBy = $request->get('sort_by', 'id');
+        $sortOrder = $request->get('sort_order', 'desc');
+        
+        // Validate sort fields
+        $allowedSortFields = ['id', 'occurred_at', 'commission_total', 'status', 'trigger_event', 'created_at'];
+        if (!in_array($sortBy, $allowedSortFields)) {
+            $sortBy = 'id';
+        }
+        
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'desc';
+        }
+        
+        $events = $query->orderBy($sortBy, $sortOrder)->get();
 
         // Get filter options
         $agents = User::whereHas('userRoles', function($q) {
@@ -170,20 +184,7 @@ class CommissionEventController extends Controller
                 'status' => $request->status,
             ]);
 
-            // Create commission splits based on policy
-            if ($policy->splits->count() > 0) {
-                foreach ($policy->splits as $split) {
-                    $splitAmount = ($commissionTotal * $split->percent_share) / 100;
-                    
-                    \App\Models\CommissionEventSplit::create([
-                        'event_id' => $commissionEvent->id,
-                        'user_id' => $request->agent_id, // This should be determined by role
-                        'role_key' => $split->role_key,
-                        'percent_share' => $split->percent_share,
-                        'amount' => $splitAmount
-                    ]);
-                }
-            }
+            // Commission is now directly assigned to the user (simplified logic)
 
             DB::commit();
 
@@ -225,7 +226,7 @@ class CommissionEventController extends Controller
             'agent', 
             'lease.tenant', 
             'unit.property', 
-            'splits.user',
+            'user',
             'organization'
         ]);
 

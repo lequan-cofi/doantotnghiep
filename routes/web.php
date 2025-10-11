@@ -341,6 +341,22 @@ Route::middleware('auth')->group(function () {
         // Properties management (read-only)
         Route::get('/properties', [\App\Http\Controllers\Agent\PropertyController::class, 'index'])->name('properties.index');
         Route::get('/properties/{id}', [\App\Http\Controllers\Agent\PropertyController::class, 'show'])->name('properties.show');
+
+        // Units management (CRUD)
+        Route::resource('units', \App\Http\Controllers\Agent\UnitController::class);
+
+        // Leases management (CRUD)
+        Route::resource('leases', \App\Http\Controllers\Agent\LeaseController::class);
+        
+        // API endpoints for leases
+        Route::prefix('api/leases')->group(function () {
+            Route::get('/next-contract-number', [\App\Http\Controllers\Agent\LeaseController::class, 'getNextContractNumber']);
+        });
+
+        // API endpoints for properties
+        Route::prefix('api/properties')->group(function () {
+            Route::get('/{propertyId}/units', [\App\Http\Controllers\Agent\LeaseController::class, 'getUnits']);
+        });
     });
 
     /*

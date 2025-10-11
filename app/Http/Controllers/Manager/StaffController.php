@@ -234,12 +234,12 @@ class StaffController extends Controller
         }
 
         // Get commission statistics
-        $commissionStats = DB::table('commission_event_splits')
+        $commissionStats = DB::table('commission_events')
             ->where('user_id', $id)
             ->selectRaw('
                 status,
                 COUNT(*) as count,
-                SUM(amount) as total_amount
+                SUM(commission_total) as total_amount
             ')
             ->groupBy('status')
             ->get();
@@ -483,12 +483,11 @@ class StaffController extends Controller
      */
     public function getCommissionEvents($id)
     {
-        $events = DB::table('commission_event_splits')
-            ->join('commission_events', 'commission_event_splits.event_id', '=', 'commission_events.id')
+        $events = DB::table('commission_events')
             ->join('commission_policies', 'commission_events.policy_id', '=', 'commission_policies.id')
-            ->where('commission_event_splits.user_id', $id)
+            ->where('commission_events.user_id', $id)
             ->select(
-                'commission_event_splits.*',
+                'commission_events.*',
                 'commission_events.occurred_at',
                 'commission_events.amount_base',
                 'commission_policies.title as policy_title'

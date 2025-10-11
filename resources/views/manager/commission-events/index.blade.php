@@ -10,9 +10,17 @@
             <h1 class="h3 mb-0 text-gray-800">Sự kiện Hoa hồng</h1>
             <p class="mb-0">Theo dõi và quản lý các sự kiện hoa hồng</p>
         </div>
-        <a href="{{ route('manager.commission-events.create') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Tạo sự kiện mới
-        </a>
+        <div class="btn-group" role="group">
+            <a href="{{ route('manager.commission-events.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Tạo sự kiện mới
+            </a>
+            <button type="button" class="btn btn-outline-success" onclick="exportEventsData()" title="Xuất Excel">
+                <i class="fas fa-file-excel"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()" title="Xóa bộ lọc">
+                <i class="fas fa-filter-circle-xmark"></i>
+            </button>
+        </div>
     </div>
 
     <!-- Filters -->
@@ -85,7 +93,7 @@
                     <div class="col-md-3 mb-3">
                         <label class="form-label">&nbsp;</label>
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" onclick="performSearch()">
                                 <i class="fas fa-search"></i> Lọc
                             </button>
                             <a href="{{ route('manager.commission-events.index') }}" class="btn btn-secondary">
@@ -109,14 +117,64 @@
                     <table class="table table-bordered">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'id', 'sort_order' => request('sort_by') == 'id' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        ID
+                                        @if(request('sort_by') == 'id')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
                                 <th>Nhân viên</th>
                                 <th>Chính sách</th>
-                                <th>Sự kiện</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'trigger_event', 'sort_order' => request('sort_by') == 'trigger_event' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Sự kiện
+                                        @if(request('sort_by') == 'trigger_event')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
                                 <th>Số tiền gốc</th>
-                                <th>Hoa hồng</th>
-                                <th>Trạng thái</th>
-                                <th>Ngày xảy ra</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'commission_total', 'sort_order' => request('sort_by') == 'commission_total' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Hoa hồng
+                                        @if(request('sort_by') == 'commission_total')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'status', 'sort_order' => request('sort_by') == 'status' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Trạng thái
+                                        @if(request('sort_by') == 'status')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'occurred_at', 'sort_order' => request('sort_by') == 'occurred_at' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Ngày xảy ra
+                                        @if(request('sort_by') == 'occurred_at')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -184,14 +242,14 @@
                                 <td>{{ $event->occurred_at->format('d/m/Y H:i') }}</td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ route('manager.commission-events.show', $event->id) }}" 
-                                           class="btn btn-sm btn-info" title="Xem chi tiết">
+                                        <button type="button" class="btn btn-sm btn-info" 
+                                                onclick="viewEventDetails({{ $event->id }})" title="Xem chi tiết">
                                             <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="{{ route('manager.commission-events.edit', $event->id) }}" 
-                                           class="btn btn-sm btn-warning" title="Chỉnh sửa">
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-warning" 
+                                                onclick="editEvent({{ $event->id }})" title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
-                                        </a>
+                                        </button>
                                         @if($event->status == 'pending')
                                             <button type="button" class="btn btn-sm btn-success" 
                                                     onclick="approveEvent({{ $event->id }})" title="Duyệt">
@@ -216,10 +274,7 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
-                <div class="d-flex justify-content-center">
-                    {{ $events->links() }}
-                </div>
+                {{-- Pagination temporarily removed --}}
             @else
                 <div class="text-center py-4">
                     <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
@@ -256,62 +311,322 @@
 </div>
 @endsection
 
-@push('scripts')
-<script>
-function deleteEvent(eventId) {
-    const deleteForm = document.getElementById('deleteForm');
-    deleteForm.action = `/manager/commission-events/${eventId}`;
-    
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    deleteModal.show();
+@push('styles')
+<style>
+/* Sorting Styles */
+.table th a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
 }
 
+.table th a:hover {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.table th a i {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.table th a:hover i {
+    opacity: 1;
+}
+</style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show session messages
+    @if(session('success'))
+        Notify.success('{{ session('success') }}', 'Thành công!');
+    @endif
+
+    @if(session('error'))
+        Notify.error('{{ session('error') }}', 'Lỗi!');
+    @endif
+
+    @if(session('warning'))
+        Notify.warning('{{ session('warning') }}', 'Cảnh báo!');
+    @endif
+
+    @if(session('info'))
+        Notify.info('{{ session('info') }}', 'Thông tin!');
+    @endif
+});
+
+// Delete event function with enhanced notifications
+function deleteEvent(eventId) {
+    Notify.confirmDelete('Bạn có chắc chắn muốn xóa sự kiện hoa hồng này?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang xóa...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 0
+        });
+
+        fetch(`/manager/commission-events/${eventId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            // Hide loading notification
+            const toastElement = document.getElementById(loadingToast);
+            if (toastElement) {
+                const bsToast = bootstrap.Toast.getInstance(toastElement);
+                if (bsToast) bsToast.hide();
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                Notify.success('Xóa sự kiện hoa hồng thành công!', 'Thành công!');
+                // Reload page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                Notify.error(data.message || 'Không thể xóa sự kiện hoa hồng. Vui lòng thử lại.', 'Lỗi!');
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            Notify.error('Đã xảy ra lỗi khi xóa sự kiện hoa hồng. Vui lòng kiểm tra kết nối và thử lại.', 'Lỗi hệ thống!');
+        });
+    });
+}
+
+// Approve event function with enhanced notifications
 function approveEvent(eventId) {
-    if (confirm('Bạn có chắc chắn muốn duyệt sự kiện hoa hồng này?')) {
+    Notify.confirm('Bạn có chắc chắn muốn duyệt sự kiện hoa hồng này?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang duyệt...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 0
+        });
+
         fetch(`/manager/commission-events/${eventId}/approve`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Hide loading notification
+            const toastElement = document.getElementById(loadingToast);
+            if (toastElement) {
+                const bsToast = bootstrap.Toast.getInstance(toastElement);
+                if (bsToast) bsToast.hide();
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                location.reload();
+                Notify.success('Duyệt sự kiện hoa hồng thành công!', 'Thành công!');
+                // Reload page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
             } else {
-                alert('Có lỗi xảy ra: ' + data.message);
+                Notify.error(data.message || 'Không thể duyệt sự kiện hoa hồng.', 'Lỗi!');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Có lỗi xảy ra khi duyệt sự kiện hoa hồng');
+            console.error('Approve error:', error);
+            Notify.error('Đã xảy ra lỗi khi duyệt sự kiện hoa hồng. Vui lòng thử lại.', 'Lỗi hệ thống!');
         });
-    }
+    });
 }
 
+// Mark as paid function with enhanced notifications
 function markAsPaid(eventId) {
-    if (confirm('Bạn có chắc chắn muốn đánh dấu sự kiện hoa hồng này là đã thanh toán?')) {
+    Notify.confirm('Bạn có chắc chắn muốn đánh dấu sự kiện hoa hồng này là đã thanh toán?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang cập nhật...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 0
+        });
+
         fetch(`/manager/commission-events/${eventId}/mark-as-paid`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Hide loading notification
+            const toastElement = document.getElementById(loadingToast);
+            if (toastElement) {
+                const bsToast = bootstrap.Toast.getInstance(toastElement);
+                if (bsToast) bsToast.hide();
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                location.reload();
+                Notify.success('Đánh dấu đã thanh toán thành công!', 'Thành công!');
+                // Reload page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
             } else {
-                alert('Có lỗi xảy ra: ' + data.message);
+                Notify.error(data.message || 'Không thể đánh dấu đã thanh toán.', 'Lỗi!');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Có lỗi xảy ra khi đánh dấu sự kiện hoa hồng');
+            console.error('Mark as paid error:', error);
+            Notify.error('Đã xảy ra lỗi khi đánh dấu đã thanh toán. Vui lòng thử lại.', 'Lỗi hệ thống!');
         });
+    });
+}
+
+// View event details function
+function viewEventDetails(eventId) {
+    // Show loading notification
+    const loadingToast = Notify.toast({
+        title: 'Đang tải...',
+        message: 'Vui lòng chờ trong giây lát',
+        type: 'info',
+        duration: 0
+    });
+
+    // Navigate to event details page
+    window.location.href = `/manager/commission-events/${eventId}`;
+}
+
+// Edit event function
+function editEvent(eventId) {
+    // Show loading notification
+    const loadingToast = Notify.toast({
+        title: 'Đang tải...',
+        message: 'Vui lòng chờ trong giây lát',
+        type: 'info',
+        duration: 0
+    });
+
+    // Navigate to event edit page
+    window.location.href = `/manager/commission-events/${eventId}/edit`;
+}
+
+// Search function with loading state
+function performSearch() {
+    const searchForm = document.querySelector('form[method="GET"]');
+    if (searchForm) {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang tìm kiếm...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 2000
+        });
+
+        // Submit form
+        searchForm.submit();
     }
 }
+
+// Clear filters function
+function clearFilters() {
+    Notify.confirm('Bạn có chắc chắn muốn xóa tất cả bộ lọc?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang xóa bộ lọc...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 1000
+        });
+
+        // Navigate to clean URL
+        window.location.href = '{{ route('manager.commission-events.index') }}';
+    });
+}
+
+// Export events data function
+function exportEventsData() {
+    Notify.confirm('Bạn có muốn xuất danh sách sự kiện hoa hồng ra file Excel?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang xuất dữ liệu...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 0
+        });
+
+        // Get current search parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const exportUrl = `{{ route('manager.commission-events.index') }}/export?${urlParams.toString()}`;
+
+        // Create temporary link for download
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.download = 'danh-sach-su-kien-hoa-hong.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Hide loading notification after a delay
+        setTimeout(() => {
+            const toastElement = document.getElementById(loadingToast);
+            if (toastElement) {
+                const bsToast = bootstrap.Toast.getInstance(toastElement);
+                if (bsToast) bsToast.hide();
+            }
+            Notify.success('Xuất dữ liệu thành công!', 'Thành công!');
+        }, 2000);
+    });
+}
+
+// Form validation with notifications
+function validateSearchForm() {
+    const dateFrom = document.querySelector('input[name="date_from"]').value;
+    const dateTo = document.querySelector('input[name="date_to"]').value;
+    
+    if (dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo)) {
+        Notify.warning('Ngày bắt đầu không thể lớn hơn ngày kết thúc.', 'Cảnh báo!');
+        return false;
+    }
+    
+    return true;
+}
+
+// Add form validation to search form
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.querySelector('form[method="GET"]');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            if (!validateSearchForm()) {
+                e.preventDefault();
+            }
+        });
+    }
+});
 </script>
 @endpush

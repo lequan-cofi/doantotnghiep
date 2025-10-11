@@ -59,13 +59,6 @@ class CommissionPolicy extends Model
         return $this->hasMany(CommissionEvent::class, 'policy_id');
     }
 
-    /**
-     * Get the splits for the policy.
-     */
-    public function splits()
-    {
-        return $this->hasMany(CommissionPolicySplit::class, 'policy_id');
-    }
 
     /**
      * Scope a query to only include active policies.

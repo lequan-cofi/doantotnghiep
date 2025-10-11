@@ -14,10 +14,24 @@ class PropertyController extends Controller
     /**
      * Display a listing of the properties assigned to the agent.
      */
-    public function index()
+    public function index(Request $request)
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
+        
+        // Get sorting parameters
+        $sortBy = $request->get('sort_by', 'id');
+        $sortOrder = $request->get('sort_order', 'desc');
+        
+        // Validate sort fields
+        $allowedSortFields = ['id', 'created_at', 'name', 'status'];
+        if (!in_array($sortBy, $allowedSortFields)) {
+            $sortBy = 'id';
+        }
+        
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'desc';
+        }
         
         // Lấy các properties được gán cho agent này
         $properties = $user->assignedProperties()
@@ -29,6 +43,7 @@ class PropertyController extends Controller
                 }]);
             }])
             ->where('properties.status', 1)
+            ->orderBy($sortBy, $sortOrder)
             ->get();
 
         // Thêm thống kê cho mỗi property

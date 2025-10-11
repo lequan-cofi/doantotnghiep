@@ -22,6 +22,16 @@
                 <span>Bất động sản</span>
             </a>
             
+            <a href="{{ route('agent.units.index') }}" class="nav-item {{ request()->routeIs('agent.units.*') ? 'active' : '' }}">
+                <i class="fas fa-door-open"></i>
+                <span>Phòng trọ</span>
+            </a>
+            
+            <a href="{{ route('agent.leases.index') }}" class="nav-item {{ request()->routeIs('agent.leases.*') ? 'active' : '' }}">
+                <i class="fas fa-file-contract"></i>
+                <span>Hợp đồng</span>
+            </a>
+            
             <a href="{{ route('agent.profile') }}" class="nav-item {{ request()->routeIs('agent.profile') ? 'active' : '' }}">
                 <i class="fas fa-user"></i>
                 <span>Hồ sơ cá nhân</span>

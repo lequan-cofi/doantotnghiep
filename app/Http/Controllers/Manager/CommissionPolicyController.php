@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommissionPolicy;
-use App\Models\CommissionPolicySplit;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -16,7 +15,7 @@ class CommissionPolicyController extends Controller
 {
     public function index(Request $request)
     {
-        $query = CommissionPolicy::with(['organization', 'splits'])
+        $query = CommissionPolicy::with(['organization'])
             ->withCount('events')
             ->where('organization_id', Auth::user()->organizations()->first()?->id);
 
@@ -84,9 +83,6 @@ class CommissionPolicyController extends Controller
             'min_amount' => 'nullable|numeric|min:0',
             'cap_amount' => 'nullable|numeric|min:0',
             'active' => 'boolean',
-            'splits' => 'array',
-            'splits.*.role_key' => 'required|string',
-            'splits.*.percent_share' => 'required|numeric|min:0|max:100'
         ]);
 
         try {
@@ -109,16 +105,6 @@ class CommissionPolicyController extends Controller
                 'active' => $request->boolean('active', true),
             ]);
 
-            // Create splits
-            if ($request->has('splits')) {
-                foreach ($request->splits as $split) {
-                    CommissionPolicySplit::create([
-                        'policy_id' => $policy->id,
-                        'role_key' => $split['role_key'],
-                        'percent_share' => $split['percent_share']
-                    ]);
-                }
-            }
 
             DB::commit();
 
@@ -155,7 +141,7 @@ class CommissionPolicyController extends Controller
             abort(403, 'Unauthorized access to commission policy.');
         }
         
-        $commissionPolicy->load(['organization', 'splits', 'events.agent', 'events.lease', 'events.unit']);
+        $commissionPolicy->load(['organization', 'events.agent', 'events.lease', 'events.unit']);
 
         return view('manager.commission-policies.show', compact('commissionPolicy'));
     }
@@ -186,7 +172,6 @@ class CommissionPolicyController extends Controller
             'accrual' => 'Dồn tích'
         ];
 
-        $commissionPolicy->load('splits');
 
         return view('manager.commission-policies.edit', compact('commissionPolicy', 'triggerEvents', 'calcTypes', 'basisTypes'));
     }
@@ -210,9 +195,6 @@ class CommissionPolicyController extends Controller
             'min_amount' => 'nullable|numeric|min:0',
             'cap_amount' => 'nullable|numeric|min:0',
             'active' => 'boolean',
-            'splits' => 'array',
-            'splits.*.role_key' => 'required|string',
-            'splits.*.percent_share' => 'required|numeric|min:0|max:100'
         ]);
 
         try {
@@ -232,17 +214,6 @@ class CommissionPolicyController extends Controller
                 'active' => $request->boolean('active', true),
             ]);
 
-            // Update splits
-            $commissionPolicy->splits()->delete();
-            if ($request->has('splits')) {
-                foreach ($request->splits as $split) {
-                    CommissionPolicySplit::create([
-                        'policy_id' => $commissionPolicy->id,
-                        'role_key' => $split['role_key'],
-                        'percent_share' => $split['percent_share']
-                    ]);
-                }
-            }
 
             DB::commit();
 

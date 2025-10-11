@@ -140,15 +140,7 @@ class User extends Authenticatable
      */
     public function commissionEvents()
     {
-        return $this->hasMany(CommissionEvent::class, 'agent_id');
-    }
-
-    /**
-     * Get the commission event splits for the user.
-     */
-    public function commissionEventSplits()
-    {
-        return $this->hasMany(CommissionEventSplit::class);
+        return $this->hasMany(CommissionEvent::class);
     }
 
     /**

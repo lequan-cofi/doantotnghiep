@@ -76,7 +76,21 @@ class LeaseController extends Controller
                 $query->whereDate('end_date', '<=', $request->date_to);
             }
 
-            $leases = $query->orderBy('created_at', 'desc')->paginate(10);
+            // Get leases with sorting
+            $sortBy = $request->get('sort_by', 'id');
+            $sortOrder = $request->get('sort_order', 'desc');
+            
+            // Validate sort fields
+            $allowedSortFields = ['id', 'created_at', 'contract_no', 'start_date', 'end_date', 'rent_amount', 'status'];
+            if (!in_array($sortBy, $allowedSortFields)) {
+                $sortBy = 'id';
+            }
+            
+            if (!in_array($sortOrder, ['asc', 'desc'])) {
+                $sortOrder = 'desc';
+            }
+            
+            $leases = $query->orderBy($sortBy, $sortOrder)->get();
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error loading leases: ' . $e->getMessage());
@@ -234,6 +248,9 @@ class LeaseController extends Controller
                     ]);
                 }
             }
+
+            // Cập nhật trạng thái phòng dựa trên trạng thái hợp đồng
+            $this->updateUnitStatusBasedOnLease($lease, $validated['status']);
 
             DB::commit();
 
@@ -401,6 +418,9 @@ class LeaseController extends Controller
                 }
             }
 
+            // Cập nhật trạng thái phòng dựa trên trạng thái hợp đồng
+            $this->updateUnitStatusBasedOnLease($lease, $validated['status']);
+
             DB::commit();
 
             if ($request->expectsJson()) {
@@ -433,8 +453,15 @@ class LeaseController extends Controller
         try {
             $lease = Lease::withoutGlobalScope('organization')->findOrFail($id);
             
+            DB::beginTransaction();
+            
             // Soft delete the lease (trait sẽ tự động set deleted_by)
             $lease->delete();
+
+            // Cập nhật trạng thái phòng khi xóa hợp đồng
+            $this->updateUnitStatusAfterLeaseDeletion($lease);
+
+            DB::commit();
 
             if (request()->expectsJson()) {
                 return response()->json([
@@ -447,7 +474,8 @@ class LeaseController extends Controller
                 ->with('success', 'Hợp đồng đã được xóa thành công!');
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error deleting lease: ' . $e->getMessage());
+            DB::rollBack();
+            Log::error('Error deleting lease: ' . $e->getMessage());
             
             if (request()->expectsJson()) {
                 return response()->json([
@@ -488,7 +516,7 @@ class LeaseController extends Controller
             $contractNumber = $this->generateContractNumber();
             return response()->json(['contract_no' => $contractNumber]);
         } catch (\Exception $e) {
-            \Log::error('Error generating contract number: ' . $e->getMessage());
+            Log::error('Error generating contract number: ' . $e->getMessage());
             return response()->json(['error' => 'Có lỗi xảy ra khi sinh mã hợp đồng'], 500);
         }
     }
@@ -513,8 +541,79 @@ class LeaseController extends Controller
 
             return response()->json($units);
         } catch (\Exception $e) {
-            \Log::error('Error in getUnits: ' . $e->getMessage());
+            Log::error('Error in getUnits: ' . $e->getMessage());
             return response()->json(['error' => 'Có lỗi xảy ra khi tải dữ liệu phòng'], 500);
+        }
+    }
+
+    /**
+     * Cập nhật trạng thái phòng dựa trên trạng thái hợp đồng
+     */
+    private function updateUnitStatusBasedOnLease($lease, $leaseStatus)
+    {
+        $unit = $lease->unit;
+        if (!$unit) {
+            return;
+        }
+
+        switch ($leaseStatus) {
+            case 'active':
+                // Khi hợp đồng active, phòng chuyển thành occupied
+                $unit->update(['status' => 'occupied']);
+                break;
+                
+            case 'terminated':
+            case 'expired':
+                // Khi hợp đồng kết thúc, kiểm tra xem có hợp đồng active khác không
+                $hasOtherActiveLease = Lease::where('unit_id', $unit->id)
+                    ->where('status', 'active')
+                    ->where('id', '!=', $lease->id)
+                    ->whereNull('deleted_at')
+                    ->exists();
+                
+                if (!$hasOtherActiveLease) {
+                    // Không có hợp đồng active nào khác, phòng chuyển về available
+                    $unit->update(['status' => 'available']);
+                }
+                break;
+                
+            case 'draft':
+                // Hợp đồng draft không ảnh hưởng đến trạng thái phòng
+                // Chỉ cập nhật nếu phòng hiện tại đang occupied và không có hợp đồng active nào khác
+                if ($unit->status === 'occupied') {
+                    $hasOtherActiveLease = Lease::where('unit_id', $unit->id)
+                        ->where('status', 'active')
+                        ->where('id', '!=', $lease->id)
+                        ->whereNull('deleted_at')
+                        ->exists();
+                    
+                    if (!$hasOtherActiveLease) {
+                        $unit->update(['status' => 'available']);
+                    }
+                }
+                break;
+        }
+    }
+
+    /**
+     * Cập nhật trạng thái phòng sau khi xóa hợp đồng
+     */
+    private function updateUnitStatusAfterLeaseDeletion($deletedLease)
+    {
+        $unit = $deletedLease->unit;
+        if (!$unit) {
+            return;
+        }
+
+        // Kiểm tra xem còn hợp đồng active nào khác không
+        $hasOtherActiveLease = Lease::where('unit_id', $unit->id)
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (!$hasOtherActiveLease) {
+            // Không có hợp đồng active nào khác, phòng chuyển về available
+            $unit->update(['status' => 'available']);
         }
     }
 }

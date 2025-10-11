@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @method \Illuminate\Database\Eloquent\Relations\BelongsTo policy()
  * @method \Illuminate\Database\Eloquent\Relations\BelongsTo organization()
  * @method \Illuminate\Database\Eloquent\Relations\BelongsTo agent()
- * @method \Illuminate\Database\Eloquent\Relations\HasMany splits()
  * @method \Illuminate\Database\Eloquent\Relations\BelongsTo lease()
  * @method \Illuminate\Database\Eloquent\Relations\BelongsTo listing()
  * @method \Illuminate\Database\Eloquent\Relations\BelongsTo unit()
@@ -31,6 +30,7 @@ class CommissionEvent extends Model
         'listing_id',
         'unit_id',
         'agent_id',
+        'user_id',
         'occurred_at',
         'amount_base',
         'commission_total',
@@ -69,11 +69,11 @@ class CommissionEvent extends Model
     }
 
     /**
-     * Get the splits for the commission event.
+     * Get the user for the commission event.
      */
-    public function splits()
+    public function user()
     {
-        return $this->hasMany(CommissionEventSplit::class, 'event_id');
+        return $this->belongsTo(User::class);
     }
 
     /**

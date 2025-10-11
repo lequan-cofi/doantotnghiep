@@ -105,7 +105,21 @@ class PropertyController extends Controller
         // $totalCount = $query->count();
         // Log::info('Total count before pagination: ' . $totalCount);
         
-        $properties = $query->orderBy('created_at', 'desc')->paginate(10);
+        // Get properties with sorting
+        $sortBy = $request->get('sort_by', 'id');
+        $sortOrder = $request->get('sort_order', 'desc');
+        
+        // Validate sort fields
+        $allowedSortFields = ['id', 'created_at', 'name', 'status'];
+        if (!in_array($sortBy, $allowedSortFields)) {
+            $sortBy = 'id';
+        }
+        
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'desc';
+        }
+        
+        $properties = $query->orderBy($sortBy, $sortOrder)->get();
         $propertyTypes = PropertyType::all();
         $owners = User::whereHas('userRoles', function($query) {
             $query->where('key_code', 'landlord');

@@ -54,4 +54,47 @@ class Unit extends Model
     {
         return $this->belongsToMany(Amenity::class, 'unit_amenities');
     }
+
+    // Helper methods
+    public function getCurrentLeaseAttribute()
+    {
+        return $this->leases()
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->first();
+    }
+
+    public function getIsRentedAttribute()
+    {
+        return $this->leases()
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+
+    public function getIsAvailableAttribute()
+    {
+        return $this->status === 'available' && !$this->is_rented;
+    }
+
+    // Scopes
+    public function scopeAvailable($query)
+    {
+        return $query->where('status', 'available');
+    }
+
+    public function scopeOccupied($query)
+    {
+        return $query->where('status', 'occupied');
+    }
+
+    public function scopeByProperty($query, $propertyId)
+    {
+        return $query->where('property_id', $propertyId);
+    }
+
+    public function scopeByType($query, $type)
+    {
+        return $query->where('unit_type', $type);
+    }
 }

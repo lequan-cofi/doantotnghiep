@@ -269,18 +269,17 @@ class DashboardController extends Controller
     private function getTopPerformers($organizationId)
     {
         try {
-            return DB::table('commission_event_splits')
-                ->join('users', 'users.id', '=', 'commission_event_splits.user_id')
-                ->join('commission_events', 'commission_events.id', '=', 'commission_event_splits.commission_event_id')
+            return DB::table('commission_events')
+                ->join('users', 'users.id', '=', 'commission_events.user_id')
                 ->where('commission_events.organization_id', $organizationId)
                 ->select(
                     'users.id',
                     'users.full_name',
-                    DB::raw('SUM(commission_event_splits.amount) as total_commission'),
+                    DB::raw('SUM(commission_events.commission_total) as total_commission'),
                     DB::raw('COUNT(*) as deals')
                 )
-                ->whereYear('commission_event_splits.created_at', now()->year)
-                ->whereMonth('commission_event_splits.created_at', now()->month)
+                ->whereYear('commission_events.created_at', now()->year)
+                ->whereMonth('commission_events.created_at', now()->month)
                 ->groupBy('users.id', 'users.full_name')
                 ->orderByDesc('total_commission')
                 ->limit(5)

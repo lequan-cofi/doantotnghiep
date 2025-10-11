@@ -11,12 +11,12 @@
             <p class="mb-0">#{{ $commissionEvent->id }} - {{ $commissionEvent->policy->title }}</p>
         </div>
         <div>
-            <a href="{{ route('manager.commission-events.index') }}" class="btn btn-secondary">
+            <button type="button" class="btn btn-secondary" onclick="backToIndex()">
                 <i class="fas fa-arrow-left"></i> Quay lại
-            </a>
-            <a href="{{ route('manager.commission-events.edit', $commissionEvent->id) }}" class="btn btn-warning">
+            </button>
+            <button type="button" class="btn btn-warning" onclick="editEvent({{ $commissionEvent->id }})">
                 <i class="fas fa-edit"></i> Chỉnh sửa
-            </a>
+            </button>
         </div>
     </div>
 
@@ -42,6 +42,19 @@
                                             <div>
                                                 <strong>{{ $commissionEvent->agent->full_name }}</strong>
                                                 <br><small class="text-muted">{{ $commissionEvent->agent->email }}</small>
+                                            </div>
+                                        @else
+                                            <span class="text-muted">Chưa gán</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Người nhận hoa hồng:</strong></td>
+                                    <td>
+                                        @if($commissionEvent->user)
+                                            <div>
+                                                <strong>{{ $commissionEvent->user->full_name }}</strong>
+                                                <br><small class="text-muted">{{ $commissionEvent->user->email }}</small>
                                             </div>
                                         @else
                                             <span class="text-muted">Chưa gán</span>
@@ -200,38 +213,6 @@
                 </div>
             </div>
 
-            <!-- Commission Splits -->
-            @if($commissionEvent->splits->count() > 0)
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Phân chia hoa hồng</h6>
-                </div>
-                <div class="card-body">
-                    @foreach($commissionEvent->splits as $split)
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div>
-                            @php
-                                $roleLabels = [
-                                    'manager' => 'Quản lý',
-                                    'agent' => 'Nhân viên',
-                                    'supervisor' => 'Giám sát',
-                                    'admin' => 'Quản trị viên'
-                                ];
-                            @endphp
-                            <strong>{{ $roleLabels[$split->role_key] ?? $split->role_key }}</strong>
-                            <br><small class="text-muted">{{ $split->percent_share }}%</small>
-                        </div>
-                        <div class="text-end">
-                            <strong class="text-primary">{{ number_format($split->amount, 0, ',', '.') }} VND</strong>
-                        </div>
-                    </div>
-                    @if(!$loop->last)
-                        <hr class="my-2">
-                    @endif
-                    @endforeach
-                </div>
-            </div>
-            @endif
 
             <!-- Actions -->
             <div class="card shadow">
@@ -249,9 +230,9 @@
                             <i class="fas fa-money-bill"></i> Đánh dấu đã thanh toán
                         </button>
                     @endif
-                    <a href="{{ route('manager.commission-events.edit', $commissionEvent->id) }}" class="btn btn-warning w-100 mb-2">
+                    <button type="button" class="btn btn-warning w-100 mb-2" onclick="editEvent({{ $commissionEvent->id }})">
                         <i class="fas fa-edit"></i> Chỉnh sửa
-                    </a>
+                    </button>
                     <button type="button" class="btn btn-danger w-100" onclick="deleteEvent({{ $commissionEvent->id }})">
                         <i class="fas fa-trash"></i> Xóa sự kiện
                     </button>
@@ -288,60 +269,199 @@
 
 @push('scripts')
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show session messages
+    @if(session('success'))
+        Notify.success('{{ session('success') }}', 'Thành công!');
+    @endif
+
+    @if(session('error'))
+        Notify.error('{{ session('error') }}', 'Lỗi!');
+    @endif
+
+    @if(session('warning'))
+        Notify.warning('{{ session('warning') }}', 'Cảnh báo!');
+    @endif
+
+    @if(session('info'))
+        Notify.info('{{ session('info') }}', 'Thông tin!');
+    @endif
+});
+
+// Delete event function with enhanced notifications
 function deleteEvent(eventId) {
-    const deleteForm = document.getElementById('deleteForm');
-    deleteForm.action = `/manager/commission-events/${eventId}`;
-    
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    deleteModal.show();
+    Notify.confirmDelete('Bạn có chắc chắn muốn xóa sự kiện hoa hồng này?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang xóa...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 0
+        });
+
+        fetch(`/manager/commission-events/${eventId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            // Hide loading notification
+            const toastElement = document.getElementById(loadingToast);
+            if (toastElement) {
+                const bsToast = bootstrap.Toast.getInstance(toastElement);
+                if (bsToast) bsToast.hide();
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                Notify.success('Xóa sự kiện hoa hồng thành công!', 'Thành công!');
+                // Redirect to index page after a short delay
+                setTimeout(() => {
+                    window.location.href = '{{ route('manager.commission-events.index') }}';
+                }, 1500);
+            } else {
+                Notify.error(data.message || 'Không thể xóa sự kiện hoa hồng. Vui lòng thử lại.', 'Lỗi!');
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            Notify.error('Đã xảy ra lỗi khi xóa sự kiện hoa hồng. Vui lòng kiểm tra kết nối và thử lại.', 'Lỗi hệ thống!');
+        });
+    });
 }
 
+// Approve event function with enhanced notifications
 function approveEvent(eventId) {
-    if (confirm('Bạn có chắc chắn muốn duyệt sự kiện hoa hồng này?')) {
+    Notify.confirm('Bạn có chắc chắn muốn duyệt sự kiện hoa hồng này?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang duyệt...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 0
+        });
+
         fetch(`/manager/commission-events/${eventId}/approve`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Hide loading notification
+            const toastElement = document.getElementById(loadingToast);
+            if (toastElement) {
+                const bsToast = bootstrap.Toast.getInstance(toastElement);
+                if (bsToast) bsToast.hide();
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                location.reload();
+                Notify.success('Duyệt sự kiện hoa hồng thành công!', 'Thành công!');
+                // Reload page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
             } else {
-                alert('Có lỗi xảy ra: ' + data.message);
+                Notify.error(data.message || 'Không thể duyệt sự kiện hoa hồng.', 'Lỗi!');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Có lỗi xảy ra khi duyệt sự kiện hoa hồng');
+            console.error('Approve error:', error);
+            Notify.error('Đã xảy ra lỗi khi duyệt sự kiện hoa hồng. Vui lòng thử lại.', 'Lỗi hệ thống!');
         });
-    }
+    });
 }
 
+// Mark as paid function with enhanced notifications
 function markAsPaid(eventId) {
-    if (confirm('Bạn có chắc chắn muốn đánh dấu sự kiện hoa hồng này là đã thanh toán?')) {
+    Notify.confirm('Bạn có chắc chắn muốn đánh dấu sự kiện hoa hồng này là đã thanh toán?', () => {
+        // Show loading notification
+        const loadingToast = Notify.toast({
+            title: 'Đang cập nhật...',
+            message: 'Vui lòng chờ trong giây lát',
+            type: 'info',
+            duration: 0
+        });
+
         fetch(`/manager/commission-events/${eventId}/mark-as-paid`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Hide loading notification
+            const toastElement = document.getElementById(loadingToast);
+            if (toastElement) {
+                const bsToast = bootstrap.Toast.getInstance(toastElement);
+                if (bsToast) bsToast.hide();
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                location.reload();
+                Notify.success('Đánh dấu đã thanh toán thành công!', 'Thành công!');
+                // Reload page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
             } else {
-                alert('Có lỗi xảy ra: ' + data.message);
+                Notify.error(data.message || 'Không thể đánh dấu đã thanh toán.', 'Lỗi!');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Có lỗi xảy ra khi đánh dấu sự kiện hoa hồng');
+            console.error('Mark as paid error:', error);
+            Notify.error('Đã xảy ra lỗi khi đánh dấu đã thanh toán. Vui lòng thử lại.', 'Lỗi hệ thống!');
         });
-    }
+    });
+}
+
+// Edit event function
+function editEvent(eventId) {
+    // Show loading notification
+    const loadingToast = Notify.toast({
+        title: 'Đang tải...',
+        message: 'Vui lòng chờ trong giây lát',
+        type: 'info',
+        duration: 0
+    });
+
+    // Navigate to edit page
+    window.location.href = `/manager/commission-events/${eventId}/edit`;
+}
+
+// Back to index function
+function backToIndex() {
+    // Show loading notification
+    const loadingToast = Notify.toast({
+        title: 'Đang chuyển hướng...',
+        message: 'Vui lòng chờ trong giây lát',
+        type: 'info',
+        duration: 1000
+    });
+
+    // Navigate to index page
+    window.location.href = '{{ route('manager.commission-events.index') }}';
 }
 </script>
 @endpush

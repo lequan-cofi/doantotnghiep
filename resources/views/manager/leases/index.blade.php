@@ -110,15 +110,65 @@
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th>ID</th>
-                                <th>Số hợp đồng</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'id', 'sort_order' => request('sort_by') == 'id' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        ID
+                                        @if(request('sort_by') == 'id')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'contract_no', 'sort_order' => request('sort_by') == 'contract_no' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Số hợp đồng
+                                        @if(request('sort_by') == 'contract_no')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
                                 <th>Bất động sản</th>
                                 <th>Phòng</th>
                                 <th>Khách thuê</th>
                                 <th>Nhân viên</th>
-                                <th>Thời hạn</th>
-                                <th>Tiền thuê</th>
-                                <th>Trạng thái</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'start_date', 'sort_order' => request('sort_by') == 'start_date' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Thời hạn
+                                        @if(request('sort_by') == 'start_date')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'rent_amount', 'sort_order' => request('sort_by') == 'rent_amount' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Tiền thuê
+                                        @if(request('sort_by') == 'rent_amount')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'status', 'sort_order' => request('sort_by') == 'status' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
+                                       class="text-decoration-none text-dark">
+                                        Trạng thái
+                                        @if(request('sort_by') == 'status')
+                                            <i class="fas fa-sort-{{ request('sort_order') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
                                 <th>Hành động</th>
                             </tr>
                         </thead>
@@ -237,16 +287,143 @@
                 </div>
 
                 <!-- Pagination -->
-                @if($leases && method_exists($leases, 'links'))
-                <div class="mt-3">
-                    {{ $leases->links() }}
-                </div>
-                @endif
+        {{-- Pagination temporarily removed --}}
             </div>
         </div>
     </div>
 </main>
 @endsection
+
+@push('styles')
+<style>
+/* Sorting Styles */
+.table th a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.table th a:hover {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.table th a i {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.table th a:hover i {
+    opacity: 1;
+}
+
+/* Simple Pagination Styles */
+.pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.pagination-wrapper .pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.25rem;
+}
+
+.pagination-wrapper .pagination .page-item {
+    display: inline-block;
+}
+
+.pagination-wrapper .pagination .page-link {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    margin: 0;
+    color: #6c757d;
+    text-decoration: none;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    transition: all 0.15s ease-in-out;
+    min-width: 2.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+.pagination-wrapper .pagination .page-link:hover {
+    color: #0d6efd;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+    text-decoration: none;
+}
+
+.pagination-wrapper .pagination .page-item.active .page-link {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.pagination-wrapper .pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #fff;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.pagination-wrapper .pagination .page-item.disabled .page-link:hover {
+    color: #6c757d;
+    background-color: #fff;
+    border-color: #dee2e6;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .pagination-wrapper {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .pagination-wrapper .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .pagination-wrapper .pagination .page-link {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+        min-width: 2rem;
+    }
+}
+
+/* Override any conflicting styles */
+.pagination-wrapper * {
+    box-sizing: border-box;
+}
+
+.pagination-wrapper .pagination {
+    align-items: stretch;
+}
+
+.pagination-wrapper .pagination .page-item {
+    display: flex;
+    align-items: center;
+}
+
+.pagination-wrapper .pagination .page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    line-height: 1;
+}
+</style>
+@endpush
 
 @push('scripts')
 <script>

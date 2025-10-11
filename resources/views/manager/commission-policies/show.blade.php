@@ -135,46 +135,6 @@
                 </div>
             </div>
 
-            <!-- Commission Splits -->
-            @if($commissionPolicy->splits->count() > 0)
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Phân chia Hoa hồng</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Vai trò</th>
-                                    <th>Tỷ lệ phần trăm</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($commissionPolicy->splits as $split)
-                                <tr>
-                                    <td>
-                                        @php
-                                            $roleLabels = [
-                                                'manager' => 'Quản lý',
-                                                'agent' => 'Nhân viên',
-                                                'supervisor' => 'Giám sát',
-                                                'admin' => 'Quản trị viên'
-                                            ];
-                                        @endphp
-                                        {{ $roleLabels[$split->role_key] ?? $split->role_key }}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-primary">{{ $split->percent_share }}%</span>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            @endif
         </div>
 
         <!-- Statistics -->
@@ -193,7 +153,7 @@
                         </div>
                         <div class="col-6">
                             <h4 class="text-success">
-                                {{ number_format($commissionPolicy->events->sum('amount'), 0, ',', '.') }}
+                                {{ number_format($commissionPolicy->events->sum('commission_total'), 0, ',', '.') }}
                             </h4>
                             <p class="mb-0 text-muted">Tổng hoa hồng (VND)</p>
                         </div>
@@ -229,7 +189,7 @@
                                 @endif
                             </span>
                             <br>
-                            <small class="text-primary">{{ number_format($event->amount, 0, ',', '.') }} VND</small>
+                            <small class="text-primary">{{ number_format($event->commission_total, 0, ',', '.') }} VND</small>
                         </div>
                     </div>
                     @if(!$loop->last)
