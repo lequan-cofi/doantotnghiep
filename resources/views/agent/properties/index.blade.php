@@ -26,6 +26,11 @@
                             <h5 class="mb-0">
                                 <i class="fas fa-building"></i> {{ $property->name }}
                             </h5>
+                            @if($property->owner)
+                                <small class="d-block mt-1">
+                                    <i class="fas fa-user"></i> Chủ trọ: {{ $property->owner->full_name }}
+                                </small>
+                            @endif
                         </div>
                         <div class="card-body">
                             <div class="mb-3">

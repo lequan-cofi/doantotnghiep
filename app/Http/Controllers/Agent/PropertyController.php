@@ -21,7 +21,7 @@ class PropertyController extends Controller
         
         // Lấy các properties được gán cho agent này
         $properties = $user->assignedProperties()
-            ->with(['location', 'location2025', 'propertyType', 'units' => function($query) {
+            ->with(['location', 'location2025', 'propertyType', 'owner', 'units' => function($query) {
                 $query->with(['leases' => function($leaseQuery) {
                     $leaseQuery->where('status', 'active')
                         ->whereNull('deleted_at')
@@ -63,7 +63,7 @@ class PropertyController extends Controller
         
         // Kiểm tra xem property có được gán cho agent này không
         $property = $user->assignedProperties()
-            ->with(['location', 'location2025', 'propertyType', 'units' => function($query) {
+            ->with(['location', 'location2025', 'propertyType', 'owner', 'units' => function($query) {
                 $query->with(['leases' => function($leaseQuery) {
                     $leaseQuery->where('status', 'active')
                         ->whereNull('deleted_at')

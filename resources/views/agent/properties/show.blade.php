@@ -57,6 +57,16 @@
                                 <p class="mb-0">{{ $property->propertyType->name ?? 'Chưa xác định' }}</p>
                             </div>
                             <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Chủ trọ</label>
+                                <p class="mb-0">
+                                    @if($property->owner)
+                                        <i class="fas fa-user text-primary"></i> {{ $property->owner->full_name }}
+                                    @else
+                                        <span class="text-muted">Chưa xác định</span>
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold">Trạng thái</label>
                                 <p class="mb-0">
                                     <span class="badge bg-{{ $property->status ? 'success' : 'secondary' }}">
