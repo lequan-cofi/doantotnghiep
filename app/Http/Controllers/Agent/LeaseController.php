@@ -255,33 +255,7 @@ class LeaseController extends Controller
             ]);
 
             // Move tenant to agent's organization when creating lease
-            $tenant = User::find($request->tenant_id);
-            if ($tenant && $organization) {
-                // Get tenant role
-                $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
-                if ($tenantRole) {
-                    // Remove tenant from current organizations and add to agent's organization
-                    $tenant->organizations()->detach();
-                    
-                    // Create organization user record with role_id
-                    \App\Models\OrganizationUser::create([
-                        'organization_id' => $organization->id,
-                        'user_id' => $tenant->id,
-                        'role_id' => $tenantRole->id,
-                        'status' => 'active'
-                    ]);
-                    
-                    Log::info('Tenant assigned to agent organization when creating lease', [
-                        'tenant_id' => $tenant->id,
-                        'tenant_name' => $tenant->full_name,
-                        'agent_id' => $user->id,
-                        'agent_org_id' => $organization->id,
-                        'agent_org_name' => $organization->name,
-                        'role_id' => $tenantRole->id,
-                        'lease_id' => $lease->id
-                    ]);
-                }
-            }
+            $this->assignUserToAgentOrganization($request->tenant_id, $user->id, $lease->id, 'lease_create');
 
             // Add services if provided
             if (!empty($request->services)) {
@@ -466,6 +440,26 @@ class LeaseController extends Controller
         try {
             DB::beginTransaction();
 
+            // Handle tenant organization assignment when tenant changes
+            $oldTenantId = $lease->tenant_id;
+            $newTenantId = $request->tenant_id;
+            
+            if ($oldTenantId != $newTenantId) {
+                // Move old tenant back to Default Organization if they have no other active leases
+                if ($oldTenantId) {
+                    $oldTenant = User::find($oldTenantId);
+                    if ($oldTenant) {
+                        // Check if old tenant should be moved to Default Organization
+                        $this->checkAndMoveUserToDefaultOrganization($oldTenant, $user->id);
+                    }
+                }
+                
+                // Assign new tenant to agent's organization
+                if ($newTenantId) {
+                    $this->assignUserToAgentOrganization($newTenantId, $user->id, $id, 'lease_update');
+                }
+            }
+
             // Update lease
             $lease->update([
                 'unit_id' => $request->unit_id,
@@ -530,6 +524,25 @@ class LeaseController extends Controller
 
         try {
             DB::beginTransaction();
+            
+            // Move tenant back to Default Organization before deleting lease
+            if ($lease->tenant_id) {
+                $tenant = User::find($lease->tenant_id);
+                if ($tenant) {
+                    $this->checkAndMoveUserToDefaultOrganization($tenant, $user->id);
+                }
+            }
+            
+            // Move all residents back to Default Organization before deleting lease
+            $residents = $lease->residents()->whereNotNull('user_id')->get();
+            foreach ($residents as $resident) {
+                if ($resident->user_id) {
+                    $residentUser = User::find($resident->user_id);
+                    if ($residentUser) {
+                        $this->checkAndMoveUserToDefaultOrganization($residentUser, $user->id);
+                    }
+                }
+            }
             
             // Soft delete the lease
             $lease->delete();
@@ -705,7 +718,23 @@ class LeaseController extends Controller
                 }
                 
                 // Move tenant back to default organization when lease ends
-                $this->moveTenantToDefaultOrganization($lease->tenant_id);
+                if ($lease->tenant_id) {
+                    $tenant = User::find($lease->tenant_id);
+                    if ($tenant) {
+                        $this->checkAndMoveUserToDefaultOrganization($tenant, $lease->agent_id);
+                    }
+                }
+                
+                // Move all residents back to default organization when lease ends
+                $residents = $lease->residents()->whereNotNull('user_id')->get();
+                foreach ($residents as $resident) {
+                    if ($resident->user_id) {
+                        $residentUser = User::find($resident->user_id);
+                        if ($residentUser) {
+                            $this->checkAndMoveUserToDefaultOrganization($residentUser, $lease->agent_id);
+                        }
+                    }
+                }
                 break;
                 
             case 'draft':
@@ -1221,21 +1250,11 @@ class LeaseController extends Controller
 
     /**
      * Check if user should be moved to Default Organization
-     * Only move if user is not in agent's organization and has no active leases
+     * Only move if user has no active leases (as tenant or resident) in ANY organization
      */
     private function checkAndMoveUserToDefaultOrganization($user, $agentId)
     {
-        // Get agent's organization
-        $agent = \App\Models\User::find($agentId);
-        $agentOrganization = $agent ? $agent->organizations()->first() : null;
-        
-        // Check if user is in agent's organization
-        $isInAgentOrg = false;
-        if ($agentOrganization) {
-            $isInAgentOrg = $user->organizations()->where('organizations.id', $agentOrganization->id)->exists();
-        }
-        
-        // Check if user has active leases (as tenant or resident)
+        // Check if user has active leases (as tenant or resident) in ANY organization
         $hasActiveLeases = \App\Models\Lease::where('tenant_id', $user->id)
             ->where('status', 'active')
             ->whereNull('deleted_at')
@@ -1247,30 +1266,138 @@ class LeaseController extends Controller
             })
             ->exists();
         
+        // Check if user can be added to any other leases (draft status or as resident)
+        $canBeAddedToOtherLeases = $this->canUserBeAddedToOtherLeases($user);
+        
         // Only move to Default Organization if:
-        // 1. User is not in agent's organization AND
-        // 2. User has no active leases (as tenant or resident)
-        if (!$isInAgentOrg && !$hasActiveLeases && !$hasActiveResidentLeases) {
+        // 1. User has no active leases (as tenant or resident) AND
+        // 2. User cannot be added to any other draft leases
+        if (!$hasActiveLeases && !$hasActiveResidentLeases && !$canBeAddedToOtherLeases) {
             $this->moveUserToDefaultOrganization($user);
             
             Log::info('User moved to Default Organization after checking conditions', [
                 'user_id' => $user->id,
                 'user_name' => $user->full_name,
-                'is_in_agent_org' => $isInAgentOrg,
                 'has_active_leases' => $hasActiveLeases,
                 'has_active_resident_leases' => $hasActiveResidentLeases,
+                'can_be_added_to_other_leases' => $canBeAddedToOtherLeases,
                 'agent_id' => $agentId
             ]);
         } else {
             Log::info('User kept in current organization after checking conditions', [
                 'user_id' => $user->id,
                 'user_name' => $user->full_name,
-                'is_in_agent_org' => $isInAgentOrg,
                 'has_active_leases' => $hasActiveLeases,
                 'has_active_resident_leases' => $hasActiveResidentLeases,
-                'agent_id' => $agentId
+                'can_be_added_to_other_leases' => $canBeAddedToOtherLeases,
+                'agent_id' => $agentId,
+                'reason' => $hasActiveLeases ? 'has_active_leases' : 
+                           ($hasActiveResidentLeases ? 'has_active_resident_leases' : 'can_be_added_to_other_leases')
             ]);
         }
+    }
+
+    /**
+     * Check if user can be added to any other leases
+     */
+    private function canUserBeAddedToOtherLeases($user)
+    {
+        // Check if user can be added as tenant to draft leases
+        $canBeTenantInDraftLeases = \App\Models\Lease::where('status', 'draft')
+            ->whereNull('deleted_at')
+            ->where(function($query) use ($user) {
+                // Check if user is not already a tenant in this lease
+                $query->where('tenant_id', '!=', $user->id)
+                      ->orWhereNull('tenant_id');
+            })
+            ->exists();
+        
+        // Check if user can be added as resident to any active leases
+        $canBeResidentInActiveLeases = \App\Models\Lease::where('status', 'active')
+            ->whereNull('deleted_at')
+            ->where('tenant_id', '!=', $user->id) // Not already the tenant
+            ->whereDoesntHave('residents', function($query) use ($user) {
+                $query->where('user_id', $user->id); // Not already a resident
+            })
+            ->exists();
+        
+        // Check if user can be added as resident to draft leases
+        $canBeResidentInDraftLeases = \App\Models\Lease::where('status', 'draft')
+            ->whereNull('deleted_at')
+            ->where('tenant_id', '!=', $user->id) // Not already the tenant
+            ->whereDoesntHave('residents', function($query) use ($user) {
+                $query->where('user_id', $user->id); // Not already a resident
+            })
+            ->exists();
+        
+        $canBeAdded = $canBeTenantInDraftLeases || $canBeResidentInActiveLeases || $canBeResidentInDraftLeases;
+        
+        Log::info('Checking if user can be added to other leases', [
+            'user_id' => $user->id,
+            'user_name' => $user->full_name,
+            'can_be_tenant_in_draft_leases' => $canBeTenantInDraftLeases,
+            'can_be_resident_in_active_leases' => $canBeResidentInActiveLeases,
+            'can_be_resident_in_draft_leases' => $canBeResidentInDraftLeases,
+            'can_be_added' => $canBeAdded
+        ]);
+        
+        return $canBeAdded;
+    }
+
+    /**
+     * Assign user to agent's organization
+     */
+    private function assignUserToAgentOrganization($userId, $agentId, $leaseId, $context = 'lease')
+    {
+        $user = User::find($userId);
+        $agent = User::find($agentId);
+        
+        if (!$user || !$agent) {
+            return;
+        }
+        
+        $agentOrganization = $agent->organizations()->first();
+        if (!$agentOrganization) {
+            Log::warning('Agent has no organization', [
+                'agent_id' => $agentId,
+                'user_id' => $userId,
+                'context' => $context
+            ]);
+            return;
+        }
+        
+        // Get tenant role
+        $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
+        if (!$tenantRole) {
+            Log::warning('Tenant role not found', [
+                'agent_id' => $agentId,
+                'user_id' => $userId,
+                'context' => $context
+            ]);
+            return;
+        }
+        
+        // Remove user from current organizations and add to agent's organization
+        $user->organizations()->detach();
+        
+        // Create organization user record with role_id
+        \App\Models\OrganizationUser::create([
+            'organization_id' => $agentOrganization->id,
+            'user_id' => $user->id,
+            'role_id' => $tenantRole->id,
+            'status' => 'active'
+        ]);
+        
+        Log::info('User assigned to agent organization', [
+            'user_id' => $user->id,
+            'user_name' => $user->full_name,
+            'agent_id' => $agentId,
+            'agent_org_id' => $agentOrganization->id,
+            'agent_org_name' => $agentOrganization->name,
+            'role_id' => $tenantRole->id,
+            'lease_id' => $leaseId,
+            'context' => $context
+        ]);
     }
 
     /**
@@ -1322,24 +1449,6 @@ class LeaseController extends Controller
         }
     }
 
-    /**
-     * Move tenant back to default organization when lease ends
-     */
-    private function moveTenantToDefaultOrganization($tenantId)
-    {
-        $tenant = User::find($tenantId);
-        if (!$tenant) {
-            return;
-        }
-
-        // Use the new method to move tenant to Default Organization
-        $this->moveUserToDefaultOrganization($tenant);
-        
-        Log::info('Tenant moved to Default Organization when lease ended', [
-            'tenant_id' => $tenant->id,
-            'tenant_name' => $tenant->full_name
-        ]);
-    }
 
     /**
      * Add resident to lease
@@ -1368,6 +1477,8 @@ class LeaseController extends Controller
         ]);
 
         try {
+            DB::beginTransaction();
+            
             // If user_id is provided, get user info and auto-fill some fields
             $residentData = [
                 'lease_id' => $lease->id,
@@ -1396,33 +1507,7 @@ class LeaseController extends Controller
                     }
                     
                     // Assign user to agent's organization
-                    $agentOrganization = $user->organizations()->first();
-                    if ($agentOrganization) {
-                        // Get tenant role
-                        $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
-                        if ($tenantRole) {
-                            // Remove user from current organizations and add to agent's organization
-                            $selectedUser->organizations()->detach();
-                            
-                            // Create organization user record with role_id
-                            \App\Models\OrganizationUser::create([
-                                'organization_id' => $agentOrganization->id,
-                                'user_id' => $selectedUser->id,
-                                'role_id' => $tenantRole->id,
-                                'status' => 'active'
-                            ]);
-                            
-                            Log::info('User assigned to agent organization when adding resident', [
-                                'user_id' => $selectedUser->id,
-                                'user_name' => $selectedUser->full_name,
-                                'agent_id' => $user->id,
-                                'agent_org_id' => $agentOrganization->id,
-                                'agent_org_name' => $agentOrganization->name,
-                                'role_id' => $tenantRole->id,
-                                'lease_id' => $lease->id
-                            ]);
-                        }
-                    }
+                    $this->assignUserToAgentOrganization($selectedUser->id, $user->id, $lease->id, 'resident_add');
                 }
             }
 
@@ -1430,6 +1515,8 @@ class LeaseController extends Controller
 
             // Load user relationship for response
             $resident->load('user.userProfile');
+            
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -1438,6 +1525,7 @@ class LeaseController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error adding resident: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -1478,6 +1566,8 @@ class LeaseController extends Controller
         ]);
 
         try {
+            DB::beginTransaction();
+            
             $updateData = [
                 'name' => $request->name,
                 'phone' => $request->phone,
@@ -1487,68 +1577,50 @@ class LeaseController extends Controller
 
             // Handle user_id update
             if ($request->has('user_id')) {
-                if ($request->user_id) {
-                    $selectedUser = \App\Models\User::find($request->user_id);
-                    if ($selectedUser) {
-                        $updateData['user_id'] = $selectedUser->id;
-                        
-                        // Auto-fill name and phone if not provided
-                        if (empty($updateData['name'])) {
-                            $updateData['name'] = $selectedUser->full_name;
+                $oldUserId = $resident->user_id;
+                $newUserId = $request->user_id;
+                
+                if ($oldUserId != $newUserId) {
+                    // If changing user_id, handle old user first
+                    if ($oldUserId) {
+                        $oldUser = \App\Models\User::find($oldUserId);
+                        if ($oldUser) {
+                            // Check if old user should be moved back to Default Organization
+                            $this->checkAndMoveUserToDefaultOrganization($oldUser, $lease->agent_id);
                         }
-                        if (empty($updateData['phone'])) {
-                            $updateData['phone'] = $selectedUser->phone;
-                        }
-                        
-                        // Auto-fill ID number from user profile if available
-                        if (empty($updateData['id_number']) && $selectedUser->userProfile) {
-                            $updateData['id_number'] = $selectedUser->userProfile->id_number;
-                        }
-                        
-                        // Assign user to agent's organization
-                        $agentOrganization = $user->organizations()->first();
-                        if ($agentOrganization) {
-                            // Get tenant role
-                            $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
-                            if ($tenantRole) {
-                                // Remove user from current organizations and add to agent's organization
-                                $selectedUser->organizations()->detach();
-                                
-                                // Create organization user record with role_id
-                                \App\Models\OrganizationUser::create([
-                                    'organization_id' => $agentOrganization->id,
-                                    'user_id' => $selectedUser->id,
-                                    'role_id' => $tenantRole->id,
-                                    'status' => 'active'
-                                ]);
-                                
-                                Log::info('User assigned to agent organization when updating resident', [
-                                    'user_id' => $selectedUser->id,
-                                    'user_name' => $selectedUser->full_name,
-                                    'agent_id' => $user->id,
-                                    'agent_org_id' => $agentOrganization->id,
-                                    'agent_org_name' => $agentOrganization->name,
-                                    'role_id' => $tenantRole->id,
-                                    'resident_id' => $resident->id,
-                                    'lease_id' => $lease->id
-                                ]);
+                    }
+                    
+                    // Handle new user
+                    if ($newUserId) {
+                        $selectedUser = \App\Models\User::find($newUserId);
+                        if ($selectedUser) {
+                            $updateData['user_id'] = $selectedUser->id;
+                            
+                            // Auto-fill name and phone if not provided
+                            if (empty($updateData['name'])) {
+                                $updateData['name'] = $selectedUser->full_name;
                             }
+                            if (empty($updateData['phone'])) {
+                                $updateData['phone'] = $selectedUser->phone;
+                            }
+                            
+                            // Auto-fill ID number from user profile if available
+                            if (empty($updateData['id_number']) && $selectedUser->userProfile) {
+                                $updateData['id_number'] = $selectedUser->userProfile->id_number;
+                            }
+                            
+                            // Assign user to agent's organization
+                            $this->assignUserToAgentOrganization($selectedUser->id, $user->id, $lease->id, 'resident_update');
                         }
+                    } else {
+                        $updateData['user_id'] = null;
                     }
-                } else {
-                    // If removing user_id, check if user should be moved back to Default Organization
-                    if ($resident->user_id) {
-                        $previousUser = \App\Models\User::find($resident->user_id);
-                        if ($previousUser) {
-                            // Check if user should be moved back to Default Organization
-                            $this->checkAndMoveUserToDefaultOrganization($previousUser, $lease->agent_id);
-                        }
-                    }
-                    $updateData['user_id'] = null;
                 }
             }
 
             $resident->update($updateData);
+            
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -1557,6 +1629,7 @@ class LeaseController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error updating resident: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -1582,6 +1655,8 @@ class LeaseController extends Controller
             ->firstOrFail();
 
         try {
+            DB::beginTransaction();
+            
             // If resident has a linked user, check if they should be moved back to Default Organization
             if ($resident->user_id) {
                 $linkedUser = \App\Models\User::find($resident->user_id);
@@ -1592,6 +1667,8 @@ class LeaseController extends Controller
             }
             
             $resident->delete();
+            
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -1599,6 +1676,7 @@ class LeaseController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error deleting resident: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -1742,34 +1820,9 @@ class LeaseController extends Controller
                 'signed_at' => $request->signed_at,
             ]);
 
-            // Move tenant to agent's organization when creating lease
-            $tenant = User::find($request->tenant_id);
-            if ($tenant && $organization) {
-                // Get tenant role
-                $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
-                if ($tenantRole) {
-                    // Remove tenant from current organizations and add to agent's organization
-                    $tenant->organizations()->detach();
-                    
-                    // Create organization user record with role_id
-                    \App\Models\OrganizationUser::create([
-                        'organization_id' => $organization->id,
-                        'user_id' => $tenant->id,
-                        'role_id' => $tenantRole->id,
-                        'status' => 'active'
-                    ]);
-                    
-                    Log::info('Tenant assigned to agent organization when creating lease from lead', [
-                        'tenant_id' => $tenant->id,
-                        'tenant_name' => $tenant->full_name,
-                        'agent_id' => $user->id,
-                        'agent_org_id' => $organization->id,
-                        'agent_org_name' => $organization->name,
-                        'role_id' => $tenantRole->id,
-                        'lease_id' => $lease->id,
-                        'lead_id' => $leadId
-                    ]);
-                }
+            // Move tenant to agent's organization when creating lease from lead
+            if ($request->tenant_id) {
+                $this->assignUserToAgentOrganization($request->tenant_id, $user->id, $lease->id, 'lease_create_from_lead');
             }
 
             // Add services if provided
@@ -1857,5 +1910,94 @@ class LeaseController extends Controller
             ->get();
 
         return response()->json($leases);
+    }
+
+    /**
+     * Debug method to check user organization status
+     */
+    public function debugUserOrganization($userId)
+    {
+        try {
+            $user = User::find($userId);
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            // Get user's current organizations
+            $currentOrganizations = $user->organizations()->get();
+
+            // Check active leases as tenant
+            $activeLeasesAsTenant = Lease::where('tenant_id', $user->id)
+                ->where('status', 'active')
+                ->whereNull('deleted_at')
+                ->with(['unit.property', 'organization'])
+                ->get();
+
+            // Check active leases as resident
+            $activeLeasesAsResident = \App\Models\LeaseResident::where('user_id', $user->id)
+                ->whereHas('lease', function($query) {
+                    $query->where('status', 'active')->whereNull('deleted_at');
+                })
+                ->with(['lease.unit.property', 'lease.organization'])
+                ->get();
+
+            // Check if user can be added to other leases
+            $canBeAddedToOtherLeases = $this->canUserBeAddedToOtherLeases($user);
+
+            // Get Default Organization
+            $defaultOrg = \App\Models\Organization::find(3);
+            if (!$defaultOrg) {
+                $defaultOrg = \App\Models\Organization::where('name', 'Default Organization')
+                    ->orWhere('code', 'ORG_MAIN')
+                    ->orWhere('name', 'Tổ chức mặc định')
+                    ->first();
+            }
+
+            return response()->json([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->full_name,
+                    'email' => $user->email,
+                    'phone' => $user->phone
+                ],
+                'current_organizations' => $currentOrganizations->map(function($org) {
+                    return [
+                        'id' => $org->id,
+                        'name' => $org->name,
+                        'code' => $org->code
+                    ];
+                }),
+                'active_leases_as_tenant' => $activeLeasesAsTenant->map(function($lease) {
+                    return [
+                        'id' => $lease->id,
+                        'contract_no' => $lease->contract_no,
+                        'status' => $lease->status,
+                        'unit' => $lease->unit->name ?? 'N/A',
+                        'property' => $lease->unit->property->name ?? 'N/A',
+                        'organization' => $lease->organization->name ?? 'N/A'
+                    ];
+                }),
+                'active_leases_as_resident' => $activeLeasesAsResident->map(function($resident) {
+                    return [
+                        'resident_id' => $resident->id,
+                        'lease_id' => $resident->lease->id,
+                        'contract_no' => $resident->lease->contract_no,
+                        'status' => $resident->lease->status,
+                        'unit' => $resident->lease->unit->name ?? 'N/A',
+                        'property' => $resident->lease->unit->property->name ?? 'N/A',
+                        'organization' => $resident->lease->organization->name ?? 'N/A'
+                    ];
+                }),
+                'can_be_added_to_other_leases' => $canBeAddedToOtherLeases,
+                'default_organization' => $defaultOrg ? [
+                    'id' => $defaultOrg->id,
+                    'name' => $defaultOrg->name,
+                    'code' => $defaultOrg->code
+                ] : null,
+                'should_move_to_default' => !$activeLeasesAsTenant->count() && !$activeLeasesAsResident->count() && !$canBeAddedToOtherLeases
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }
