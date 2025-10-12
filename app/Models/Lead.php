@@ -4,15 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasSoftDeletesWithUser;
+use App\Traits\BelongsToOrganization;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Lead extends Model
 {
-    use SoftDeletes, HasSoftDeletesWithUser;
+    use SoftDeletes, HasSoftDeletesWithUser, BelongsToOrganization;
 
     protected $table = 'leads';
 
     protected $fillable = [
+        'organization_id',
         'tenant_id',
         'source',
         'name',
@@ -30,6 +32,14 @@ class Lead extends Model
         'budget_min' => 'decimal:2',
         'budget_max' => 'decimal:2',
     ];
+
+    /**
+     * Get the organization that owns the lead.
+     */
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
 
     /**
      * Get the viewings for the lead.

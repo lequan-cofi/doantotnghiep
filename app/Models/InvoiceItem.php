@@ -8,8 +8,6 @@ class InvoiceItem extends Model
 {
     protected $table = 'invoice_items';
 
-    public $timestamps = false;
-
     protected $fillable = [
         'invoice_id',
         'item_type',
@@ -19,6 +17,8 @@ class InvoiceItem extends Model
         'amount',
         'meta_json',
     ];
+
+    public $timestamps = true;
 
     protected $casts = [
         'quantity' => 'decimal:3',

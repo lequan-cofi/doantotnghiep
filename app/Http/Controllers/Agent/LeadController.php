@@ -141,7 +141,17 @@ class LeadController extends Controller
         }
 
         try {
+            // Get the authenticated user's organization
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            $organization = $user->organizations()->first();
+            
+            if (!$organization) {
+                return back()->withInput()->with('error', 'Không tìm thấy thông tin tổ chức của bạn.');
+            }
+
             $lead = Lead::create([
+                'organization_id' => $organization->id,
                 'source' => $request->source,
                 'name' => $request->name,
                 'phone' => $request->phone,

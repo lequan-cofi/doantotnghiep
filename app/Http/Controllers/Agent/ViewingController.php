@@ -24,9 +24,8 @@ class ViewingController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         // Query viewings for assigned properties
-        $query = Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-            $q->whereIn('property_id', $assignedPropertyIds);
-        })->with(['unit.property', 'tenant']);
+        $query = Viewing::whereIn('property_id', $assignedPropertyIds)
+            ->with(['property', 'unit', 'agent', 'organization']);
 
         // Filter by status
         if ($request->filled('status')) {
@@ -35,22 +34,18 @@ class ViewingController extends Controller
 
         // Filter by property
         if ($request->filled('property_id')) {
-            $query->whereHas('unit', function($q) use ($request) {
-                $q->where('property_id', $request->property_id);
-            });
+            $query->where('property_id', $request->property_id);
         }
 
         // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('notes', 'like', "%{$search}%")
-                  ->orWhereHas('tenant', function($tenantQuery) use ($search) {
-                      $tenantQuery->where('full_name', 'like', "%{$search}%")
-                                 ->orWhere('email', 'like', "%{$search}%")
-                                 ->orWhere('phone', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('unit.property', function($propertyQuery) use ($search) {
+                $q->where('note', 'like', "%{$search}%")
+                  ->orWhere('lead_name', 'like', "%{$search}%")
+                  ->orWhere('lead_phone', 'like', "%{$search}%")
+                  ->orWhere('lead_email', 'like', "%{$search}%")
+                  ->orWhereHas('property', function($propertyQuery) use ($search) {
                       $propertyQuery->where('name', 'like', "%{$search}%");
                   });
             });
@@ -99,11 +94,9 @@ class ViewingController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         // Get today's viewings
-        $viewings = Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-            $q->whereIn('property_id', $assignedPropertyIds);
-        })
+        $viewings = Viewing::whereIn('property_id', $assignedPropertyIds)
         ->whereDate('schedule_at', today())
-        ->with(['unit.property', 'tenant'])
+        ->with(['property', 'unit', 'agent', 'organization'])
         ->orderBy('schedule_at')
         ->get();
 
@@ -122,10 +115,8 @@ class ViewingController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         // Get viewings for calendar
-        $viewings = Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-            $q->whereIn('property_id', $assignedPropertyIds);
-        })
-        ->with(['unit.property', 'tenant'])
+        $viewings = Viewing::whereIn('property_id', $assignedPropertyIds)
+        ->with(['property', 'unit', 'agent', 'organization'])
         ->where('schedule_at', '>=', now()->startOfMonth())
         ->where('schedule_at', '<=', now()->endOfMonth())
         ->get();
@@ -146,30 +137,17 @@ class ViewingController extends Controller
         
         // Get statistics
         $stats = [
-            'total_viewings' => Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-                $q->whereIn('property_id', $assignedPropertyIds);
-            })->count(),
-            'confirmed_viewings' => Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-                $q->whereIn('property_id', $assignedPropertyIds);
-            })->where('status', 'confirmed')->count(),
-            'pending_viewings' => Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-                $q->whereIn('property_id', $assignedPropertyIds);
-            })->where('status', 'pending')->count(),
-            'cancelled_viewings' => Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-                $q->whereIn('property_id', $assignedPropertyIds);
-            })->where('status', 'cancelled')->count(),
-            'today_viewings' => Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-                $q->whereIn('property_id', $assignedPropertyIds);
-            })->whereDate('schedule_at', today())->count(),
-            'this_week_viewings' => Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-                $q->whereIn('property_id', $assignedPropertyIds);
-            })->whereBetween('schedule_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'total_viewings' => Viewing::whereIn('property_id', $assignedPropertyIds)->count(),
+            'confirmed_viewings' => Viewing::whereIn('property_id', $assignedPropertyIds)->where('status', 'confirmed')->count(),
+            'requested_viewings' => Viewing::whereIn('property_id', $assignedPropertyIds)->where('status', 'requested')->count(),
+            'done_viewings' => Viewing::whereIn('property_id', $assignedPropertyIds)->where('status', 'done')->count(),
+            'cancelled_viewings' => Viewing::whereIn('property_id', $assignedPropertyIds)->where('status', 'cancelled')->count(),
+            'today_viewings' => Viewing::whereIn('property_id', $assignedPropertyIds)->whereDate('schedule_at', today())->count(),
+            'this_week_viewings' => Viewing::whereIn('property_id', $assignedPropertyIds)->whereBetween('schedule_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
         ];
 
         // Get monthly statistics
-        $monthlyStats = Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-            $q->whereIn('property_id', $assignedPropertyIds);
-        })
+        $monthlyStats = Viewing::whereIn('property_id', $assignedPropertyIds)
         ->selectRaw('DATE(schedule_at) as date, COUNT(*) as count')
         ->where('schedule_at', '>=', now()->startOfMonth())
         ->where('schedule_at', '<=', now()->endOfMonth())
@@ -192,10 +170,8 @@ class ViewingController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         // Get viewing
-        $viewing = Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-            $q->whereIn('property_id', $assignedPropertyIds);
-        })
-        ->with(['unit.property', 'tenant'])
+        $viewing = Viewing::whereIn('property_id', $assignedPropertyIds)
+        ->with(['property', 'unit', 'agent', 'organization'])
         ->findOrFail($id);
 
         return view('agent.viewings.show', compact('viewing'));
@@ -213,9 +189,7 @@ class ViewingController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         // Get viewing
-        $viewing = Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-            $q->whereIn('property_id', $assignedPropertyIds);
-        })->findOrFail($id);
+        $viewing = Viewing::whereIn('property_id', $assignedPropertyIds)->findOrFail($id);
 
         $viewing->update([
             'status' => 'confirmed',
@@ -238,9 +212,7 @@ class ViewingController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         // Get viewing
-        $viewing = Viewing::whereHas('unit', function($q) use ($assignedPropertyIds) {
-            $q->whereIn('property_id', $assignedPropertyIds);
-        })->findOrFail($id);
+        $viewing = Viewing::whereIn('property_id', $assignedPropertyIds)->findOrFail($id);
 
         $viewing->update([
             'status' => 'cancelled',
@@ -249,5 +221,33 @@ class ViewingController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Lịch hẹn đã được hủy thành công!');
+    }
+
+    /**
+     * Mark a viewing as done.
+     */
+    public function markDone(Request $request, $id)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Get assigned properties
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        
+        // Get viewing
+        $viewing = Viewing::whereIn('property_id', $assignedPropertyIds)->findOrFail($id);
+
+        $request->validate([
+            'result_note' => 'nullable|string|max:1000',
+        ]);
+
+        $viewing->update([
+            'status' => 'done',
+            'result_note' => $request->result_note,
+            'completed_at' => now(),
+            'completed_by' => $user->id
+        ]);
+
+        return redirect()->back()->with('success', 'Lịch hẹn đã được đánh dấu hoàn thành!');
     }
 }

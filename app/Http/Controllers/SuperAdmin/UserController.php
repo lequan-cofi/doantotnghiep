@@ -82,7 +82,7 @@ class UserController extends Controller
 
         DB::beginTransaction();
         try {
-            \Log::info('Starting user creation', [
+            Log::info('Starting user creation', [
                 'request_data' => $request->all()
             ]);
             
@@ -95,7 +95,7 @@ class UserController extends Controller
                 'status' => $request->status,
             ]);
             
-            \Log::info('User created successfully', [
+            Log::info('User created successfully', [
                 'user_id' => $user->id
             ]);
 
@@ -103,17 +103,25 @@ class UserController extends Controller
             foreach ($request->organizations as $index => $organizationId) {
                 $roleId = $request->org_roles[$index] ?? null;
                 if ($roleId) {
-                    \Log::info('Attaching organization', [
+                    Log::info('Attaching organization', [
                         'user_id' => $user->id,
                         'organization_id' => $organizationId,
                         'role_id' => $roleId
                     ]);
                     
-                    $user->organizations()->attach($organizationId, [
-                        'organization_id' => $organizationId,
-                        'role_id' => $roleId,
-                        'status' => 'active'
-                    ]);
+                    // Check if relationship already exists
+                    $exists = $user->organizations()
+                        ->wherePivot('organization_id', $organizationId)
+                        ->wherePivot('role_id', $roleId)
+                        ->exists();
+                    
+                    if (!$exists) {
+                        $user->organizations()->attach($organizationId, [
+                            'organization_id' => $organizationId,
+                            'role_id' => $roleId,
+                            'status' => 'active'
+                        ]);
+                    }
                 }
             }
 
@@ -167,6 +175,11 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        Log::info('Starting user update', [
+            'user_id' => $user->id,
+            'request_data' => $request->all()
+        ]);
+
         $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
@@ -198,16 +211,86 @@ class UserController extends Controller
             $user->update($updateData);
 
             // Update organization relationships
-            $user->organizations()->detach();
+            Log::info('Processing organizations', [
+                'organizations' => $request->organizations,
+                'org_roles' => $request->org_roles
+            ]);
+            
+            // Get current organization relationships
+            $currentRelationships = $user->organizations()->get()->map(function($org) {
+                return [
+                    'organization_id' => $org->id,
+                    'role_id' => $org->pivot->role_id,
+                    'status' => $org->pivot->status
+                ];
+            })->toArray();
+            
+            Log::info('Current relationships', ['current' => $currentRelationships]);
+            
+            // Build new relationships from form data
+            $newRelationships = [];
             foreach ($request->organizations as $index => $organizationId) {
                 $roleId = $request->org_roles[$index] ?? null;
                 if ($roleId) {
-                    $user->organizations()->attach($organizationId, [
+                    $newRelationships[] = [
                         'organization_id' => $organizationId,
                         'role_id' => $roleId,
                         'status' => 'active'
-                    ]);
+                    ];
                 }
+            }
+            
+            Log::info('New relationships from form', ['new' => $newRelationships]);
+            
+            // Find relationships to remove (in current but not in new)
+            $toRemove = [];
+            foreach ($currentRelationships as $current) {
+                $found = false;
+                foreach ($newRelationships as $new) {
+                    if ($current['organization_id'] == $new['organization_id'] && 
+                        $current['role_id'] == $new['role_id']) {
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $toRemove[] = $current;
+                }
+            }
+            
+            // Find relationships to add (in new but not in current)
+            $toAdd = [];
+            foreach ($newRelationships as $new) {
+                $found = false;
+                foreach ($currentRelationships as $current) {
+                    if ($current['organization_id'] == $new['organization_id'] && 
+                        $current['role_id'] == $new['role_id']) {
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $toAdd[] = $new;
+                }
+            }
+            
+            Log::info('Relationships to remove', ['remove' => $toRemove]);
+            Log::info('Relationships to add', ['add' => $toAdd]);
+            
+            // Remove relationships
+            foreach ($toRemove as $rel) {
+                $user->organizations()->wherePivot('organization_id', $rel['organization_id'])
+                     ->wherePivot('role_id', $rel['role_id'])
+                     ->detach();
+            }
+            
+            // Add new relationships
+            foreach ($toAdd as $rel) {
+                $user->organizations()->attach($rel['organization_id'], [
+                    'organization_id' => $rel['organization_id'],
+                    'role_id' => $rel['role_id'],
+                    'status' => $rel['status']
+                ]);
             }
 
             // Update global roles - skip for now as it's causing issues

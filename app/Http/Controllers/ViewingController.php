@@ -38,8 +38,9 @@ class ViewingController extends Controller
         }
 
         // Get property and agent info
-        $property = Property::with('agent')->findOrFail($request->property_id);
+        $property = Property::with(['agent', 'organization'])->findOrFail($request->property_id);
         $agentId = $property->agent_id;
+        $organizationId = $property->organization_id;
 
         // Combine date and time
         $scheduleAt = Carbon::createFromFormat('Y-m-d H:i', 
@@ -62,8 +63,10 @@ class ViewingController extends Controller
         // Create viewing
         $viewing = Viewing::create([
             'lead_id' => Auth::id(),
-            'listing_id' => $request->property_id,
+            'listing_id' => $request->property_id, // Legacy field
+            'property_id' => $request->property_id, // New field
             'agent_id' => $agentId,
+            'organization_id' => $organizationId,
             'unit_id' => $request->unit_id,
             'lead_name' => $request->lead_name,
             'lead_phone' => $request->lead_phone,

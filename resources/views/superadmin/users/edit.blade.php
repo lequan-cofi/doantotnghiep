@@ -3,7 +3,7 @@
 @section('title', 'Chỉnh sửa Người dùng')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/notification-system.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/notifications.css') }}">
 <style>
     .form-section {
         background: #f8f9fa;
@@ -239,7 +239,15 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/notification-system.js') }}"></script>
+<script src="{{ asset('assets/js/notifications.js') }}"></script>
+<script>
+// Debug notification system
+console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
+console.log('Notify available:', typeof Notify !== 'undefined');
+if (typeof Notify !== 'undefined') {
+    console.log('Notify methods:', Object.getOwnPropertyNames(Notify));
+}
+</script>
 <script>
 let organizationCount = {{ $user->organizations->count() }};
 
@@ -302,7 +310,7 @@ document.getElementById('editUserForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     if (typeof Notify !== 'undefined') {
-        Notify.toast('Đang cập nhật người dùng...', 'info');
+        Notify.info('Đang cập nhật người dùng...', 'Đang xử lý');
     }
     
     const formData = new FormData(this);
@@ -319,7 +327,7 @@ document.getElementById('editUserForm').addEventListener('submit', function(e) {
     .then(data => {
         if (data.success) {
             if (typeof Notify !== 'undefined') {
-                Notify.toast(data.message, 'success');
+                Notify.success(data.message, 'Thành công');
             } else {
                 alert(data.message);
             }
@@ -331,7 +339,7 @@ document.getElementById('editUserForm').addEventListener('submit', function(e) {
             }
         } else {
             if (typeof Notify !== 'undefined') {
-                Notify.toast(data.message, 'error');
+                Notify.error(data.message, 'Lỗi');
             } else {
                 alert(data.message);
             }
@@ -340,7 +348,7 @@ document.getElementById('editUserForm').addEventListener('submit', function(e) {
     .catch(error => {
         console.error('Update User Error:', error);
         if (typeof Notify !== 'undefined') {
-            Notify.toast('Có lỗi xảy ra khi cập nhật người dùng', 'error');
+            Notify.error('Có lỗi xảy ra khi cập nhật người dùng', 'Lỗi');
         } else {
             alert('Có lỗi xảy ra khi cập nhật người dùng');
         }

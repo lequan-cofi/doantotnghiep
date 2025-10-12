@@ -9,6 +9,7 @@ if (app()->environment('local')) {
 use App\Http\Controllers\Auth\EmailAuthController;
 use App\Http\Controllers\Manager\PropertyController;
 use App\Http\Controllers\Manager\LeaseController;
+use App\Http\Controllers\Agent\InvoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -244,6 +245,16 @@ Route::get('/property/{id}', [\App\Http\Controllers\HomeController::class, 'prop
 Route::get('/test', function () {
     return view('test');
 })->name('test');
+
+// Test route to debug routing issues
+Route::get('/test-routing', function () {
+    return response()->json([
+        'message' => 'Routing is working!',
+        'timestamp' => now(),
+        'url' => request()->url(),
+        'path' => request()->path()
+    ]);
+})->name('test.routing');
 
 
 /*
@@ -685,6 +696,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/viewings/{id}', [\App\Http\Controllers\Agent\ViewingController::class, 'show'])->name('viewings.show');
         Route::post('/viewings/{id}/confirm', [\App\Http\Controllers\Agent\ViewingController::class, 'confirm'])->name('viewings.confirm');
         Route::post('/viewings/{id}/cancel', [\App\Http\Controllers\Agent\ViewingController::class, 'cancel'])->name('viewings.cancel');
+        Route::post('/viewings/{id}/mark-done', [\App\Http\Controllers\Agent\ViewingController::class, 'markDone'])->name('viewings.mark-done');
 
         // Meters management
         Route::get('/meters', [\App\Http\Controllers\Agent\MeterController::class, 'index'])->name('meters.index');
@@ -733,6 +745,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/commission-policies/{id}/edit', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'edit'])->name('commission-policies.edit');
         Route::put('/commission-policies/{id}', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'update'])->name('commission-policies.update');
         Route::delete('/commission-policies/{id}', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'destroy'])->name('commission-policies.destroy');
+        Route::get('/commission-policies/test', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'test'])->name('commission-policies.test');
 
         Route::get('/commission-events', [\App\Http\Controllers\Agent\CommissionEventController::class, 'index'])->name('commission-events.index');
         Route::get('/commission-events/create', [\App\Http\Controllers\Agent\CommissionEventController::class, 'create'])->name('commission-events.create');
@@ -741,6 +754,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/commission-events/{id}/edit', [\App\Http\Controllers\Agent\CommissionEventController::class, 'edit'])->name('commission-events.edit');
         Route::put('/commission-events/{id}', [\App\Http\Controllers\Agent\CommissionEventController::class, 'update'])->name('commission-events.update');
         Route::delete('/commission-events/{id}', [\App\Http\Controllers\Agent\CommissionEventController::class, 'destroy'])->name('commission-events.destroy');
+        Route::get('/commission-events/test', [\App\Http\Controllers\Agent\CommissionEventController::class, 'test'])->name('commission-events.test');
+        // Invoice sync routes removed - commission events no longer create invoices
 
         // Reports
         Route::get('/revenue-reports', [\App\Http\Controllers\Agent\RevenueReportController::class, 'index'])->name('revenue-reports.index');
@@ -750,6 +765,21 @@ Route::middleware('auth')->group(function () {
         // Tenants management (CRUD)
         Route::resource('tenants', \App\Http\Controllers\Agent\TenantController::class);
         Route::post('/tenants/add-resident/{leaseId}', [\App\Http\Controllers\Agent\TenantController::class, 'addResident'])->name('tenants.add-resident');
+
+        // Booking Deposits management (CRUD)
+        // Specific routes must come BEFORE resource routes to avoid conflicts
+        Route::get('/booking-deposits/get-units', [\App\Http\Controllers\Agent\BookingDepositController::class, 'getUnits'])->name('booking-deposits.get-units');
+        Route::get('/booking-deposits/statistics', [\App\Http\Controllers\Agent\BookingDepositController::class, 'statistics'])->name('booking-deposits.statistics');
+        
+        // Alternative route structure to avoid conflicts
+        Route::get('/api/booking-deposits/units', [\App\Http\Controllers\Agent\BookingDepositController::class, 'getUnits'])->name('api.booking-deposits.units');
+        
+        
+        
+        Route::post('/booking-deposits/{id}/mark-as-paid', [\App\Http\Controllers\Agent\BookingDepositController::class, 'markAsPaid'])->name('booking-deposits.mark-as-paid');
+        Route::post('/booking-deposits/{id}/refund', [\App\Http\Controllers\Agent\BookingDepositController::class, 'refund'])->name('booking-deposits.refund');
+        Route::post('/booking-deposits/{id}/cancel', [\App\Http\Controllers\Agent\BookingDepositController::class, 'cancel'])->name('booking-deposits.cancel');
+        Route::resource('booking-deposits', \App\Http\Controllers\Agent\BookingDepositController::class);
 
         // Settings
         Route::get('/settings/general', [\App\Http\Controllers\Agent\SettingsController::class, 'general'])->name('settings.general');
@@ -766,6 +796,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/simple-test', [\App\Http\Controllers\Agent\LeaseController::class, 'simpleTest']);
         Route::get('/debug-org-3', [\App\Http\Controllers\Agent\LeaseController::class, 'debugOrg3']);
     });
+
+    // Invoices management (CRUD)
+    Route::resource('invoices', \App\Http\Controllers\Agent\InvoiceController::class);
+    Route::post('/invoices/{id}/issue', [\App\Http\Controllers\Agent\InvoiceController::class, 'issue'])->name('invoices.issue');
+    Route::post('/invoices/{id}/cancel', [\App\Http\Controllers\Agent\InvoiceController::class, 'cancel'])->name('invoices.cancel');
+    Route::get('/invoices/lease-info/{leaseId}', [\App\Http\Controllers\Agent\InvoiceController::class, 'getLeaseInfo'])->name('invoices.lease-info');
     });
 
     /*

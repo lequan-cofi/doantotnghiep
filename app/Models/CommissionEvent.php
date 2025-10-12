@@ -99,5 +99,7 @@ class CommissionEvent extends Model
     {
         return $this->belongsTo(Unit::class);
     }
+
+    // Invoice relationship removed - commission events no longer create invoices
 }
 

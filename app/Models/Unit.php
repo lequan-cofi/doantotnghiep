@@ -47,6 +47,11 @@ class Unit extends Model
         return $this->hasMany(Listing::class);
     }
 
+    public function bookingDeposits()
+    {
+        return $this->hasMany(BookingDeposit::class);
+    }
+
     public function meters()
     {
         return $this->hasMany(Meter::class);

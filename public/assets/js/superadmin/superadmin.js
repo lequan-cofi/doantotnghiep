@@ -114,27 +114,31 @@ function initSuperAdminCharts() {
 
 // Super Admin Notifications
 function initSuperAdminNotifications() {
-    // Override notification styles for Super Admin
+    // Add Super Admin specific styling to notification container
     if (typeof Notify !== 'undefined') {
-        // Store original toast method
-        const originalToast = Notify.toast;
+        // Add Super Admin specific classes to notification container
+        const container = document.getElementById('notification-container');
+        if (container) {
+            container.classList.add('superadmin-notifications');
+        }
         
-        // Override with Super Admin styling
-        Notify.toast = function(message, type = 'info', title = '') {
-            const toastElement = originalToast.call(this, message, type, title);
+        // Override success method to add crown icon
+        const originalSuccess = Notify.success;
+        Notify.success = function(message, title = 'Thành công!') {
+            const result = originalSuccess.call(this, message, title);
             
-            if (toastElement) {
-                // Add Super Admin specific classes
-                toastElement.classList.add('superadmin-toast');
-                
-                // Add crown icon for Super Admin notifications
-                const icon = toastElement.querySelector('.toast-icon');
-                if (icon && type === 'success') {
-                    icon.innerHTML = '<i class="fas fa-crown"></i>';
-                }
-            }
+            // Add crown icon for Super Admin success notifications
+            setTimeout(() => {
+                const toasts = document.querySelectorAll('.toast-notification.toast-success');
+                toasts.forEach(toast => {
+                    const icon = toast.querySelector('.toast-icon i');
+                    if (icon && !icon.classList.contains('fa-crown')) {
+                        icon.className = 'fas fa-crown';
+                    }
+                });
+            }, 100);
             
-            return toastElement;
+            return result;
         };
     }
 }

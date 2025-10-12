@@ -8,6 +8,7 @@ use App\Models\InvoiceItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Lease;
+use App\Models\BookingDeposit;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,9 @@ class InvoiceController extends Controller
             $query = Invoice::with([
                 'lease.unit.property',
                 'lease.tenant',
+                'bookingDeposit.unit.property',
+                'bookingDeposit.tenantUser',
+                'bookingDeposit.lead',
                 'organization',
                 'items',
                 'payments.method'
@@ -40,6 +44,19 @@ class InvoiceController extends Controller
                       })
                       ->orWhereHas('lease.unit.property', function($propertyQuery) use ($search) {
                           $propertyQuery->where('name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('bookingDeposit.tenantUser', function($tenantQuery) use ($search) {
+                          $tenantQuery->where('full_name', 'like', "%{$search}%")
+                                     ->orWhere('email', 'like', "%{$search}%")
+                                     ->orWhere('phone', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('bookingDeposit.lead', function($leadQuery) use ($search) {
+                          $leadQuery->where('name', 'like', "%{$search}%")
+                                   ->orWhere('email', 'like', "%{$search}%")
+                                   ->orWhere('phone', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('bookingDeposit.unit.property', function($propertyQuery) use ($search) {
+                          $propertyQuery->where('name', 'like', "%{$search}%");
                       });
                 });
             }
@@ -52,6 +69,11 @@ class InvoiceController extends Controller
             // Filter by lease
             if ($request->filled('lease_id')) {
                 $query->where('lease_id', $request->lease_id);
+            }
+
+            // Filter by booking deposit
+            if ($request->filled('booking_deposit_id')) {
+                $query->where('booking_deposit_id', $request->booking_deposit_id);
             }
 
             // Filter by date range
@@ -79,12 +101,19 @@ class InvoiceController extends Controller
 
         // Get filter data - ensure variables are always defined
         $leases = collect();
+        $bookingDeposits = collect();
         $paymentMethods = collect();
         
         try {
             $leases = Lease::with(['unit.property', 'tenant'])->get();
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error loading leases: ' . $e->getMessage());
+        }
+        
+        try {
+            $bookingDeposits = BookingDeposit::with(['unit.property', 'tenantUser', 'lead'])->get();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error loading booking deposits: ' . $e->getMessage());
         }
         
         try {
@@ -96,6 +125,7 @@ class InvoiceController extends Controller
         return view('manager.invoices.index', [
             'invoices' => $invoices,
             'leases' => $leases,
+            'bookingDeposits' => $bookingDeposits,
             'paymentMethods' => $paymentMethods
         ]);
     }
@@ -104,12 +134,19 @@ class InvoiceController extends Controller
     {
         // Ensure variables are always defined
         $leases = collect();
+        $bookingDeposits = collect();
         $paymentMethods = collect();
         
         try {
             $leases = Lease::with(['unit.property', 'tenant'])->get();
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error loading leases in create: ' . $e->getMessage());
+        }
+        
+        try {
+            $bookingDeposits = BookingDeposit::with(['unit.property', 'tenantUser', 'lead'])->get();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error loading booking deposits in create: ' . $e->getMessage());
         }
         
         try {
@@ -120,6 +157,7 @@ class InvoiceController extends Controller
 
         return view('manager.invoices.create', [
             'leases' => $leases,
+            'bookingDeposits' => $bookingDeposits,
             'paymentMethods' => $paymentMethods
         ]);
     }
@@ -128,7 +166,8 @@ class InvoiceController extends Controller
     {
         try {
             $validated = $request->validate([
-                'lease_id' => 'required|exists:leases,id',
+                'lease_id' => 'nullable|exists:leases,id',
+                'booking_deposit_id' => 'nullable|exists:booking_deposits,id',
                 'invoice_no' => 'nullable|string|max:100|unique:invoices,invoice_no',
                 'issue_date' => 'required|date',
                 'due_date' => 'required|date|after_or_equal:issue_date',
@@ -147,6 +186,11 @@ class InvoiceController extends Controller
                 'items.*.amount' => 'required|numeric|min:0',
             ]);
 
+            // Ensure either lease_id or booking_deposit_id is provided
+            if (empty($validated['lease_id']) && empty($validated['booking_deposit_id'])) {
+                return back()->withInput()->with('error', 'Vui lòng chọn hợp đồng thuê hoặc đặt cọc.');
+            }
+
             DB::beginTransaction();
 
             // Get organization from current user
@@ -157,6 +201,7 @@ class InvoiceController extends Controller
             $invoice = Invoice::create([
                 'organization_id' => $organization?->id,
                 'lease_id' => $validated['lease_id'],
+                'booking_deposit_id' => $validated['booking_deposit_id'],
                 'invoice_no' => $validated['invoice_no'],
                 'issue_date' => $validated['issue_date'],
                 'due_date' => $validated['due_date'],

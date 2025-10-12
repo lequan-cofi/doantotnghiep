@@ -62,6 +62,15 @@
                 <i class="fas fa-file-contract"></i>
                 <span>Hợp đồng</span>
             </a>
+            
+            <a href="{{ route('agent.booking-deposits.index') }}" class="nav-item {{ request()->routeIs('agent.booking-deposits.*') ? 'active' : '' }}">
+                <i class="fas fa-hand-holding-usd"></i>
+                <span>Đặt cọc</span>
+            </a>
+            <a href="{{ route('agent.invoices.index') }}" class="nav-item {{ request()->routeIs('agent.invoices.*') ? 'active' : '' }}">
+                <i class="fas fa-file-invoice"></i>
+                <span>Hóa đơn</span>
+            </a>
             <a href="{{ route('agent.leads.index') }}" class="nav-item">
                 <i class="fas fa-users"></i>
                 <span>Leads</span>

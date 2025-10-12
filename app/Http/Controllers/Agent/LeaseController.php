@@ -272,15 +272,7 @@ class LeaseController extends Controller
                 $unit->update(['status' => 'occupied']);
             }
 
-            // Create commission events if lease is active
-            if ($request->status === 'active') {
-                try {
-                    $this->createCommissionEvents($lease, $organization);
-                } catch (\Exception $e) {
-                    Log::error('Error creating commission events: ' . $e->getMessage());
-                    // Don't fail the lease creation if commission events fail
-                }
-            }
+            // Commission events will be created automatically via LeaseObserver
 
             DB::commit();
 
@@ -488,16 +480,7 @@ class LeaseController extends Controller
             // Update unit status based on lease status
             $this->updateUnitStatusBasedOnLease($lease, $request->status);
 
-            // Create commission events if status changed to active
-            if ($request->status === 'active' && $lease->status !== 'active') {
-                $organization = $user->organizations()->first();
-                try {
-                    $this->createCommissionEvents($lease, $organization);
-                } catch (\Exception $e) {
-                    Log::error('Error creating commission events: ' . $e->getMessage());
-                    // Don't fail the lease update if commission events fail
-                }
-            }
+            // Commission events will be created automatically via LeaseObserver when status changes
 
             DB::commit();
 
@@ -585,110 +568,7 @@ class LeaseController extends Controller
         return "HD{$year}{$month}" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * Create commission events for lease
-     */
-    private function createCommissionEvents($lease, $organization)
-    {
-        if (!$organization) {
-            Log::warning('No organization found for user, skipping commission events');
-            return;
-        }
-
-        // Get commission policies for lease_signed trigger
-        $leasePolicies = CommissionPolicy::where('organization_id', $organization->id)
-            ->where('trigger_event', 'lease_signed')
-            ->where('active', true)
-            ->get();
-
-        Log::info('Found ' . $leasePolicies->count() . ' lease_signed commission policies for organization ' . $organization->id);
-
-        foreach ($leasePolicies as $policy) {
-            $baseAmount = $lease->rent_amount;
-            $commissionTotal = $this->calculateCommission($policy, $baseAmount);
-
-            if ($commissionTotal > 0) {
-                $event = CommissionEvent::create([
-                    'policy_id' => $policy->id,
-                    'organization_id' => $organization->id,
-                    'trigger_event' => 'lease_signed',
-                    'ref_type' => 'lease',
-                    'ref_id' => $lease->id,
-                    'lease_id' => $lease->id,
-                    'unit_id' => $lease->unit_id,
-                    'agent_id' => $lease->agent_id,
-                    'user_id' => $lease->agent_id,
-                    'occurred_at' => $lease->signed_at ?? now(),
-                    'amount_base' => $baseAmount,
-                    'commission_total' => $commissionTotal,
-                    'status' => 'pending'
-                ]);
-            }
-        }
-
-        // Create deposit commission event if deposit amount > 0
-        if ($lease->deposit_amount > 0) {
-            $depositPolicies = CommissionPolicy::where('organization_id', $organization->id)
-                ->where('trigger_event', 'deposit_paid')
-                ->where('active', true)
-                ->get();
-
-            Log::info('Found ' . $depositPolicies->count() . ' deposit_paid commission policies for organization ' . $organization->id);
-
-            foreach ($depositPolicies as $policy) {
-                $baseAmount = $lease->deposit_amount;
-                $commissionTotal = $this->calculateCommission($policy, $baseAmount);
-
-                if ($commissionTotal > 0) {
-                    $event = CommissionEvent::create([
-                        'policy_id' => $policy->id,
-                        'organization_id' => $organization->id,
-                        'trigger_event' => 'deposit_paid',
-                        'ref_type' => 'lease',
-                        'ref_id' => $lease->id,
-                        'lease_id' => $lease->id,
-                        'unit_id' => $lease->unit_id,
-                        'agent_id' => $lease->agent_id,
-                        'user_id' => $lease->agent_id,
-                        'occurred_at' => $lease->signed_at ?? now(),
-                        'amount_base' => $baseAmount,
-                        'commission_total' => $commissionTotal,
-                        'status' => 'pending'
-                    ]);
-                }
-            }
-        }
-    }
-
-
-    /**
-     * Calculate commission amount based on policy
-     */
-    private function calculateCommission($policy, $baseAmount)
-    {
-        $commission = 0;
-
-        switch ($policy->calc_type) {
-            case 'percent':
-                $commission = ($baseAmount * $policy->percent_value) / 100;
-                break;
-            case 'flat':
-                $commission = $policy->flat_amount;
-                break;
-        }
-
-        // Apply minimum amount
-        if ($policy->min_amount && $commission < $policy->min_amount) {
-            $commission = $policy->min_amount;
-        }
-
-        // Apply cap amount
-        if ($policy->cap_amount && $commission > $policy->cap_amount) {
-            $commission = $policy->cap_amount;
-        }
-
-        return $commission;
-    }
+    // Commission events logic moved to CommissionEventService and handled by LeaseObserver
 
     /**
      * Update unit status based on lease status
@@ -1840,14 +1720,7 @@ class LeaseController extends Controller
                 $unit->update(['status' => 'occupied']);
             }
 
-            // Create commission events if lease is active
-            if ($request->status === 'active') {
-                try {
-                    $this->createCommissionEvents($lease, $organization);
-                } catch (\Exception $e) {
-                    Log::error('Error creating commission events: ' . $e->getMessage());
-                }
-            }
+            // Commission events will be created automatically via LeaseObserver
 
             // Update lead status to converted
             $lead->update(['status' => 'converted']);

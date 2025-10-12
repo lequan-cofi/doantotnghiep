@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Notification System - QLPhongTro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/notifications.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .test-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .test-content {
+            padding: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        .test-section h4 {
+            color: #495057;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 10px;
+        }
+        .btn-group-custom {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .btn-custom {
+            min-width: 150px;
+            margin: 5px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #28a745; }
+        .status-error { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+        .status-info { background-color: #17a2b8; }
+        .log-container {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-timestamp {
+            color: #a0aec0;
+        }
+        .log-message {
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1><i class="fas fa-bell"></i> Test Notification System</h1>
+            <p class="mb-0">QLPhongTro - Hệ thống thông báo đầy đủ</p>
+        </div>
+        
+        <div class="test-content">
+            <!-- Toast Notifications Test -->
+            <div class="test-section">
+                <h4><i class="fas fa-toast"></i> Toast Notifications</h4>
+                <div class="btn-group-custom">
+                    <button class="btn btn-success btn-custom" onclick="testSuccessToast()">
+                        <i class="fas fa-check"></i> Success Toast
+                    </button>
+                    <button class="btn btn-danger btn-custom" onclick="testErrorToast()">
+                        <i class="fas fa-times"></i> Error Toast
+                    </button>
+                    <button class="btn btn-warning btn-custom" onclick="testWarningToast()">
+                        <i class="fas fa-exclamation-triangle"></i> Warning Toast
+                    </button>
+                    <button class="btn btn-info btn-custom" onclick="testInfoToast()">
+                        <i class="fas fa-info-circle"></i> Info Toast
+                    </button>
+                </div>
+                
+                <div class="btn-group-custom">
+                    <button class="btn btn-primary btn-custom" onclick="testCustomToast()">
+                        <i class="fas fa-cog"></i> Custom Toast
+                    </button>
+                    <button class="btn btn-secondary btn-custom" onclick="testToastWithActions()">
+                        <i class="fas fa-mouse-pointer"></i> Toast with Actions
+                    </button>
+                    <button class="btn btn-dark btn-custom" onclick="testLongToast()">
+                        <i class="fas fa-clock"></i> Long Duration
+                    </button>
+                    <button class="btn btn-light btn-custom" onclick="testNoAutoHide()">
+                        <i class="fas fa-pause"></i> No Auto Hide
+                    </button>
+                </div>
+            </div>
+
+            <!-- Confirmation Modals Test -->
+            <div class="test-section">
+                <h4><i class="fas fa-question-circle"></i> Confirmation Modals</h4>
+                <div class="btn-group-custom">
+                    <button class="btn btn-danger btn-custom" onclick="testDeleteConfirmation()">
+                        <i class="fas fa-trash"></i> Delete Confirmation
+                    </button>
+                    <button class="btn btn-primary btn-custom" onclick="testSaveConfirmation()">
+                        <i class="fas fa-save"></i> Save Confirmation
+                    </button>
+                    <button class="btn btn-warning btn-custom" onclick="testCustomConfirmation()">
+                        <i class="fas fa-cog"></i> Custom Confirmation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Duration Tests -->
+            <div class="test-section">
+                <h4><i class="fas fa-stopwatch"></i> Duration Tests</h4>
+                <div class="btn-group-custom">
+                    <button class="btn btn-outline-primary btn-custom" onclick="testDuration(1000)">
+                        <i class="fas fa-bolt"></i> 1 Second
+                    </button>
+                    <button class="btn btn-outline-primary btn-custom" onclick="testDuration(3000)">
+                        <i class="fas fa-clock"></i> 3 Seconds
+                    </button>
+                    <button class="btn btn-outline-primary btn-custom" onclick="testDuration(5000)">
+                        <i class="fas fa-hourglass-half"></i> 5 Seconds
+                    </button>
+                    <button class="btn btn-outline-primary btn-custom" onclick="testDuration(10000)">
+                        <i class="fas fa-hourglass-end"></i> 10 Seconds
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="test-section">
+                <h4><i class="fas fa-heartbeat"></i> System Status</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-success"></span>
+                            <span>NotificationSystem Class: <strong id="classStatus">Loading...</strong></span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-success"></span>
+                            <span>Global Notify Object: <strong id="globalStatus">Loading...</strong></span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-success"></span>
+                            <span>CSS Styles: <strong id="cssStatus">Loading...</strong></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-info"></span>
+                            <span>Active Toasts: <strong id="activeToasts">0</strong></span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-info"></span>
+                            <span>Total Notifications: <strong id="totalNotifications">0</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Log -->
+            <div class="test-section">
+                <h4><i class="fas fa-list"></i> Event Log</h4>
+                <div class="log-container" id="eventLog">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[00:00:00]</span>
+                        <span class="log-message">System initialized...</span>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary mt-2" onclick="clearLog()">
+                    <i class="fas fa-trash"></i> Clear Log
+                </button>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="test-section">
+                <h4><i class="fas fa-rocket"></i> Quick Actions</h4>
+                <div class="btn-group-custom">
+                    <button class="btn btn-success btn-custom" onclick="testAllNotifications()">
+                        <i class="fas fa-play"></i> Test All
+                    </button>
+                    <button class="btn btn-warning btn-custom" onclick="clearAllToasts()">
+                        <i class="fas fa-broom"></i> Clear All
+                    </button>
+                    <button class="btn btn-info btn-custom" onclick="showSystemInfo()">
+                        <i class="fas fa-info"></i> System Info
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/notifications.js"></script>
+    
+    <script>
+        let notificationCount = 0;
+        let activeToastCount = 0;
+
+        // Initialize system check
+        $(document).ready(function() {
+            checkSystemStatus();
+            updateActiveToasts();
+            
+            // Monitor toast count
+            setInterval(updateActiveToasts, 1000);
+            
+            logEvent('System initialized and ready for testing');
+        });
+
+        function checkSystemStatus() {
+            // Check NotificationSystem class
+            if (typeof NotificationSystem !== 'undefined') {
+                $('#classStatus').text('Available').parent().find('.status-indicator').removeClass('status-error').addClass('status-success');
+            } else {
+                $('#classStatus').text('Not Found').parent().find('.status-indicator').removeClass('status-success').addClass('status-error');
+            }
+
+            // Check global Notify object
+            if (typeof Notify !== 'undefined') {
+                $('#globalStatus').text('Available').parent().find('.status-indicator').removeClass('status-error').addClass('status-success');
+            } else {
+                $('#globalStatus').text('Not Found').parent().find('.status-indicator').removeClass('status-success').addClass('status-error');
+            }
+
+            // Check CSS
+            const notificationContainer = document.getElementById('notification-container');
+            if (notificationContainer) {
+                $('#cssStatus').text('Loaded').parent().find('.status-indicator').removeClass('status-error').addClass('status-success');
+            } else {
+                $('#cssStatus').text('Not Loaded').parent().find('.status-indicator').removeClass('status-success').addClass('status-error');
+            }
+        }
+
+        function updateActiveToasts() {
+            const toasts = document.querySelectorAll('.toast-notification');
+            activeToastCount = toasts.length;
+            $('#activeToasts').text(activeToastCount);
+        }
+
+        function logEvent(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `
+                <div class="log-entry">
+                    <span class="log-timestamp">[${timestamp}]</span>
+                    <span class="log-message">${message}</span>
+                </div>
+            `;
+            $('#eventLog').append(logEntry);
+            $('#eventLog').scrollTop($('#eventLog')[0].scrollHeight);
+        }
+
+        function clearLog() {
+            $('#eventLog').html(`
+                <div class="log-entry">
+                    <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
+                    <span class="log-message">Log cleared...</span>
+                </div>
+            `);
+        }
+
+        // Toast Tests
+        function testSuccessToast() {
+            Notify.success('Hóa đơn đã được tạo thành công!', 'Thành công');
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('Success toast triggered');
+        }
+
+        function testErrorToast() {
+            Notify.error('Không thể kết nối đến máy chủ. Vui lòng thử lại sau.', 'Lỗi hệ thống');
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('Error toast triggered');
+        }
+
+        function testWarningToast() {
+            Notify.warning('Hóa đơn này sắp hết hạn thanh toán.', 'Cảnh báo');
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('Warning toast triggered');
+        }
+
+        function testInfoToast() {
+            Notify.info('Hệ thống sẽ bảo trì vào 2:00 AM ngày mai.', 'Thông báo');
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('Info toast triggered');
+        }
+
+        function testCustomToast() {
+            Notify.toast({
+                title: 'Thông báo tùy chỉnh',
+                message: 'Đây là một thông báo với các tùy chọn tùy chỉnh.',
+                type: 'info',
+                duration: 6000,
+                showProgress: true
+            });
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('Custom toast triggered');
+        }
+
+        function testToastWithActions() {
+            Notify.toast({
+                title: 'Có cập nhật mới',
+                message: 'Phiên bản mới của hệ thống đã sẵn sàng.',
+                type: 'info',
+                duration: 0, // No auto-hide
+                actions: [
+                    {
+                        text: 'Cập nhật ngay',
+                        type: 'success',
+                        icon: 'fas fa-download',
+                        handler: function(toastId) {
+                            logEvent('Update action clicked');
+                            Notify.success('Đang tải cập nhật...', 'Cập nhật');
+                        }
+                    },
+                    {
+                        text: 'Để sau',
+                        type: 'secondary',
+                        icon: 'fas fa-clock',
+                        handler: function(toastId) {
+                            logEvent('Later action clicked');
+                            Notify.info('Cập nhật đã được hoãn lại', 'Thông báo');
+                        }
+                    }
+                ]
+            });
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('Toast with actions triggered');
+        }
+
+        function testLongToast() {
+            Notify.toast({
+                title: 'Thông báo dài hạn',
+                message: 'Thông báo này sẽ hiển thị trong 20 giây.',
+                type: 'warning',
+                duration: 20000,
+                showProgress: true
+            });
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('Long duration toast triggered (20s)');
+        }
+
+        function testNoAutoHide() {
+            Notify.toast({
+                title: 'Thông báo cố định',
+                message: 'Thông báo này sẽ không tự động ẩn. Bạn phải đóng thủ công.',
+                type: 'info',
+                duration: 0,
+                showProgress: false
+            });
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent('No auto-hide toast triggered');
+        }
+
+        // Confirmation Tests
+        function testDeleteConfirmation() {
+            Notify.confirmDelete('hóa đơn INV-2024-001', function() {
+                logEvent('Delete confirmed');
+                Notify.success('Hóa đơn đã được xóa thành công!', 'Xóa thành công');
+            });
+            logEvent('Delete confirmation triggered');
+        }
+
+        function testSaveConfirmation() {
+            Notify.confirmSave(function() {
+                logEvent('Save confirmed');
+                Notify.success('Dữ liệu đã được lưu thành công!', 'Lưu thành công');
+            });
+            logEvent('Save confirmation triggered');
+        }
+
+        function testCustomConfirmation() {
+            Notify.confirm({
+                title: 'Xác nhận phát hành hóa đơn',
+                message: 'Bạn có chắc chắn muốn phát hành hóa đơn này?',
+                details: 'Hóa đơn sẽ chuyển sang trạng thái "Đã phát hành" và không thể chỉnh sửa.',
+                type: 'warning',
+                confirmText: 'Phát hành',
+                cancelText: 'Hủy bỏ',
+                onConfirm: function() {
+                    logEvent('Custom confirmation confirmed');
+                    Notify.success('Hóa đơn đã được phát hành!', 'Phát hành thành công');
+                },
+                onCancel: function() {
+                    logEvent('Custom confirmation cancelled');
+                    Notify.info('Đã hủy phát hành hóa đơn', 'Hủy bỏ');
+                }
+            });
+            logEvent('Custom confirmation triggered');
+        }
+
+        // Duration Tests
+        function testDuration(duration) {
+            Notify.toast({
+                title: `Test ${duration/1000}s`,
+                message: `Thông báo này sẽ hiển thị trong ${duration/1000} giây`,
+                type: 'info',
+                duration: duration,
+                showProgress: true
+            });
+            notificationCount++;
+            $('#totalNotifications').text(notificationCount);
+            logEvent(`Duration test triggered (${duration/1000}s)`);
+        }
+
+        // Quick Actions
+        function testAllNotifications() {
+            logEvent('Starting comprehensive test...');
+            
+            setTimeout(() => testSuccessToast(), 100);
+            setTimeout(() => testErrorToast(), 500);
+            setTimeout(() => testWarningToast(), 1000);
+            setTimeout(() => testInfoToast(), 1500);
+            setTimeout(() => testCustomToast(), 2000);
+            setTimeout(() => testToastWithActions(), 2500);
+            setTimeout(() => {
+                logEvent('Comprehensive test completed');
+            }, 3000);
+        }
+
+        function clearAllToasts() {
+            const toasts = document.querySelectorAll('.toast-notification');
+            toasts.forEach(toast => {
+                const bsToast = bootstrap.Toast.getInstance(toast);
+                if (bsToast) {
+                    bsToast.hide();
+                }
+            });
+            logEvent('All toasts cleared');
+        }
+
+        function showSystemInfo() {
+            const info = `
+                <strong>NotificationSystem Info:</strong><br>
+                • Class Available: ${typeof NotificationSystem !== 'undefined' ? 'Yes' : 'No'}<br>
+                • Global Object: ${typeof Notify !== 'undefined' ? 'Yes' : 'No'}<br>
+                • Container: ${document.getElementById('notification-container') ? 'Yes' : 'No'}<br>
+                • Active Toasts: ${activeToastCount}<br>
+                • Total Notifications: ${notificationCount}<br>
+                • Bootstrap Version: ${typeof bootstrap !== 'undefined' ? 'Available' : 'Not Available'}
+            `;
+            
+            Notify.toast({
+                title: 'System Information',
+                message: info,
+                type: 'info',
+                duration: 0,
+                showProgress: false
+            });
+            
+            logEvent('System info displayed');
+        }
+    </script>
+</body>
+</html>

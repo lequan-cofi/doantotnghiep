@@ -15,7 +15,9 @@ class Viewing extends Model
     protected $fillable = [
         'lead_id',
         'listing_id',
+        'property_id',
         'agent_id',
+        'organization_id',
         'unit_id',
         'lead_name',
         'lead_phone',
@@ -44,6 +46,14 @@ class Viewing extends Model
      */
     public function property()
     {
+        return $this->belongsTo(Property::class, 'property_id');
+    }
+
+    /**
+     * Get the listing for the viewing (legacy).
+     */
+    public function listing()
+    {
         return $this->belongsTo(Property::class, 'listing_id');
     }
 
@@ -61,6 +71,14 @@ class Viewing extends Model
     public function agent()
     {
         return $this->belongsTo(User::class, 'agent_id');
+    }
+
+    /**
+     * Get the organization for the viewing.
+     */
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
     }
 
     /**
