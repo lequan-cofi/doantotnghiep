@@ -747,6 +747,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/revenue-reports/{id}', [\App\Http\Controllers\Agent\RevenueReportController::class, 'show'])->name('revenue-reports.show');
         Route::get('/reports/payments', [\App\Http\Controllers\Agent\PaymentReportController::class, 'index'])->name('reports.payments');
 
+        // Tenants management (CRUD)
+        Route::resource('tenants', \App\Http\Controllers\Agent\TenantController::class);
+        Route::post('/tenants/add-resident/{leaseId}', [\App\Http\Controllers\Agent\TenantController::class, 'addResident'])->name('tenants.add-resident');
+
         // Settings
         Route::get('/settings/general', [\App\Http\Controllers\Agent\SettingsController::class, 'general'])->name('settings.general');
         Route::put('/settings/general', [\App\Http\Controllers\Agent\SettingsController::class, 'updateGeneral'])->name('settings.update-general');

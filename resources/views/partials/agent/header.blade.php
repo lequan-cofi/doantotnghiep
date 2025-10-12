@@ -62,7 +62,15 @@
                 <i class="fas fa-file-contract"></i>
                 <span>Hợp đồng</span>
             </a>
+            <a href="{{ route('agent.leads.index') }}" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>Leads</span>
+            </a>
             
+            <a href="{{ route('agent.tenants.index') }}" class="nav-item {{ request()->routeIs('agent.tenants.*') ? 'active' : '' }}">
+                <i class="fas fa-user-friends"></i>
+                <span>Người dùng</span>
+            </a>
             <div class="nav-group" data-group="viewings">
                 <a href="#" class="nav-item has-submenu nav-parent">
                     <i class="fas fa-calendar-alt"></i>

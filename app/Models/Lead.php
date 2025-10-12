@@ -13,6 +13,7 @@ class Lead extends Model
     protected $table = 'leads';
 
     protected $fillable = [
+        'tenant_id',
         'source',
         'name',
         'phone',
@@ -47,6 +48,14 @@ class Lead extends Model
     }
 
     /**
+     * Get the tenant user associated with this lead.
+     */
+    public function tenant()
+    {
+        return $this->belongsTo(User::class, 'tenant_id');
+    }
+
+    /**
      * Get the leases created from this lead.
      */
     public function leases()
@@ -59,7 +68,7 @@ class Lead extends Model
      */
     public function hasUserAccount()
     {
-        return $this->leases()->whereNotNull('tenant_id')->exists();
+        return $this->tenant_id !== null || $this->leases()->whereNotNull('tenant_id')->exists();
     }
 
     /**
@@ -67,8 +76,22 @@ class Lead extends Model
      */
     public function getUserAccount()
     {
+        // First check if lead has direct tenant_id
+        if ($this->tenant_id) {
+            return $this->tenant;
+        }
+        
+        // Fallback to check through leases
         $lease = $this->leases()->whereNotNull('tenant_id')->first();
         return $lease ? $lease->tenant : null;
+    }
+
+    /**
+     * Check if lead is linked to a tenant user
+     */
+    public function isLinkedToTenant()
+    {
+        return $this->tenant_id !== null;
     }
 }
 
