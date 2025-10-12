@@ -1,168 +1,260 @@
 @extends('layouts.agent_dashboard')
 
-@section('title', 'Bất động sản được gán')
+@section('title', 'Danh sách bất động sản')
 
 @section('content')
-<main class="main-content">
-    <header class="header">
-        <div class="header-content">
-            <div class="header-info">
-                <h1>Bất động sản được gán</h1>
-                <p>Danh sách các bất động sản bạn được phân công quản lý</p>
-            </div>
-            <div class="header-actions">
-                <span class="badge bg-primary fs-6">{{ $properties->count() }} BĐS</span>
-            </div>
+<div class="content">
+    <div class="content-header">
+        <h1 class="content-title">Bất động sản được phân quản lý</h1>
+        <p class="content-subtitle">Danh sách các bất động sản bạn được phân quản lý</p>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ route('agent.properties.index') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Tìm kiếm</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request('search') }}" placeholder="Tên bất động sản...">
+                </div>
+                <div class="col-md-3">
+                    <label for="property_type_id" class="form-label">Loại BĐS</label>
+                    <select class="form-select" id="property_type_id" name="property_type_id">
+                        <option value="">Tất cả loại</option>
+                        @foreach($propertyTypes as $type)
+                            <option value="{{ $type->id }}" {{ request('property_type_id') == $type->id ? 'selected' : '' }}>
+                                {{ $type->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Trạng thái</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="1" {{ request('status') == '1' ? 'selected' : '' }}>Hoạt động</option>
+                        <option value="0" {{ request('status') == '0' ? 'selected' : '' }}>Không hoạt động</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="sort_by" class="form-label">Sắp xếp theo</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="name" {{ request('sort_by') == 'name' ? 'selected' : '' }}>Tên</option>
+                        <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Ngày tạo</option>
+                        <option value="total_rooms" {{ request('sort_by') == 'total_rooms' ? 'selected' : '' }}>Số phòng</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i> Tìm kiếm
+                    </button>
+                    <a href="{{ route('agent.properties.index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i> Xóa bộ lọc
+                    </a>
+                </div>
+            </form>
         </div>
-    </header>
-    
-    <div class="content" id="content">
-        @if($properties->count() > 0)
-            <div class="row">
-                @foreach($properties as $property)
-                <div class="col-lg-6 col-xl-4 mb-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-building"></i> {{ $property->name }}
-                            </h5>
-                            @if($property->owner)
-                                <small class="d-block mt-1">
-                                    <i class="fas fa-user"></i> Chủ trọ: {{ $property->owner->full_name }}
-                                </small>
+    </div>
+
+    <!-- Properties Grid -->
+    @if($properties->count() > 0)
+        <div class="row">
+            @foreach($properties as $property)
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card h-100 property-card">
+                        <!-- Property Image -->
+                        <div class="property-image-container">
+                            @if($property->images && count($property->images) > 0)
+                                <img src="{{ asset('storage/' . $property->images[0]) }}" 
+                                     class="card-img-top property-image" 
+                                     alt="{{ $property->name }}"
+                                     onerror="this.src='{{ asset('assets/images/default-property.jpg') }}'">
+                            @else
+                                <div class="property-image-placeholder">
+                                    <i class="fas fa-building fa-3x text-muted"></i>
+                                </div>
                             @endif
+                            <div class="property-status-badge">
+                                @if($property->status == 1)
+                                    <span class="badge bg-success">Hoạt động</span>
+                                @else
+                                    <span class="badge bg-secondary">Không hoạt động</span>
+                                @endif
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                @if($property->location2025)
-                                    <p class="text-muted mb-1">
-                                        <i class="fas fa-map-marker-alt text-primary"></i> 
-                                        <strong>Địa chỉ mới:</strong> {{ $property->location2025->street }}, {{ $property->location2025->ward }}, {{ $property->location2025->city }}
-                                    </p>
-                                @endif
-                                @if($property->location)
-                                    <p class="text-muted mb-1">
-                                        <i class="fas fa-map-marker-alt text-secondary"></i> 
-                                        <strong>Địa chỉ cũ:</strong> 
-                                        @if($property->location->street)
-                                            {{ $property->location->street }}, 
-                                        @endif
-                                        @if($property->location->ward)
-                                            {{ $property->location->ward }}, 
-                                        @endif
-                                        @if($property->location->district)
-                                            {{ $property->location->district }}, 
-                                        @endif
-                                        {{ $property->location->city }}
-                                    </p>
-                                @endif
-                                
-                                @if($property->description)
-                                    <p class="text-muted small">{{ Str::limit($property->description, 100) }}</p>
-                                @endif
-                            </div>
 
-                            <!-- Statistics -->
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <div class="text-center p-2 bg-light rounded">
-                                        <div class="fw-bold text-primary">{{ $property->total_units }}</div>
-                                        <small class="text-muted">Tổng phòng</small>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="text-center p-2 bg-light rounded">
-                                        <div class="fw-bold text-success">{{ $property->available_units }}</div>
-                                        <small class="text-muted">Trống</small>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="text-center p-2 bg-light rounded">
-                                        <div class="fw-bold text-warning">{{ $property->occupied_units }}</div>
-                                        <small class="text-muted">Đã thuê</small>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="text-center p-2 bg-light rounded">
-                                        <div class="fw-bold text-info">{{ $property->active_leases }}</div>
-                                        <small class="text-muted">Hợp đồng</small>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="card-body d-flex flex-column">
+                            <!-- Property Info -->
+                            <h5 class="card-title">{{ $property->name }}</h5>
+                            <p class="card-text text-muted small">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{ $property->new_address }}
+                            </p>
                             
-                            <!-- Occupancy Rate -->
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="text-muted">Tỷ lệ lấp đầy:</small>
-                                    <small class="fw-bold">{{ $property->occupancy_rate }}%</small>
+                            <p class="card-text text-muted small">
+                                <i class="fas fa-user me-1"></i>
+                                {{ $property->owner_name }}
+                            </p>
+                            
+                            @if($property->propertyType)
+                                <p class="card-text text-muted small">
+                                    <i class="fas fa-tag me-1"></i>
+                                    {{ $property->propertyType->name }}
+                                </p>
+                            @endif
+
+                            <!-- Property Stats -->
+                            <div class="property-stats mt-auto">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="stat-item">
+                                            <h6 class="mb-0">{{ $property->getTotalUnitsCount() }}</h6>
+                                            <small class="text-muted">Tổng phòng</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-item">
+                                            <h6 class="mb-0 text-success">{{ $property->getOccupiedUnitsCount() }}</h6>
+                                            <small class="text-muted">Đã thuê</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-item">
+                                            <h6 class="mb-0 text-primary">{{ $property->getAvailableUnitsCount() }}</h6>
+                                            <small class="text-muted">Trống</small>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="progress" style="height: 6px;">
-                                    <div class="progress-bar bg-success" role="progressbar" 
-                                         style="width: {{ $property->occupancy_rate }}%">
+                                
+                                <!-- Occupancy Rate -->
+                                <div class="mt-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted">Tỷ lệ lấp đầy</small>
+                                        <small class="text-muted">{{ $property->getOccupancyRate() }}%</small>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar 
+                                            @if($property->getOccupancyRate() >= 90) bg-success
+                                            @elseif($property->getOccupancyRate() >= 70) bg-warning
+                                            @else bg-danger
+                                            @endif" 
+                                            style="width: {{ $property->getOccupancyRate() }}%">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Property Details -->
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-muted">Loại:</small>
-                                    <small class="fw-bold">{{ $property->propertyType->name ?? 'Chưa xác định' }}</small>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-muted">Trạng thái:</small>
-                                    <span class="badge bg-{{ $property->status ? 'success' : 'secondary' }}">
-                                        {{ $property->status ? 'Hoạt động' : 'Tạm ngưng' }}
-                                    </span>
-                                </div>
-                                @if($property->total_floors)
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-muted">Số tầng:</small>
-                                    <small class="fw-bold">{{ $property->total_floors }}</small>
-                                </div>
-                                @endif
-                                @if($property->monthly_revenue > 0)
-                                <div class="d-flex justify-content-between">
-                                    <small class="text-muted">Doanh thu:</small>
-                                    <small class="fw-bold text-success">{{ number_format($property->monthly_revenue, 0, ',', '.') }} VNĐ</small>
-                                </div>
-                                @endif
+                            <!-- Action Buttons -->
+                            <div class="mt-3">
+                                <a href="{{ route('agent.properties.show', $property->id) }}" 
+                                   class="btn btn-primary btn-sm w-100">
+                                    <i class="fas fa-eye me-1"></i> Xem chi tiết
+                                </a>
                             </div>
-                        </div>
-                        <div class="card-footer bg-transparent">
-                            <a href="{{ route('agent.properties.show', $property->id) }}" class="btn btn-primary w-100">
-                                <i class="fas fa-eye"></i> Xem chi tiết
-                            </a>
                         </div>
                     </div>
                 </div>
-                @endforeach
-            </div>
-        @else
-            <div class="text-center py-5">
-                <div class="mb-4">
-                    <i class="fas fa-building fa-3x text-muted"></i>
-                </div>
-                <h4 class="text-muted">Chưa có bất động sản nào</h4>
-                <p class="text-muted">Bạn chưa được gán quản lý bất động sản nào. Vui lòng liên hệ quản lý để được phân công.</p>
+            @endforeach
+        </div>
+
+        <!-- Pagination -->
+        @if($properties->hasPages())
+            <div class="d-flex justify-content-center mt-4">
+                {{ $properties->appends(request()->query())->links() }}
             </div>
         @endif
-    </div>
-</main>
+    @else
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="empty-state">
+                <i class="fas fa-building fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">Không có bất động sản nào</h4>
+                <p class="text-muted">Bạn chưa được phân quản lý bất động sản nào hoặc không có kết quả phù hợp với bộ lọc.</p>
+            </div>
+        </div>
+    @endif
+</div>
 @endsection
 
 @push('styles')
 <style>
-.card {
-    transition: transform 0.2s ease-in-out;
+.property-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.card:hover {
+.property-card:hover {
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.bg-light {
-    background-color: #f8f9fa !important;
+.property-image-container {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+}
+
+.property-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.property-card:hover .property-image {
+    transform: scale(1.05);
+}
+
+.property-image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+}
+
+.property-status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.property-stats {
+    border-top: 1px solid #e9ecef;
+    padding-top: 15px;
+}
+
+.stat-item h6 {
+    font-weight: 600;
+    color: #495057;
+}
+
+.progress {
+    background-color: #e9ecef;
+    border-radius: 3px;
+}
+
+.progress-bar {
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.empty-state {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.card-img-top {
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+@media (max-width: 768px) {
+    .property-image-container {
+        height: 180px;
+    }
 }
 </style>
 @endpush

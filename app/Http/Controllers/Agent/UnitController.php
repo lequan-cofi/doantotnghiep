@@ -8,9 +8,17 @@ use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Services\ImageService;
 
 class UnitController extends Controller
 {
+    protected $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
     /**
      * Display a listing of units for properties assigned to the agent.
      */
@@ -26,13 +34,15 @@ class UnitController extends Controller
             return view('agent.units.index', [
                 'units' => collect(),
                 'properties' => collect(),
-                'selectedProperty' => null
+                'selectedProperty' => null,
+                'selectedStatus' => null,
+                'search' => null
             ]);
         }
 
         // Query units với filter
         $query = Unit::whereIn('property_id', $assignedPropertyIds)
-            ->with(['property', 'leases' => function($q) {
+            ->with(['property', 'amenities', 'leases' => function($q) {
                 $q->where('status', 'active')->whereNull('deleted_at');
             }]);
 
@@ -51,7 +61,7 @@ class UnitController extends Controller
             $query->where('code', 'like', '%' . $request->search . '%');
         }
 
-        // Get units with sorting
+        // Get units with sorting - default ID desc
         $sortBy = $request->get('sort_by', 'id');
         $sortOrder = $request->get('sort_order', 'desc');
         
@@ -113,9 +123,13 @@ class UnitController extends Controller
             $selectedProperty = $properties->find($request->property_id);
         }
 
+        // Load amenities
+        $amenities = \App\Models\Amenity::orderBy('category')->orderBy('name')->get();
+
         return view('agent.units.create', [
             'properties' => $properties,
-            'selectedProperty' => $selectedProperty
+            'selectedProperty' => $selectedProperty,
+            'amenities' => $amenities
         ]);
     }
 
@@ -127,7 +141,13 @@ class UnitController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         
-        // Validate request
+        $creationMode = $request->input('creation_mode', 'single');
+        
+        if ($creationMode === 'bulk') {
+            return $this->storeBulk($request, $user);
+        }
+        
+        // Validate single unit request
         $request->validate([
             'property_id' => 'required|exists:properties,id',
             'code' => 'required|string|max:50',
@@ -138,7 +158,11 @@ class UnitController extends Controller
             'deposit_amount' => 'nullable|numeric|min:0',
             'max_occupancy' => 'required|integer|min:1|max:10',
             'status' => 'required|in:available,reserved,occupied,maintenance',
-            'note' => 'nullable|string|max:1000'
+            'note' => 'nullable|string|max:1000',
+            'images' => 'nullable|array',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'amenities' => 'nullable|array',
+            'amenities.*' => 'exists:amenities,id'
         ], [
             'property_id.required' => 'Vui lòng chọn bất động sản.',
             'property_id.exists' => 'Bất động sản không tồn tại.',
@@ -184,6 +208,13 @@ class UnitController extends Controller
         try {
             DB::beginTransaction();
 
+            // Process images
+            $imagePaths = [];
+            if ($request->hasFile('images')) {
+                $uploadedImages = $this->imageService->uploadMultipleImages($request->file('images'), 'units');
+                $imagePaths = array_column($uploadedImages, 'original');
+            }
+
             $unit = Unit::create([
                 'property_id' => $request->property_id,
                 'code' => $request->code,
@@ -195,7 +226,13 @@ class UnitController extends Controller
                 'max_occupancy' => $request->max_occupancy,
                 'status' => $request->status,
                 'note' => $request->note,
+                'images' => $imagePaths,
             ]);
+
+            // Sync amenities
+            if ($request->has('amenities')) {
+                $unit->amenities()->sync($request->amenities);
+            }
 
             DB::commit();
 
@@ -205,6 +242,327 @@ class UnitController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Có lỗi xảy ra khi tạo phòng. Vui lòng thử lại.']);
+        }
+    }
+
+    /**
+     * Store multiple units in bulk.
+     */
+    private function storeBulk(Request $request, $user)
+    {
+        // Debug logging
+        Log::info('Bulk creation request data:', $request->all());
+        
+        // Determine configuration mode
+        $floorConfigMode = $request->input('floor_config_mode', 'simple');
+        Log::info('Floor config mode: ' . $floorConfigMode);
+        
+        if ($floorConfigMode === 'advanced') {
+            return $this->storeBulkAdvanced($request, $user);
+        }
+        
+        // Validate simple bulk request
+        $request->validate([
+            'bulk_property_id' => 'required|exists:properties,id',
+            'bulk_unit_type' => 'required|in:room,apartment,dorm,shared',
+            'bulk_max_occupancy' => 'required|integer|min:1|max:10',
+            'bulk_area_m2' => 'nullable|numeric|min:0|max:1000',
+            'bulk_status' => 'required|in:available,reserved,occupied,maintenance',
+            'bulk_base_rent' => 'required|numeric|min:0',
+            'bulk_deposit_amount' => 'nullable|numeric|min:0',
+            'bulk_note' => 'nullable|string|max:1000',
+            'start_floor' => 'required|integer|min:1|max:100',
+            'end_floor' => 'required|integer|min:1|max:100|gte:start_floor',
+            'rooms_per_floor' => 'required|integer|min:1|max:50',
+            'room_prefix' => 'nullable|string|max:10',
+            'bulk_images' => 'nullable|array',
+            'bulk_images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'amenities' => 'nullable|array',
+            'amenities.*' => 'exists:amenities,id'
+        ], [
+            'bulk_property_id.required' => 'Vui lòng chọn bất động sản.',
+            'bulk_property_id.exists' => 'Bất động sản không tồn tại.',
+            'bulk_unit_type.required' => 'Vui lòng chọn loại phòng.',
+            'bulk_unit_type.in' => 'Loại phòng không hợp lệ.',
+            'bulk_max_occupancy.required' => 'Vui lòng nhập số người tối đa.',
+            'bulk_max_occupancy.integer' => 'Số người tối đa phải là số nguyên.',
+            'bulk_max_occupancy.min' => 'Số người tối đa phải lớn hơn 0.',
+            'bulk_max_occupancy.max' => 'Số người tối đa không được vượt quá 10.',
+            'bulk_area_m2.numeric' => 'Diện tích phải là số.',
+            'bulk_area_m2.min' => 'Diện tích phải lớn hơn 0.',
+            'bulk_area_m2.max' => 'Diện tích không được vượt quá 1000 m².',
+            'bulk_status.required' => 'Vui lòng chọn trạng thái.',
+            'bulk_status.in' => 'Trạng thái không hợp lệ.',
+            'bulk_base_rent.required' => 'Vui lòng nhập giá thuê cơ bản.',
+            'bulk_base_rent.numeric' => 'Giá thuê phải là số.',
+            'bulk_base_rent.min' => 'Giá thuê phải lớn hơn 0.',
+            'bulk_deposit_amount.numeric' => 'Tiền cọc phải là số.',
+            'bulk_deposit_amount.min' => 'Tiền cọc phải lớn hơn 0.',
+            'bulk_note.max' => 'Ghi chú không được vượt quá 1000 ký tự.',
+            'start_floor.required' => 'Vui lòng nhập tầng bắt đầu.',
+            'start_floor.integer' => 'Tầng bắt đầu phải là số nguyên.',
+            'start_floor.min' => 'Tầng bắt đầu phải lớn hơn 0.',
+            'start_floor.max' => 'Tầng bắt đầu không được vượt quá 100.',
+            'end_floor.required' => 'Vui lòng nhập tầng kết thúc.',
+            'end_floor.integer' => 'Tầng kết thúc phải là số nguyên.',
+            'end_floor.min' => 'Tầng kết thúc phải lớn hơn 0.',
+            'end_floor.max' => 'Tầng kết thúc không được vượt quá 100.',
+            'end_floor.gte' => 'Tầng kết thúc phải lớn hơn hoặc bằng tầng bắt đầu.',
+            'rooms_per_floor.required' => 'Vui lòng nhập số phòng mỗi tầng.',
+            'rooms_per_floor.integer' => 'Số phòng mỗi tầng phải là số nguyên.',
+            'rooms_per_floor.min' => 'Số phòng mỗi tầng phải lớn hơn 0.',
+            'rooms_per_floor.max' => 'Số phòng mỗi tầng không được vượt quá 50.',
+            'room_prefix.max' => 'Tiền tố mã phòng không được vượt quá 10 ký tự.'
+        ]);
+
+        // Kiểm tra xem property có được gán cho agent này không
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        if (!$assignedPropertyIds->contains($request->bulk_property_id)) {
+            return back()->withErrors(['bulk_property_id' => 'Bạn không có quyền tạo phòng cho bất động sản này.']);
+        }
+
+        $startFloor = $request->start_floor;
+        $endFloor = $request->end_floor;
+        $roomsPerFloor = $request->rooms_per_floor;
+        $roomPrefix = $request->room_prefix ?? 'P';
+        
+        $totalRooms = ($endFloor - $startFloor + 1) * $roomsPerFloor;
+        
+        // Giới hạn số phòng tối đa
+        if ($totalRooms > 100) {
+            return back()->withErrors(['rooms_per_floor' => 'Số phòng tối đa cho phép là 100. Hiện tại sẽ tạo ' . $totalRooms . ' phòng.']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Process bulk images
+            $bulkImagePaths = [];
+            if ($request->hasFile('bulk_images')) {
+                $uploadedImages = $this->imageService->uploadMultipleImages($request->file('bulk_images'), 'units');
+                $bulkImagePaths = array_column($uploadedImages, 'original');
+            }
+
+            $createdUnits = [];
+            $amenities = $request->input('amenities', []);
+
+            // Tạo phòng cho từng tầng
+            for ($floor = $startFloor; $floor <= $endFloor; $floor++) {
+                for ($room = 1; $room <= $roomsPerFloor; $room++) {
+                    $roomNumber = str_pad($floor, 2, '0', STR_PAD_LEFT) . str_pad($room, 2, '0', STR_PAD_LEFT);
+                    $roomCode = $roomPrefix . $roomNumber;
+
+                    // Kiểm tra mã phòng trùng lặp
+                    $existingUnit = Unit::where('property_id', $request->bulk_property_id)
+                        ->where('code', $roomCode)
+                        ->first();
+                    
+                    if ($existingUnit) {
+                        DB::rollBack();
+                        return back()->withErrors(['room_prefix' => "Mã phòng {$roomCode} đã tồn tại trong bất động sản này."]);
+                    }
+
+                    $unit = Unit::create([
+                        'property_id' => $request->bulk_property_id,
+                        'code' => $roomCode,
+                        'floor' => $floor,
+                        'area_m2' => $request->bulk_area_m2,
+                        'unit_type' => $request->bulk_unit_type,
+                        'base_rent' => $request->bulk_base_rent,
+                        'deposit_amount' => $request->bulk_deposit_amount ?? 0,
+                        'max_occupancy' => $request->bulk_max_occupancy,
+                        'status' => $request->bulk_status,
+                        'note' => $request->bulk_note,
+                        'images' => $bulkImagePaths, // Gắn ảnh cho tất cả phòng
+                    ]);
+
+                    // Sync amenities
+                    if (!empty($amenities)) {
+                        $unit->amenities()->sync($amenities);
+                    }
+
+                    $createdUnits[] = $unit;
+                }
+            }
+
+            DB::commit();
+
+            $successMessage = "Tạo thành công {$totalRooms} phòng cho bất động sản.";
+            if (!empty($bulkImagePaths)) {
+                $successMessage .= " Đã gắn " . count($bulkImagePaths) . " hình ảnh cho mỗi phòng.";
+            }
+
+            return redirect()->route('agent.units.index')
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Bulk unit creation error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return back()->withErrors(['error' => 'Có lỗi xảy ra khi tạo phòng hàng loạt: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Store multiple units in bulk with advanced floor configuration.
+     */
+    private function storeBulkAdvanced(Request $request, $user)
+    {
+        // Debug logging
+        Log::info('Advanced bulk creation request data:', $request->all());
+        Log::info('Floor configs:', $request->input('floor_configs', []));
+        
+        // Validate advanced bulk request
+        $request->validate([
+            'bulk_property_id' => 'required|exists:properties,id',
+            'bulk_max_occupancy' => 'required|integer|min:1|max:10',
+            'bulk_area_m2' => 'nullable|numeric|min:0|max:1000',
+            'bulk_status' => 'required|in:available,reserved,occupied,maintenance',
+            'bulk_base_rent' => 'required|numeric|min:0',
+            'bulk_deposit_amount' => 'nullable|numeric|min:0',
+            'bulk_note' => 'nullable|string|max:1000',
+            'bulk_images' => 'nullable|array',
+            'bulk_images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'amenities' => 'nullable|array',
+            'amenities.*' => 'exists:amenities,id',
+            'floor_configs' => 'required|array|min:1',
+            'floor_configs.*.floor_number' => 'required|integer|min:1|max:100',
+            'floor_configs.*.rooms_count' => 'required|integer|min:1|max:50',
+            'floor_configs.*.room_type' => 'required|in:room,apartment,dorm,shared',
+            'floor_configs.*.room_prefix' => 'nullable|string|max:10',
+            'floor_configs.*.custom_room_numbers' => 'nullable|string|max:500'
+        ], [
+            'bulk_property_id.required' => 'Vui lòng chọn bất động sản.',
+            'bulk_property_id.exists' => 'Bất động sản không tồn tại.',
+            'bulk_max_occupancy.required' => 'Vui lòng nhập số người tối đa.',
+            'bulk_max_occupancy.integer' => 'Số người tối đa phải là số nguyên.',
+            'bulk_max_occupancy.min' => 'Số người tối đa phải lớn hơn 0.',
+            'bulk_max_occupancy.max' => 'Số người tối đa không được vượt quá 10.',
+            'bulk_area_m2.numeric' => 'Diện tích phải là số.',
+            'bulk_area_m2.min' => 'Diện tích phải lớn hơn 0.',
+            'bulk_area_m2.max' => 'Diện tích không được vượt quá 1000 m².',
+            'bulk_status.required' => 'Vui lòng chọn trạng thái.',
+            'bulk_status.in' => 'Trạng thái không hợp lệ.',
+            'bulk_base_rent.required' => 'Vui lòng nhập giá thuê cơ bản.',
+            'bulk_base_rent.numeric' => 'Giá thuê phải là số.',
+            'bulk_base_rent.min' => 'Giá thuê phải lớn hơn 0.',
+            'bulk_deposit_amount.numeric' => 'Tiền cọc phải là số.',
+            'bulk_deposit_amount.min' => 'Tiền cọc phải lớn hơn 0.',
+            'bulk_note.max' => 'Ghi chú không được vượt quá 1000 ký tự.',
+            'floor_configs.required' => 'Vui lòng thêm ít nhất một cấu hình tầng.',
+            'floor_configs.min' => 'Vui lòng thêm ít nhất một cấu hình tầng.',
+            'floor_configs.*.floor_number.required' => 'Vui lòng nhập số tầng.',
+            'floor_configs.*.floor_number.integer' => 'Số tầng phải là số nguyên.',
+            'floor_configs.*.floor_number.min' => 'Số tầng phải lớn hơn 0.',
+            'floor_configs.*.floor_number.max' => 'Số tầng không được vượt quá 100.',
+            'floor_configs.*.rooms_count.required' => 'Vui lòng nhập số phòng.',
+            'floor_configs.*.rooms_count.integer' => 'Số phòng phải là số nguyên.',
+            'floor_configs.*.rooms_count.min' => 'Số phòng phải lớn hơn 0.',
+            'floor_configs.*.rooms_count.max' => 'Số phòng không được vượt quá 50.',
+            'floor_configs.*.room_type.required' => 'Vui lòng chọn loại phòng.',
+            'floor_configs.*.room_type.in' => 'Loại phòng không hợp lệ.',
+            'floor_configs.*.room_prefix.max' => 'Tiền tố mã phòng không được vượt quá 10 ký tự.'
+        ]);
+
+        // Kiểm tra xem property có được gán cho agent này không
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        if (!$assignedPropertyIds->contains($request->bulk_property_id)) {
+            return back()->withErrors(['bulk_property_id' => 'Bạn không có quyền tạo phòng cho bất động sản này.']);
+        }
+
+        $floorConfigs = $request->input('floor_configs', []);
+        $totalRooms = array_sum(array_column($floorConfigs, 'rooms_count'));
+        
+        // Giới hạn số phòng tối đa
+        if ($totalRooms > 100) {
+            return back()->withErrors(['floor_configs' => 'Số phòng tối đa cho phép là 100. Hiện tại sẽ tạo ' . $totalRooms . ' phòng.']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Process bulk images
+            $bulkImagePaths = [];
+            if ($request->hasFile('bulk_images')) {
+                $uploadedImages = $this->imageService->uploadMultipleImages($request->file('bulk_images'), 'units');
+                $bulkImagePaths = array_column($uploadedImages, 'original');
+            }
+
+            $createdUnits = [];
+            $amenities = $request->input('amenities', []);
+
+            // Tạo phòng theo cấu hình từng tầng
+            foreach ($floorConfigs as $config) {
+                $floorNumber = $config['floor_number'];
+                $roomsCount = $config['rooms_count'];
+                $roomType = $config['room_type'];
+                $roomPrefix = $config['room_prefix'] ?? 'P';
+                $customRoomNumbers = $config['custom_room_numbers'] ?? null;
+
+                // Xác định danh sách số phòng
+                $roomNumbers = [];
+                if ($customRoomNumbers) {
+                    // Parse custom room numbers
+                    $roomNumbers = array_filter(array_map('trim', explode(',', $customRoomNumbers)));
+                } else {
+                    // Generate automatic room numbers
+                    for ($room = 1; $room <= $roomsCount; $room++) {
+                        $roomNumbers[] = $room;
+                    }
+                }
+
+                // Tạo phòng cho từng số phòng
+                foreach ($roomNumbers as $roomNumber) {
+                    $roomCode = $roomPrefix . $roomNumber;
+
+                    // Kiểm tra mã phòng trùng lặp
+                    $existingUnit = Unit::where('property_id', $request->bulk_property_id)
+                        ->where('code', $roomCode)
+                        ->first();
+                    
+                    if ($existingUnit) {
+                        DB::rollBack();
+                        return back()->withErrors(['floor_configs' => "Mã phòng {$roomCode} đã tồn tại trong bất động sản này."]);
+                    }
+
+                    $unit = Unit::create([
+                        'property_id' => $request->bulk_property_id,
+                        'code' => $roomCode,
+                        'floor' => $floorNumber,
+                        'area_m2' => $request->bulk_area_m2,
+                        'unit_type' => $roomType,
+                        'base_rent' => $request->bulk_base_rent,
+                        'deposit_amount' => $request->bulk_deposit_amount ?? 0,
+                        'max_occupancy' => $request->bulk_max_occupancy,
+                        'status' => $request->bulk_status,
+                        'note' => $request->bulk_note,
+                        'images' => $bulkImagePaths,
+                    ]);
+
+                    // Sync amenities
+                    if (!empty($amenities)) {
+                        $unit->amenities()->sync($amenities);
+                    }
+
+                    $createdUnits[] = $unit;
+                }
+            }
+
+            DB::commit();
+
+            $successMessage = "Tạo thành công {$totalRooms} phòng cho bất động sản với cấu hình linh hoạt.";
+            if (!empty($bulkImagePaths)) {
+                $successMessage .= " Đã gắn " . count($bulkImagePaths) . " hình ảnh cho mỗi phòng.";
+            }
+
+            return redirect()->route('agent.units.index')
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Advanced bulk unit creation error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return back()->withErrors(['error' => 'Có lỗi xảy ra khi tạo phòng hàng loạt: ' . $e->getMessage()]);
         }
     }
 
@@ -220,7 +578,7 @@ class UnitController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         $unit = Unit::whereIn('property_id', $assignedPropertyIds)
-            ->with(['property', 'leases' => function($q) {
+            ->with(['property', 'amenities', 'leases' => function($q) {
                 $q->where('status', 'active')->whereNull('deleted_at')->with('tenant');
             }])
             ->findOrFail($id);
@@ -243,7 +601,7 @@ class UnitController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         $unit = Unit::whereIn('property_id', $assignedPropertyIds)
-            ->with('property')
+            ->with(['property', 'amenities'])
             ->findOrFail($id);
 
         // Lấy danh sách properties được gán
@@ -252,9 +610,13 @@ class UnitController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Load amenities
+        $amenities = \App\Models\Amenity::orderBy('category')->orderBy('name')->get();
+
         return view('agent.units.edit', [
             'unit' => $unit,
-            'properties' => $properties
+            'properties' => $properties,
+            'amenities' => $amenities
         ]);
     }
 
@@ -283,7 +645,11 @@ class UnitController extends Controller
             'deposit_amount' => 'nullable|numeric|min:0',
             'max_occupancy' => 'required|integer|min:1|max:10',
             'status' => 'required|in:available,reserved,occupied,maintenance',
-            'note' => 'nullable|string|max:1000'
+            'note' => 'nullable|string|max:1000',
+            'images' => 'nullable|array',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'amenities' => 'nullable|array',
+            'amenities.*' => 'exists:amenities,id'
         ], [
             'property_id.required' => 'Vui lòng chọn bất động sản.',
             'property_id.exists' => 'Bất động sản không tồn tại.',
@@ -329,6 +695,22 @@ class UnitController extends Controller
         try {
             DB::beginTransaction();
 
+            // Process images
+            $imagePaths = $unit->images ?? [];
+            
+            // Delete marked images
+            if ($request->has('deleted_images')) {
+                $this->imageService->deleteMultipleImages($request->deleted_images);
+                $imagePaths = array_diff($imagePaths, $request->deleted_images);
+            }
+            
+            // Upload new images
+            if ($request->hasFile('images')) {
+                $uploadedImages = $this->imageService->uploadMultipleImages($request->file('images'), 'units');
+                $newImagePaths = array_column($uploadedImages, 'original');
+                $imagePaths = array_merge($imagePaths, $newImagePaths);
+            }
+
             $unit->update([
                 'property_id' => $request->property_id,
                 'code' => $request->code,
@@ -340,7 +722,15 @@ class UnitController extends Controller
                 'max_occupancy' => $request->max_occupancy,
                 'status' => $request->status,
                 'note' => $request->note,
+                'images' => $imagePaths,
             ]);
+
+            // Sync amenities
+            if ($request->has('amenities')) {
+                $unit->amenities()->sync($request->amenities);
+            } else {
+                $unit->amenities()->detach();
+            }
 
             DB::commit();
 

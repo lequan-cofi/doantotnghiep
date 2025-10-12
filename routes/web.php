@@ -15,60 +15,208 @@ use App\Http\Controllers\Manager\LeaseController;
 | Public Routes
 |--------------------------------------------------------------------------
 */
-Route::get('/', function () {
-    return view('home');
-})->name('home');
+Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::post('/search', [\App\Http\Controllers\HomeController::class, 'search'])->name('search');
 
-// Public rooms route
-Route::get('/rooms', function () {
-    $type = request('type');
+// Public property routes - accessible without authentication
+Route::get('/properties', [\App\Http\Controllers\PropertyController::class, 'index'])->name('property.index');
+Route::get('/properties/{id}', [\App\Http\Controllers\PropertyController::class, 'show'])->name('property.show');
+
+// Debug routes (only in debug mode)
+if (config('app.debug')) {
+    Route::get('/debug-active-properties', [\App\Http\Controllers\HomeController::class, 'debugActiveProperties'])->name('debug.active.properties');
+    Route::get('/test-database', [\App\Http\Controllers\HomeController::class, 'testDatabase'])->name('test.database');
+    Route::get('/test-home-data', [\App\Http\Controllers\HomeController::class, 'testHomeData'])->name('test.home.data');
+    Route::get('/test-organization-bypass', [\App\Http\Controllers\HomeController::class, 'testOrganizationBypass'])->name('test.organization.bypass');
+    Route::get('/test-soft-delete', [\App\Http\Controllers\HomeController::class, 'testSoftDelete'])->name('test.soft.delete');
+    Route::get('/test-property-controller', [\App\Http\Controllers\PropertyController::class, 'index'])->name('test.property.controller');
+    Route::get('/test-property-data', [\App\Http\Controllers\PropertyController::class, 'test'])->name('test.property.data');
+    Route::get('/test-categories-calculation', [\App\Http\Controllers\HomeController::class, 'testCategoriesCalculation'])->name('test.categories.calculation');
+    Route::get('/test-property-prices', function() {
+        try {
+            // Test step by step
+            $totalProperties = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->count();
+            $activeProperties = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->count();
+            $propertiesWithUnits = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->whereHas('units')->count();
+            $propertiesWithAvailableUnits = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->whereHas('units', function($query) {
+                $query->where('status', 'available');
+            })->count();
+            
+            // Check unit statuses
+            $unitStatuses = \App\Models\Unit::selectRaw('status, count(*) as count')->groupBy('status')->get();
+            
+            return response()->json([
+                'success' => true,
+                'debug_info' => [
+                    'total_properties' => $totalProperties,
+                    'active_properties' => $activeProperties,
+                    'properties_with_units' => $propertiesWithUnits,
+                    'properties_with_available_units' => $propertiesWithAvailableUnits,
+                    'unit_statuses' => $unitStatuses->toArray()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    });
     
-    // Sample data for demonstration
-    $rooms = collect([
-        (object)[
-            'id' => 1,
-            'title' => 'Phòng trọ chung chủ gần trường',
-            'address' => '123 Đường ABC, Quận 1, TP.HCM',
-            'type' => 'Nhà trọ chung chủ',
-            'price' => 2500000,
-            'bedrooms' => 1,
-            'bathrooms' => 1,
-            'area' => 25,
-            'image' => '/assets/images/room1.jpg'
-        ],
-        (object)[
-            'id' => 2,
-            'title' => 'Chung cư mini hiện đại',
-            'address' => '456 Đường XYZ, Quận 2, TP.HCM',
-            'type' => 'Chung cư mini',
-            'price' => 3500000,
-            'bedrooms' => 2,
-            'bathrooms' => 1,
-            'area' => 35,
-            'image' => '/assets/images/room2.jpg'
-        ],
-        (object)[
-            'id' => 3,
-            'title' => 'Căn hộ cao cấp view sông',
-            'address' => '789 Đường DEF, Quận 7, TP.HCM',
-            'type' => 'Căn hộ cao cấp',
-            'price' => 8000000,
-            'bedrooms' => 2,
-            'bathrooms' => 2,
-            'area' => 60,
-            'image' => '/assets/images/room3.jpg'
-        ]
-    ]);
+    Route::get('/test-property-8', function() {
+        try {
+            $propertyId = 8;
+            
+            // Test step by step
+            $propertyExists = \App\Models\Property::withoutGlobalScope('organization')->find($propertyId);
+            $propertyNotDeleted = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->find($propertyId);
+            $propertyActive = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->find($propertyId);
+            $propertyWithUnits = \App\Models\Property::withoutGlobalScope('organization')
+                ->whereNull('deleted_at')
+                ->active()
+                ->whereHas('units')
+                ->find($propertyId);
+            $propertyWithAvailableUnits = \App\Models\Property::withoutGlobalScope('organization')
+                ->whereNull('deleted_at')
+                ->active()
+                ->whereHas('units', function($query) {
+                    $query->where('status', 'available');
+                })
+                ->find($propertyId);
+            
+            return response()->json([
+                'success' => true,
+                'property_id' => $propertyId,
+                'debug_info' => [
+                    'property_exists' => $propertyExists ? true : false,
+                    'property_not_deleted' => $propertyNotDeleted ? true : false,
+                    'property_active' => $propertyActive ? true : false,
+                    'property_with_units' => $propertyWithUnits ? true : false,
+                    'property_with_available_units' => $propertyWithAvailableUnits ? true : false,
+                    'property_data' => $propertyExists ? [
+                        'id' => $propertyExists->id,
+                        'name' => $propertyExists->name,
+                        'status' => $propertyExists->status,
+                        'deleted_at' => $propertyExists->deleted_at,
+                        'organization_id' => $propertyExists->organization_id
+                    ] : null
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    });
     
-    // Filter by type if specified
-    if ($type) {
-        $rooms = $rooms->filter(function($room) use ($type) {
-            return strpos(strtolower($room->type), strtolower($type)) !== false;
-        });
-    }
+    Route::get('/test-property-validation', function() {
+        try {
+            // Test validation rules
+            $propertyTypes = \App\Models\PropertyType::where('status', 1)->count();
+            $users = \App\Models\User::count();
+            $provinces = \DB::table('geo_provinces')->count();
+            $districts = \DB::table('geo_districts')->count();
+            $wards = \DB::table('geo_wards')->count();
+            $provinces2025 = \DB::table('geo_provinces_2025')->count();
+            $wards2025 = \DB::table('geo_wards_2025')->count();
+            
+            return response()->json([
+                'success' => true,
+                'validation_data' => [
+                    'property_types_count' => $propertyTypes,
+                    'users_count' => $users,
+                    'geo_provinces_count' => $provinces,
+                    'geo_districts_count' => $districts,
+                    'geo_wards_count' => $wards,
+                    'geo_provinces_2025_count' => $provinces2025,
+                    'geo_wards_2025_count' => $wards2025
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    });
     
-    return view('tenant.rooms.index', compact('type', 'rooms'));
-})->name('rooms.index');
+    Route::get('/test-property-simple', function() {
+        try {
+            $properties = \App\Models\Property::withoutGlobalScope('organization')
+                ->whereNull('deleted_at')
+                ->active()
+                ->whereHas('units', function($query) {
+                    $query->where('status', 'available'); // Only properties with available units
+                })
+                ->with(['location2025', 'propertyType', 'units' => function($query) {
+                    $query->where('status', 'available'); // Only load available units
+                }])
+                ->limit(3)
+                ->get();
+            
+            $result = [];
+            foreach($properties as $property) {
+                $minPrice = $property->units->min('base_rent');
+                $maxPrice = $property->units->max('base_rent');
+                
+                $result[] = [
+                    'id' => $property->id,
+                    'name' => $property->name,
+                    'available_units' => $property->units->count(), // Only available units loaded
+                    'min_price' => $minPrice,
+                    'max_price' => $maxPrice,
+                    'price_display' => $minPrice && $maxPrice ? 
+                        ($minPrice == $maxPrice ? 
+                            number_format($minPrice, 0, ',', '.') . ' VNĐ/tháng' :
+                            number_format($minPrice, 0, ',', '.') . ' - ' . number_format($maxPrice, 0, ',', '.') . ' VNĐ/tháng'
+                        ) : 'Liên hệ'
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'properties' => $result
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+        }
+    });
+    
+    // Simple test route
+    Route::get('/simple-test', function() {
+        try {
+            $properties = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->count();
+            $units = \App\Models\Unit::count();
+            $propertyTypes = \App\Models\PropertyType::whereNull('deleted_at')->count();
+            
+            // Check unit statuses
+            $unitStatuses = \App\Models\Unit::selectRaw('status, count(*) as count')
+                ->groupBy('status')
+                ->get();
+            
+            $statusHtml = '';
+            foreach($unitStatuses as $status) {
+                $statusHtml .= "<p>Status '{$status->status}': {$status->count} units</p>";
+            }
+            
+            return "<h1>Database Test (Public Access)</h1>
+                    <p>Properties (all organizations): {$properties}</p>
+                    <p>Units: {$units}</p>
+                    <p>Property Types: {$propertyTypes}</p>
+                    <h3>Unit Statuses:</h3>
+                    {$statusHtml}
+                    <p>Status: OK - Organization scope bypassed</p>";
+        } catch (\Exception $e) {
+            return "<h1>Database Error</h1><p>Error: " . $e->getMessage() . "</p>";
+        }
+    });
+}
 
 Route::get('/demo/preloader', function () {
     return view('demo.preloader');
@@ -89,6 +237,9 @@ Route::get('/contact', function () {
 Route::get('/detail/{id?}', function ($id = 1) {
     return view('detail', compact('id'));
 })->name('detail');
+
+// Property detail route
+Route::get('/property/{id}', [\App\Http\Controllers\HomeController::class, 'propertyDetail'])->name('property.detail');
 
 Route::get('/test', function () {
     return view('test');
@@ -331,32 +482,135 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('agent')->name('agent.')->middleware('ensure.agent')->group(function () {
+        // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Agent\DashboardController::class, 'index'])->name('dashboard');
 
         // Profile
         Route::get('/profile', function () {
-            return view('agent.profile');
+            return view('agent.dashboard');
         })->name('profile');
 
-        // Properties management (read-only)
+        // Properties management (read-only for agents)
         Route::get('/properties', [\App\Http\Controllers\Agent\PropertyController::class, 'index'])->name('properties.index');
         Route::get('/properties/{id}', [\App\Http\Controllers\Agent\PropertyController::class, 'show'])->name('properties.show');
+
+        // Property Types management (read-only for agents)
+        Route::get('/property-types', [\App\Http\Controllers\Agent\PropertyTypeController::class, 'index'])->name('property-types.index');
 
         // Units management (CRUD)
         Route::resource('units', \App\Http\Controllers\Agent\UnitController::class);
 
+
+        // Rented properties
+        Route::get('/rented', [\App\Http\Controllers\Agent\RentedController::class, 'index'])->name('rented.index');
+        Route::get('/rented/{id}', [\App\Http\Controllers\Agent\RentedController::class, 'show'])->name('rented.show');
+        
+        // AJAX routes for rented properties
+        Route::get('/rented/lease/{leaseId}/details', [\App\Http\Controllers\Agent\RentedController::class, 'getLeaseDetails'])->name('rented.lease.details');
+        Route::get('/rented/tenant/{tenantId}/profile', [\App\Http\Controllers\Agent\RentedController::class, 'getTenantProfile'])->name('rented.tenant.profile');
+
         // Leases management (CRUD)
         Route::resource('leases', \App\Http\Controllers\Agent\LeaseController::class);
         
-        // API endpoints for leases
-        Route::prefix('api/leases')->group(function () {
-            Route::get('/next-contract-number', [\App\Http\Controllers\Agent\LeaseController::class, 'getNextContractNumber']);
-        });
+        // Lease residents management
+        Route::post('/leases/{leaseId}/residents', [\App\Http\Controllers\Agent\LeaseController::class, 'addResident'])->name('leases.residents.add');
+        Route::put('/leases/{leaseId}/residents/{residentId}', [\App\Http\Controllers\Agent\LeaseController::class, 'updateResident'])->name('leases.residents.update');
+        Route::delete('/leases/{leaseId}/residents/{residentId}', [\App\Http\Controllers\Agent\LeaseController::class, 'deleteResident'])->name('leases.residents.delete');
+        
+        // Leads management (CRUD)
+        Route::resource('leads', \App\Http\Controllers\Agent\LeadController::class);
+        Route::put('/leads/{id}/status', [\App\Http\Controllers\Agent\LeadController::class, 'updateStatus'])->name('leads.update-status');
+        Route::get('/leads-statistics', [\App\Http\Controllers\Agent\LeadController::class, 'statistics'])->name('leads.statistics');
+        
+        // Convert lead to lease
+        Route::get('/leads/{leadId}/create-lease', [\App\Http\Controllers\Agent\LeaseController::class, 'createFromLead'])->name('leads.create-lease');
+        Route::post('/leads/{leadId}/create-lease', [\App\Http\Controllers\Agent\LeaseController::class, 'storeFromLead'])->name('leads.store-lease');
+        
+        // Viewings management
+        Route::get('/viewings', [\App\Http\Controllers\Agent\ViewingController::class, 'index'])->name('viewings.index');
+        Route::get('/viewings/today', [\App\Http\Controllers\Agent\ViewingController::class, 'today'])->name('viewings.today');
+        Route::get('/viewings/calendar', [\App\Http\Controllers\Agent\ViewingController::class, 'calendar'])->name('viewings.calendar');
+        Route::get('/viewings/statistics', [\App\Http\Controllers\Agent\ViewingController::class, 'statistics'])->name('viewings.statistics');
+        Route::get('/viewings/{id}', [\App\Http\Controllers\Agent\ViewingController::class, 'show'])->name('viewings.show');
+        Route::post('/viewings/{id}/confirm', [\App\Http\Controllers\Agent\ViewingController::class, 'confirm'])->name('viewings.confirm');
+        Route::post('/viewings/{id}/cancel', [\App\Http\Controllers\Agent\ViewingController::class, 'cancel'])->name('viewings.cancel');
 
-        // API endpoints for properties
-        Route::prefix('api/properties')->group(function () {
-            Route::get('/{propertyId}/units', [\App\Http\Controllers\Agent\LeaseController::class, 'getUnits']);
-        });
+        // Meters management
+        Route::get('/meters', [\App\Http\Controllers\Agent\MeterController::class, 'index'])->name('meters.index');
+        Route::get('/meters/create', [\App\Http\Controllers\Agent\MeterController::class, 'create'])->name('meters.create');
+        Route::post('/meters', [\App\Http\Controllers\Agent\MeterController::class, 'store'])->name('meters.store');
+        Route::get('/meters/{id}', [\App\Http\Controllers\Agent\MeterController::class, 'show'])->name('meters.show');
+        Route::get('/meters/{id}/edit', [\App\Http\Controllers\Agent\MeterController::class, 'edit'])->name('meters.edit');
+        Route::put('/meters/{id}', [\App\Http\Controllers\Agent\MeterController::class, 'update'])->name('meters.update');
+        Route::delete('/meters/{id}', [\App\Http\Controllers\Agent\MeterController::class, 'destroy'])->name('meters.destroy');
+
+        // Salary management
+        Route::get('/salary-contracts', [\App\Http\Controllers\Agent\SalaryContractController::class, 'index'])->name('salary-contracts.index');
+        Route::get('/salary-contracts/create', [\App\Http\Controllers\Agent\SalaryContractController::class, 'create'])->name('salary-contracts.create');
+        Route::post('/salary-contracts', [\App\Http\Controllers\Agent\SalaryContractController::class, 'store'])->name('salary-contracts.store');
+        Route::get('/salary-contracts/{id}', [\App\Http\Controllers\Agent\SalaryContractController::class, 'show'])->name('salary-contracts.show');
+        Route::get('/salary-contracts/{id}/edit', [\App\Http\Controllers\Agent\SalaryContractController::class, 'edit'])->name('salary-contracts.edit');
+        Route::put('/salary-contracts/{id}', [\App\Http\Controllers\Agent\SalaryContractController::class, 'update'])->name('salary-contracts.update');
+        Route::delete('/salary-contracts/{id}', [\App\Http\Controllers\Agent\SalaryContractController::class, 'destroy'])->name('salary-contracts.destroy');
+
+        Route::get('/payroll-cycles', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'index'])->name('payroll-cycles.index');
+        Route::get('/payroll-cycles/create', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'create'])->name('payroll-cycles.create');
+        Route::post('/payroll-cycles', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'store'])->name('payroll-cycles.store');
+        Route::get('/payroll-cycles/{id}', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'show'])->name('payroll-cycles.show');
+        Route::get('/payroll-cycles/{id}/edit', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'edit'])->name('payroll-cycles.edit');
+        Route::put('/payroll-cycles/{id}', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'update'])->name('payroll-cycles.update');
+        Route::delete('/payroll-cycles/{id}', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'destroy'])->name('payroll-cycles.destroy');
+
+        Route::get('/payroll-payslips', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'index'])->name('payroll-payslips.index');
+        Route::get('/payroll-payslips/{id}', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'show'])->name('payroll-payslips.show');
+        Route::get('/payroll-payslips/{id}/edit', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'edit'])->name('payroll-payslips.edit');
+        Route::put('/payroll-payslips/{id}', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'update'])->name('payroll-payslips.update');
+
+        Route::get('/salary-advances', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'index'])->name('salary-advances.index');
+        Route::get('/salary-advances/create', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'create'])->name('salary-advances.create');
+        Route::post('/salary-advances', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'store'])->name('salary-advances.store');
+        Route::get('/salary-advances/{id}', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'show'])->name('salary-advances.show');
+        Route::get('/salary-advances/{id}/edit', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'edit'])->name('salary-advances.edit');
+        Route::put('/salary-advances/{id}', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'update'])->name('salary-advances.update');
+        Route::delete('/salary-advances/{id}', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'destroy'])->name('salary-advances.destroy');
+
+        // Commission management
+        Route::get('/commission-policies', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'index'])->name('commission-policies.index');
+        Route::get('/commission-policies/create', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'create'])->name('commission-policies.create');
+        Route::post('/commission-policies', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'store'])->name('commission-policies.store');
+        Route::get('/commission-policies/{id}', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'show'])->name('commission-policies.show');
+        Route::get('/commission-policies/{id}/edit', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'edit'])->name('commission-policies.edit');
+        Route::put('/commission-policies/{id}', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'update'])->name('commission-policies.update');
+        Route::delete('/commission-policies/{id}', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'destroy'])->name('commission-policies.destroy');
+
+        Route::get('/commission-events', [\App\Http\Controllers\Agent\CommissionEventController::class, 'index'])->name('commission-events.index');
+        Route::get('/commission-events/create', [\App\Http\Controllers\Agent\CommissionEventController::class, 'create'])->name('commission-events.create');
+        Route::post('/commission-events', [\App\Http\Controllers\Agent\CommissionEventController::class, 'store'])->name('commission-events.store');
+        Route::get('/commission-events/{id}', [\App\Http\Controllers\Agent\CommissionEventController::class, 'show'])->name('commission-events.show');
+        Route::get('/commission-events/{id}/edit', [\App\Http\Controllers\Agent\CommissionEventController::class, 'edit'])->name('commission-events.edit');
+        Route::put('/commission-events/{id}', [\App\Http\Controllers\Agent\CommissionEventController::class, 'update'])->name('commission-events.update');
+        Route::delete('/commission-events/{id}', [\App\Http\Controllers\Agent\CommissionEventController::class, 'destroy'])->name('commission-events.destroy');
+
+        // Reports
+        Route::get('/revenue-reports', [\App\Http\Controllers\Agent\RevenueReportController::class, 'index'])->name('revenue-reports.index');
+        Route::get('/revenue-reports/{id}', [\App\Http\Controllers\Agent\RevenueReportController::class, 'show'])->name('revenue-reports.show');
+        Route::get('/reports/payments', [\App\Http\Controllers\Agent\PaymentReportController::class, 'index'])->name('reports.payments');
+
+        // Settings
+        Route::get('/settings/general', [\App\Http\Controllers\Agent\SettingsController::class, 'general'])->name('settings.general');
+        Route::put('/settings/general', [\App\Http\Controllers\Agent\SettingsController::class, 'updateGeneral'])->name('settings.update-general');
+        
+    // API endpoints for leases
+    Route::prefix('api/leases')->group(function () {
+        Route::get('/units/{propertyId}', [\App\Http\Controllers\Agent\LeaseController::class, 'getUnits']);
+        Route::get('/next-contract-number', [\App\Http\Controllers\Agent\LeaseController::class, 'getNextContractNumber']);
+        Route::get('/search-users', [\App\Http\Controllers\Agent\LeaseController::class, 'searchUsers']);
+        Route::get('/test-users', [\App\Http\Controllers\Agent\LeaseController::class, 'testUsers']);
+        Route::get('/debug-organizations', [\App\Http\Controllers\Agent\LeaseController::class, 'debugOrganizations']);
+        Route::get('/test-search/{query?}', [\App\Http\Controllers\Agent\LeaseController::class, 'testSearch']);
+        Route::get('/simple-test', [\App\Http\Controllers\Agent\LeaseController::class, 'simpleTest']);
+        Route::get('/debug-org-3', [\App\Http\Controllers\Agent\LeaseController::class, 'debugOrg3']);
+    });
     });
 
     /*
@@ -381,9 +635,9 @@ Route::middleware('auth')->group(function () {
         })->name('dashboard');
         
         // Profile
-        Route::get('/profile', function () {
-            return view('tenant.profile');
-        })->name('profile');
+        Route::get('/profile', [\App\Http\Controllers\Tenant\ProfileController::class, 'index'])->name('profile');
+        Route::get('/profile/edit', [\App\Http\Controllers\Tenant\ProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('/profile', [\App\Http\Controllers\Tenant\ProfileController::class, 'update'])->name('profile.update');
         
         // Booking
         Route::get('/booking/{id?}', function ($id = 1) {
@@ -497,4 +751,53 @@ Route::middleware('auth')->group(function () {
     });
 
     // Main rooms route - MOVED TO PUBLIC ROUTES
+});
+
+/*
+|--------------------------------------------------------------------------
+| Viewing Routes (Public)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('viewings')->name('viewings.')->group(function () {
+    Route::post('/store', [\App\Http\Controllers\ViewingController::class, 'store'])->name('store');
+    Route::get('/available-slots', [\App\Http\Controllers\ViewingController::class, 'getAvailableSlots'])->name('available-slots');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Authenticated Viewing Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->prefix('viewings')->name('viewings.')->group(function () {
+    Route::get('/my-viewings', [\App\Http\Controllers\ViewingController::class, 'myViewings'])->name('my-viewings');
+    Route::get('/appointments', [\App\Http\Controllers\ViewingController::class, 'appointments'])->name('appointments');
+    Route::get('/{id}', [\App\Http\Controllers\ViewingController::class, 'show'])->name('show');
+    Route::post('/{id}/cancel', [\App\Http\Controllers\ViewingController::class, 'cancel'])->name('cancel');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Booking Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->group(function () {
+    Route::get('/booking/{property_id?}/{unit_id?}', [\App\Http\Controllers\ViewingController::class, 'booking'])->name('booking');
+});
+
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Image Upload API Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('api/images')->name('api.images.')->middleware('auth')->group(function () {
+    Route::post('/upload', [\App\Http\Controllers\Api\ImageController::class, 'upload'])->name('upload');
+    Route::post('/upload-multiple', [\App\Http\Controllers\Api\ImageController::class, 'uploadMultiple'])->name('upload-multiple');
+    Route::delete('/delete', [\App\Http\Controllers\Api\ImageController::class, 'delete'])->name('delete');
+    Route::get('/url', [\App\Http\Controllers\Api\ImageController::class, 'getUrl'])->name('url');
+    Route::get('/stats', [\App\Http\Controllers\Api\ImageController::class, 'stats'])->name('stats');
+    Route::post('/validate', [\App\Http\Controllers\Api\ImageController::class, 'validate'])->name('validate');
 });

@@ -2,6 +2,16 @@
 
 @section('title', 'Quản lý lịch hẹn')
 
+@php
+    $viewings = $viewings ?? collect();
+    $stats = [
+        'pending' => $viewings->where('status', 'requested')->count(),
+        'confirmed' => $viewings->where('status', 'confirmed')->count(),
+        'completed' => $viewings->where('status', 'done')->count(),
+        'cancelled' => $viewings->where('status', 'cancelled')->count(),
+    ];
+@endphp
+
 @push('styles')
 <link rel="stylesheet" href="{{ asset('assets/css/user/appointments.css') }}?v={{ time() }}">
 <style>
@@ -123,10 +133,36 @@
     z-index: 2;
 }
 
-.appointment-status.pending {
+.appointment-status.pending,
+.appointment-status.requested {
     background: rgba(245, 158, 11, 0.1);
     color: #f59e0b;
     border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.appointment-status.confirmed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.appointment-status.done,
+.appointment-status.completed {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.appointment-status.no_show {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.appointment-status.cancelled {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+    border: 1px solid rgba(107, 114, 128, 0.3);
 }
 
 .appointment-content {
@@ -167,11 +203,407 @@
     justify-content: flex-end;
     flex-wrap: wrap;
 }
+
+.property-badges {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+}
+
+.badge.unit {
+    background: rgba(59, 130, 246, 0.9);
+    color: white;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.property-details {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.detail {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.detail i {
+    color: #9ca3af;
+}
+
+.detail.price {
+    color: #059669;
+    font-weight: 600;
+}
+
+.appointment-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.appointment-time,
+.appointment-contact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.appointment-time i,
+.appointment-contact i {
+    color: #6b7280;
+    width: 20px;
+    text-align: center;
+}
+
+.appointment-time div,
+.appointment-contact div {
+    display: flex;
+    flex-direction: column;
+}
+
+.appointment-time strong,
+.appointment-contact strong {
+    font-size: 0.9rem;
+    color: #1f2937;
+}
+
+.appointment-time span,
+.appointment-contact span {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    color: #374151;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: #6b7280;
+    margin-bottom: 30px;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    padding: 8px 16px;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #6b7280;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.filter-tab:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.filter-tab.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.search-box {
+    position: relative;
+    max-width: 400px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+.search-box input {
+    padding-left: 45px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    height: 40px;
+    width: 100%;
+}
+
+.star-rating {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.star-rating .fas.fa-star {
+    color: #ddd;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: color 0.2s ease;
+}
+
+.star-rating .fas.fa-star.active {
+    color: #ffc107;
+}
 </style>
 @endpush
 
 @push('scripts')
 <script src="{{ asset('assets/js/user/appointments.js') }}?v={{ time() }}"></script>
+<script>
+// Global variables
+let currentAppointmentId = null;
+
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const filterTabs = document.querySelectorAll('.filter-tab');
+    const searchInput = document.getElementById('searchInput');
+    const appointmentCards = document.querySelectorAll('.appointment-card');
+
+    // Filter by status
+    filterTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const status = this.dataset.status;
+            
+            // Update active tab
+            filterTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter cards
+            filterCards(status);
+        });
+    });
+
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        filterCards('all', searchTerm);
+    });
+
+    function filterCards(status, searchTerm = '') {
+        appointmentCards.forEach(card => {
+            const cardStatus = card.dataset.status;
+            const cardText = card.textContent.toLowerCase();
+            
+            const statusMatch = status === 'all' || cardStatus === status;
+            const searchMatch = searchTerm === '' || cardText.includes(searchTerm);
+            
+            if (statusMatch && searchMatch) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Show/hide empty state
+        const visibleCards = Array.from(appointmentCards).filter(card => card.style.display !== 'none');
+        const emptyState = document.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.style.display = visibleCards.length === 0 ? 'block' : 'none';
+        }
+    }
+});
+
+// Cancel appointment
+function cancelAppointment(id) {
+    currentAppointmentId = id;
+    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+    modal.show();
+}
+
+// Confirm cancel
+function confirmCancel() {
+    if (!currentAppointmentId) return;
+    
+    const reason = document.getElementById('cancelReason').value;
+    
+    fetch(`/viewings/${currentAppointmentId}/cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            reason: reason
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('success', 'Đã hủy lịch hẹn thành công');
+            location.reload();
+        } else {
+            showNotification('error', data.message || 'Có lỗi xảy ra');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('error', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    })
+    .finally(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cancelModal'));
+        modal.hide();
+        currentAppointmentId = null;
+    });
+}
+
+// Mark as completed
+function markCompleted(id) {
+    if (confirm('Bạn có chắc chắn đã xem phòng này chưa?')) {
+        updateAppointmentStatus(id, 'done');
+    }
+}
+
+// Update appointment status
+function updateAppointmentStatus(id, status) {
+    fetch(`/agent/viewings/${id}/status`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('success', 'Cập nhật trạng thái thành công');
+            location.reload();
+        } else {
+            showNotification('error', data.message || 'Có lỗi xảy ra');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('error', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    });
+}
+
+// Rate property
+function rateProperty(id) {
+    currentAppointmentId = id;
+    const modal = new bootstrap.Modal(document.getElementById('ratingModal'));
+    modal.show();
+}
+
+// Submit rating
+function submitRating() {
+    if (!currentAppointmentId) return;
+    
+    const rating = document.querySelector('.star-rating .fas.fa-star.active')?.dataset.rating || 0;
+    const review = document.getElementById('reviewText').value;
+    
+    if (rating == 0) {
+        showNotification('error', 'Vui lòng chọn đánh giá');
+        return;
+    }
+    
+    // Here you would implement the rating submission
+    // For now, just show success message
+    showNotification('success', 'Cảm ơn bạn đã đánh giá!');
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('ratingModal'));
+    modal.hide();
+    currentAppointmentId = null;
+}
+
+// Star rating functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.star-rating .fas.fa-star');
+    stars.forEach((star, index) => {
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            
+            stars.forEach((s, i) => {
+                if (i < rating) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+        });
+        
+        star.addEventListener('mouseenter', function() {
+            const rating = parseInt(this.dataset.rating);
+            stars.forEach((s, i) => {
+                if (i < rating) {
+                    s.style.color = '#ffc107';
+                } else {
+                    s.style.color = '#ddd';
+                }
+            });
+        });
+    });
+    
+    document.querySelector('.star-rating').addEventListener('mouseleave', function() {
+        const stars = this.querySelectorAll('.fas.fa-star');
+        stars.forEach(star => {
+            if (star.classList.contains('active')) {
+                star.style.color = '#ffc107';
+            } else {
+                star.style.color = '#ddd';
+            }
+        });
+    });
+});
+
+// Show notification
+function showNotification(type, message) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Edit appointment (placeholder)
+function editAppointment(id) {
+    showNotification('info', 'Chức năng chỉnh sửa đang được phát triển');
+}
+
+// Reschedule appointment (placeholder)
+function rescheduleAppointment(id) {
+    showNotification('info', 'Chức năng đổi lịch đang được phát triển');
+}
+</script>
 @endpush
 
 @section('content')
@@ -208,7 +640,7 @@
                             <i class="fas fa-clock"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>3</h3>
+                            <h3>{{ $stats['pending'] }}</h3>
                             <p>Chờ xác nhận</p>
                         </div>
                     </div>
@@ -219,7 +651,7 @@
                             <i class="fas fa-check-circle"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>2</h3>
+                            <h3>{{ $stats['confirmed'] }}</h3>
                             <p>Đã xác nhận</p>
                         </div>
                     </div>
@@ -230,7 +662,7 @@
                             <i class="fas fa-calendar-check"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>1</h3>
+                            <h3>{{ $stats['completed'] }}</h3>
                             <p>Đã hoàn thành</p>
                         </div>
                     </div>
@@ -241,7 +673,7 @@
                             <i class="fas fa-times-circle"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>1</h3>
+                            <h3>{{ $stats['cancelled'] }}</h3>
                             <p>Đã hủy</p>
                         </div>
                     </div>
@@ -272,236 +704,182 @@
 
         <!-- Appointments List -->
         <div class="appointments-list">
-            <!-- Appointment Item 1 - Pending -->
-            <div class="appointment-card" data-status="pending">
-                <div class="appointment-status pending">
-                    <i class="fas fa-clock"></i>
-                    <span>Chờ xác nhận</span>
-                </div>
-                <div class="appointment-content">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="property-image">
-                                <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=300&h=200&fit=crop" alt="Phòng trọ">
-                                <div class="property-badges">
-                                    <span class="badge new">Mới</span>
+            @forelse($viewings as $viewing)
+                <div class="appointment-card" data-status="{{ $viewing->status }}" data-id="{{ $viewing->id }}">
+                    <div class="appointment-status {{ $viewing->status }}">
+                        @switch($viewing->status)
+                            @case('requested')
+                                <i class="fas fa-clock"></i>
+                                <span>Chờ xác nhận</span>
+                                @break
+                            @case('confirmed')
+                                <i class="fas fa-check-circle"></i>
+                                <span>Đã xác nhận</span>
+                                @break
+                            @case('done')
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Đã hoàn thành</span>
+                                @break
+                            @case('no_show')
+                                <i class="fas fa-user-times"></i>
+                                <span>Không đến</span>
+                                @break
+                            @case('cancelled')
+                                <i class="fas fa-times-circle"></i>
+                                <span>Đã hủy</span>
+                                @break
+                        @endswitch
+                    </div>
+                    <div class="appointment-content">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="property-image">
+                                    @if($viewing->property && $viewing->property->images && count($viewing->property->images) > 0)
+                                        <img src="{{ Storage::url($viewing->property->images[0]) }}" alt="{{ $viewing->property->title }}">
+                                    @else
+                                        <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=300&h=200&fit=crop" alt="Phòng trọ">
+                                    @endif
+                                    @if($viewing->unit)
+                                        <div class="property-badges">
+                                            <span class="badge unit">{{ $viewing->unit->code }}</span>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="property-info">
-                                <h4 class="property-title">Phòng trọ cao cấp Cầu Giấy</h4>
-                                <p class="property-location">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    123 Đường Cầu Giấy, Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội
-                                </p>
-                                <div class="property-details">
-                                    <span class="detail">
-                                        <i class="fas fa-expand-arrows-alt"></i>
-                                        25m²
-                                    </span>
-                                    <span class="detail">
-                                        <i class="fas fa-users"></i>
-                                        2 người
-                                    </span>
-                                    <span class="detail price">
-                                        <i class="fas fa-money-bill-wave"></i>
-                                        2.5 triệu/tháng
-                                    </span>
+                            <div class="col-md-6">
+                                <div class="property-info">
+                                    <h4 class="property-title">
+                                        {{ $viewing->property->title ?? 'Không có thông tin' }}
+                                    </h4>
+                                    <p class="property-location">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        {{ $viewing->property->location2025->full_address ?? 'Không có địa chỉ' }}
+                                    </p>
+                                    <div class="property-details">
+                                        @if($viewing->unit)
+                                            <span class="detail">
+                                                <i class="fas fa-expand-arrows-alt"></i>
+                                                {{ $viewing->unit->area }}m²
+                                            </span>
+                                            <span class="detail">
+                                                <i class="fas fa-users"></i>
+                                                {{ $viewing->unit->max_occupancy }} người
+                                            </span>
+                                            <span class="detail price">
+                                                <i class="fas fa-money-bill-wave"></i>
+                                                {{ number_format($viewing->unit->base_rent, 0, ',', '.') }} VNĐ/tháng
+                                            </span>
+                                        @else
+                                            <span class="detail">
+                                                <i class="fas fa-building"></i>
+                                                Xem toàn bộ tòa nhà
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="appointment-info">
-                                <div class="appointment-time">
-                                    <i class="fas fa-calendar"></i>
-                                    <div>
-                                        <strong>25/12/2023</strong>
-                                        <span>09:00 - 11:00</span>
+                            <div class="col-md-3">
+                                <div class="appointment-info">
+                                    <div class="appointment-time">
+                                        <i class="fas fa-calendar"></i>
+                                        <div>
+                                            <strong>{{ $viewing->schedule_at->format('d/m/Y') }}</strong>
+                                            <span>{{ $viewing->schedule_at->format('H:i') }} - {{ $viewing->schedule_at->addHour()->format('H:i') }}</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="appointment-contact">
-                                    <i class="fas fa-user"></i>
-                                    <div>
-                                        <strong>Anh Minh</strong>
-                                        <span>0987 654 321</span>
-                                    </div>
+                                    @if($viewing->agent)
+                                        <div class="appointment-contact">
+                                            <i class="fas fa-user"></i>
+                                            <div>
+                                                <strong>{{ $viewing->agent->name }}</strong>
+                                                <span>{{ $viewing->agent->phone ?? 'Không có SĐT' }}</span>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="appointment-actions">
-                    <button class="btn btn-outline-danger btn-sm" onclick="cancelAppointment(1)">
-                        <i class="fas fa-times"></i>
-                        Hủy lịch
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" onclick="editAppointment(1)">
-                        <i class="fas fa-edit"></i>
-                        Chỉnh sửa
-                    </button>
-                    <a href="tel:0987654321" class="btn btn-success btn-sm">
-                        <i class="fas fa-phone"></i>
-                        Gọi điện
-                    </a>
-                </div>
-            </div>
-
-            <!-- Appointment Item 2 - Confirmed -->
-            <div class="appointment-card" data-status="confirmed">
-                <div class="appointment-status confirmed">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Đã xác nhận</span>
-                </div>
-                <div class="appointment-content">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="property-image">
-                                <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=200&fit=crop" alt="Chung cư mini">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="property-info">
-                                <h4 class="property-title">Chung cư mini Mạnh Hà</h4>
-                                <p class="property-location">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    456 Đường Mạnh Hà, Quận Hoàng Mai, Hà Nội
-                                </p>
-                                <div class="property-details">
-                                    <span class="detail">
-                                        <i class="fas fa-expand-arrows-alt"></i>
-                                        45m²
-                                    </span>
-                                    <span class="detail">
-                                        <i class="fas fa-users"></i>
-                                        3 người
-                                    </span>
-                                    <span class="detail price">
-                                        <i class="fas fa-money-bill-wave"></i>
-                                        10 triệu/tháng
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="appointment-info">
-                                <div class="appointment-time">
-                                    <i class="fas fa-calendar"></i>
-                                    <div>
-                                        <strong>28/12/2023</strong>
-                                        <span>14:00 - 16:00</span>
-                                    </div>
-                                </div>
-                                <div class="appointment-contact">
-                                    <i class="fas fa-user"></i>
-                                    <div>
-                                        <strong>Chị Lan</strong>
-                                        <span>0912 345 678</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="appointment-actions">
+                        @switch($viewing->status)
+                            @case('requested')
+                                <button class="btn btn-outline-danger btn-sm" onclick="cancelAppointment({{ $viewing->id }})">
+                                    <i class="fas fa-times"></i>
+                                    Hủy lịch
+                                </button>
+                                <a href="{{ route('viewings.show', $viewing->id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                    Xem chi tiết
+                                </a>
+                                @if($viewing->agent && $viewing->agent->phone)
+                                    <a href="tel:{{ $viewing->agent->phone }}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-phone"></i>
+                                        Gọi điện
+                                    </a>
+                                @endif
+                                @break
+                            @case('confirmed')
+                                <button class="btn btn-outline-warning btn-sm" onclick="markCompleted({{ $viewing->id }})">
+                                    <i class="fas fa-check"></i>
+                                    Đã xem
+                                </button>
+                                <a href="{{ route('viewings.show', $viewing->id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                    Xem chi tiết
+                                </a>
+                                @if($viewing->agent && $viewing->agent->phone)
+                                    <a href="tel:{{ $viewing->agent->phone }}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-phone"></i>
+                                        Gọi điện
+                                    </a>
+                                @endif
+                                @break
+                            @case('done')
+                                <button class="btn btn-outline-primary btn-sm" onclick="rateProperty({{ $viewing->id }})">
+                                    <i class="fas fa-star"></i>
+                                    Đánh giá
+                                </button>
+                                @if($viewing->unit)
+                                    <a href="{{ route('tenant.deposit', $viewing->unit->id) }}" class="btn btn-outline-success btn-sm">
+                                        <i class="fas fa-home"></i>
+                                        Thuê phòng
+                                    </a>
+                                @endif
+                                @if($viewing->agent && $viewing->agent->phone)
+                                    <a href="tel:{{ $viewing->agent->phone }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-phone"></i>
+                                        Gọi lại
+                                    </a>
+                                @endif
+                                @break
+                            @case('cancelled')
+                                <a href="{{ route('viewings.show', $viewing->id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i>
+                                    Xem chi tiết
+                                </a>
+                                @if($viewing->property)
+                                    <a href="{{ route('property.show', $viewing->property->id) }}" class="btn btn-outline-info btn-sm">
+                                        <i class="fas fa-redo"></i>
+                                        Đặt lại
+                                    </a>
+                                @endif
+                                @break
+                        @endswitch
                     </div>
                 </div>
-                <div class="appointment-actions">
-                    <button class="btn btn-outline-warning btn-sm" onclick="markCompleted(2)">
-                        <i class="fas fa-check"></i>
-                        Đã xem
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" onclick="rescheduleAppointment(2)">
-                        <i class="fas fa-calendar-alt"></i>
-                        Đổi lịch
-                    </button>
-                    <a href="tel:0912345678" class="btn btn-success btn-sm">
-                        <i class="fas fa-phone"></i>
-                        Gọi điện
-                    </a>
-                </div>
-            </div>
-
-            <!-- Appointment Item 3 - Completed -->
-            <div class="appointment-card" data-status="completed">
-                <div class="appointment-status completed">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>Đã hoàn thành</span>
-                </div>
-                <div class="appointment-content">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="property-image">
-                                <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=300&h=200&fit=crop" alt="Homestay">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="property-info">
-                                <h4 class="property-title">Homestay Hạnh Đào</h4>
-                                <p class="property-location">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    789 Đường Hạnh Đào, Quận Hoàng Mai, Hà Nội
-                                </p>
-                                <div class="property-details">
-                                    <span class="detail">
-                                        <i class="fas fa-expand-arrows-alt"></i>
-                                        35m²
-                                    </span>
-                                    <span class="detail">
-                                        <i class="fas fa-users"></i>
-                                        2 người
-                                    </span>
-                                    <span class="detail price">
-                                        <i class="fas fa-money-bill-wave"></i>
-                                        8 triệu/tháng
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="appointment-info">
-                                <div class="appointment-time">
-                                    <i class="fas fa-calendar"></i>
-                                    <div>
-                                        <strong>20/12/2023</strong>
-                                        <span>10:00 - 12:00</span>
-                                    </div>
-                                </div>
-                                <div class="appointment-contact">
-                                    <i class="fas fa-user"></i>
-                                    <div>
-                                        <strong>Anh Nam</strong>
-                                        <span>0901 234 567</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            @empty
+                <!-- Empty State -->
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-calendar-times"></i>
                     </div>
-                </div>
-                <div class="appointment-actions">
-                    <button class="btn btn-outline-primary btn-sm" onclick="rateProperty(3)">
-                        <i class="fas fa-star"></i>
-                        Đánh giá
-                    </button>
-                    <a href="{{ route('deposit', 3) }}" class="btn btn-outline-success btn-sm">
-                        <i class="fas fa-home"></i>
-                        Thuê phòng
-                    </a>
-                    <a href="tel:0901234567" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-phone"></i>
-                        Gọi lại
+                    <h3>Không có lịch hẹn nào</h3>
+                    <p>Bạn chưa có lịch hẹn xem phòng nào. Hãy tìm kiếm và đặt lịch xem phòng mới!</p>
+                    <a href="{{ route('home') }}" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Tìm phòng ngay
                     </a>
                 </div>
-            </div>
-
-            <!-- Empty State -->
-            <div class="empty-state" style="display: none;">
-                <div class="empty-icon">
-                    <i class="fas fa-calendar-times"></i>
-                </div>
-                <h3>Không có lịch hẹn nào</h3>
-                <p>Bạn chưa có lịch hẹn xem phòng nào. Hãy tìm kiếm và đặt lịch xem phòng mới!</p>
-                <a href="{{ route('home') }}" class="btn btn-primary">
-                    <i class="fas fa-search me-2"></i>Tìm phòng ngay
-                </a>
-            </div>
+            @endforelse
         </div>
 
         <!-- Pagination -->

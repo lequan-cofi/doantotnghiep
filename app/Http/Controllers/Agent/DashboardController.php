@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\Unit;
 use App\Models\Lease;
+use App\Models\Viewing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -19,60 +21,64 @@ class DashboardController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         
-        // Lấy các properties được gán cho agent này
-        $assignedProperties = $user->assignedProperties()
-            ->with(['location', 'location2025', 'units' => function($query) {
-                $query->with(['leases' => function($leaseQuery) {
-                    $leaseQuery->where('status', 'active')
-                        ->whereNull('deleted_at')
-                        ->with('tenant');
-                }]);
-            }])
-            ->where('properties.status', 1)
+        // Get assigned properties
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        
+        // Get statistics
+        $stats = [
+            'total_properties' => $assignedPropertyIds->count(),
+            'total_units' => Unit::whereIn('property_id', $assignedPropertyIds)->count(),
+            'available_units' => Unit::whereIn('property_id', $assignedPropertyIds)
+                ->where('status', 'available')
+                ->count(),
+            'occupied_units' => Unit::whereIn('property_id', $assignedPropertyIds)
+                ->where('status', 'occupied')
+                ->count(),
+            'active_leases' => Lease::where('agent_id', $user->id)
+                ->where('status', 'active')
+                ->whereNull('deleted_at')
+                ->count(),
+            'total_viewings' => Viewing::where('agent_id', $user->id)->count(),
+            'today_viewings' => Viewing::where('agent_id', $user->id)
+                ->whereDate('schedule_at', today())
+                ->count(),
+        ];
+
+        // Get recent activities
+        $recentLeases = Lease::where('agent_id', $user->id)
+            ->with(['unit.property', 'tenant'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
             ->get();
 
-        // Tính toán thống kê
-        $totalUnits = 0;
-        $availableUnits = 0;
-        $occupiedUnits = 0;
-        $activeLeases = 0;
-        $monthlyRevenue = 0;
+        $recentViewings = Viewing::where('agent_id', $user->id)
+            ->with(['unit.property', 'tenant'])
+            ->orderBy('schedule_at', 'desc')
+            ->limit(5)
+            ->get();
 
-        foreach ($assignedProperties as $property) {
-            $totalUnits += $property->units->count();
-            $availableUnits += $property->units->where('status', 'available')->count();
-            
-            foreach ($property->units as $unit) {
-                if ($unit->leases->count() > 0) {
-                    $occupiedUnits++;
-                }
-                $activeLeases += $unit->leases->count();
-                $monthlyRevenue += $unit->leases->sum('rent_amount');
-            }
-        }
+        // Get properties with their stats
+        $properties = Property::whereIn('id', $assignedPropertyIds)
+            ->with(['units' => function($query) {
+                $query->with(['leases' => function($leaseQuery) {
+                    $leaseQuery->where('status', 'active')->whereNull('deleted_at');
+                }]);
+            }])
+            ->where('status', 1)
+            ->get();
 
-        $occupancyRate = $totalUnits > 0 ? round(($occupiedUnits / $totalUnits) * 100, 1) : 0;
+        // Add stats to each property
+        $properties->each(function ($property) {
+            $property->total_units = $property->units->count();
+            $property->available_units = $property->units->where('status', 'available')->count();
+            $property->occupied_units = $property->units->where('status', 'occupied')->count();
+            $property->active_leases = $property->units->sum(function($unit) {
+                return $unit->leases->count();
+            });
+            $property->occupancy_rate = $property->total_units > 0 ? 
+                round(($property->occupied_units / $property->total_units) * 100, 1) : 0;
+        });
 
-        // Lấy các hợp đồng gần đây
-        $recentLeases = Lease::whereHas('unit', function($query) use ($assignedProperties) {
-            $query->whereIn('property_id', $assignedProperties->pluck('id'));
-        })
-        ->with(['unit.property', 'tenant'])
-        ->where('status', 'active')
-        ->whereNull('deleted_at')
-        ->latest()
-        ->limit(10)
-        ->get();
-
-        return view('agent.dashboard', compact(
-            'assignedProperties',
-            'totalUnits',
-            'availableUnits',
-            'occupiedUnits',
-            'activeLeases',
-            'monthlyRevenue',
-            'occupancyRate',
-            'recentLeases'
-        ));
+        return view('agent.dashboard', compact('stats', 'recentLeases', 'recentViewings', 'properties'));
     }
 }

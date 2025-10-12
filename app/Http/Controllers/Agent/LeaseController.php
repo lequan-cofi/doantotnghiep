@@ -109,10 +109,28 @@ class LeaseController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Get tenants
+        // Get tenants from default organizations and agent's organization
+        $defaultOrgs = \App\Models\Organization::where('name', 'Default Organization')
+            ->orWhere('code', 'ORG_MAIN')
+            ->orWhere('name', 'Tổ chức mặc định')
+            ->get();
+        $agentOrg = $user->organizations()->first();
+        
+        $tenantOrgIds = collect();
+        foreach ($defaultOrgs as $defaultOrg) {
+            $tenantOrgIds->push($defaultOrg->id);
+        }
+        if ($agentOrg) {
+            $tenantOrgIds->push($agentOrg->id);
+        }
+        
         $tenants = User::whereHas('userRoles', function($q) {
             $q->where('key_code', 'tenant');
-        })->get();
+        })->whereHas('organizations', function($q) use ($tenantOrgIds) {
+            $q->whereIn('organizations.id', $tenantOrgIds);
+        })->with(['organizations' => function($q) use ($tenantOrgIds) {
+            $q->whereIn('organizations.id', $tenantOrgIds);
+        }])->get();
 
         // Get services
         $services = Service::all();
@@ -236,6 +254,35 @@ class LeaseController extends Controller
                 'signed_at' => $request->signed_at,
             ]);
 
+            // Move tenant to agent's organization when creating lease
+            $tenant = User::find($request->tenant_id);
+            if ($tenant && $organization) {
+                // Get tenant role
+                $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
+                if ($tenantRole) {
+                    // Remove tenant from current organizations and add to agent's organization
+                    $tenant->organizations()->detach();
+                    
+                    // Create organization user record with role_id
+                    \App\Models\OrganizationUser::create([
+                        'organization_id' => $organization->id,
+                        'user_id' => $tenant->id,
+                        'role_id' => $tenantRole->id,
+                        'status' => 'active'
+                    ]);
+                    
+                    Log::info('Tenant assigned to agent organization when creating lease', [
+                        'tenant_id' => $tenant->id,
+                        'tenant_name' => $tenant->full_name,
+                        'agent_id' => $user->id,
+                        'agent_org_id' => $organization->id,
+                        'agent_org_name' => $organization->name,
+                        'role_id' => $tenantRole->id,
+                        'lease_id' => $lease->id
+                    ]);
+                }
+            }
+
             // Add services if provided
             if (!empty($request->services)) {
                 foreach ($request->services as $serviceData) {
@@ -290,7 +337,7 @@ class LeaseController extends Controller
                 'tenant',
                 'organization',
                 'leaseServices.service',
-                'residents'
+                'residents.user'
             ])
             ->findOrFail($id);
 
@@ -656,6 +703,9 @@ class LeaseController extends Controller
                 if (!$hasOtherActiveLease) {
                     $unit->update(['status' => 'available']);
                 }
+                
+                // Move tenant back to default organization when lease ends
+                $this->moveTenantToDefaultOrganization($lease->tenant_id);
                 break;
                 
             case 'draft':
@@ -706,11 +756,11 @@ class LeaseController extends Controller
             // Check if property is assigned to agent
             $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
             if (!$assignedPropertyIds->contains($propertyId)) {
+                Log::warning('User ' . $user->id . ' tried to access property ' . $propertyId . ' without permission');
                 return response()->json(['error' => 'Bạn không có quyền truy cập bất động sản này'], 403);
             }
 
             $units = Unit::where('property_id', $propertyId)
-                ->where('status', 'available')
                 ->get()
                 ->map(function ($unit) {
                     $hasActiveLease = Lease::where('unit_id', $unit->id)
@@ -722,10 +772,12 @@ class LeaseController extends Controller
                     return $unit;
                 });
 
+            Log::info('Found ' . $units->count() . ' units for property ' . $propertyId);
             return response()->json($units);
         } catch (\Exception $e) {
             Log::error('Error in getUnits: ' . $e->getMessage());
-            return response()->json(['error' => 'Có lỗi xảy ra khi tải dữ liệu phòng'], 500);
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json(['error' => 'Có lỗi xảy ra khi tải dữ liệu phòng: ' . $e->getMessage()], 500);
         }
     }
 
@@ -740,6 +792,1016 @@ class LeaseController extends Controller
         } catch (\Exception $e) {
             Log::error('Error generating contract number: ' . $e->getMessage());
             return response()->json(['error' => 'Có lỗi xảy ra khi sinh mã hợp đồng'], 500);
+        }
+    }
+
+    /**
+     * API method to search users for resident selection
+     * Only searches tenant users in agent's organization and default organization
+     */
+    public function searchUsers(Request $request)
+    {
+        try {
+            $query = $request->get('q', '');
+            
+            Log::info('Search tenant users request', ['query' => $query]);
+
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            // Get agent's organization
+            $agentOrganization = $user->organizations()->first();
+            $agentOrgId = $agentOrganization ? $agentOrganization->id : null;
+            
+            // Get Default Organization - try multiple ways to find it
+            $defaultOrg = \App\Models\Organization::where('name', 'Default Organization')
+                ->orWhere('code', 'ORG_MAIN')
+                ->orWhere('name', 'Tổ chức mặc định')
+                ->orWhere('name', 'like', '%Default%')
+                ->orWhere('name', 'like', '%Mặc định%')
+                ->orWhere('id', 3) // Force include organization with ID = 3
+                ->first();
+            $defaultOrgId = $defaultOrg ? $defaultOrg->id : null;
+            
+            // If still not found, try to get organization with ID = 3 directly
+            if (!$defaultOrgId) {
+                $orgWithId3 = \App\Models\Organization::find(3);
+                if ($orgWithId3) {
+                    $defaultOrg = $orgWithId3;
+                    $defaultOrgId = 3;
+                }
+            }
+            
+            Log::info('Organization IDs', [
+                'agent_org_id' => $agentOrgId,
+                'default_org_id' => $defaultOrgId,
+                'default_org_name' => $defaultOrg ? $defaultOrg->name : null,
+                'agent_org_name' => $agentOrganization ? $agentOrganization->name : null,
+                'org_id_3_exists' => \App\Models\Organization::find(3) ? true : false,
+                'org_id_3_name' => \App\Models\Organization::find(3) ? \App\Models\Organization::find(3)->name : null
+            ]);
+
+            // Build organization IDs array
+            $orgIds = [];
+            if ($agentOrgId) {
+                $orgIds[] = $agentOrgId;
+            }
+            if ($defaultOrgId && $defaultOrgId !== $agentOrgId) {
+                $orgIds[] = $defaultOrgId;
+            }
+            
+            // Always include organization ID = 3 if it exists
+            if (!in_array(3, $orgIds)) {
+                $org3 = \App\Models\Organization::find(3);
+                if ($org3) {
+                    $orgIds[] = 3;
+                }
+            }
+
+            Log::info('Final organization IDs for search', ['org_ids' => $orgIds]);
+
+            // If no organizations found, return empty result
+            if (empty($orgIds)) {
+                Log::warning('No organizations found for user search');
+                return response()->json([]);
+            }
+
+            // Search tenant users in agent's organization and default organization
+            $usersQuery = \App\Models\User::whereHas('userRoles', function($roleQuery) {
+                    $roleQuery->where('key_code', 'tenant');
+                })
+                ->whereHas('organizations', function($orgQuery) use ($orgIds) {
+                    $orgQuery->whereIn('organizations.id', $orgIds);
+                })
+                ->with(['userProfile', 'organizations']);
+
+            // Apply search filter if query is provided
+            if (!empty($query)) {
+                $usersQuery->where(function($q) use ($query) {
+                    $q->where('full_name', 'like', "%{$query}%")
+                      ->orWhere('phone', 'like', "%{$query}%")
+                      ->orWhere('email', 'like', "%{$query}%");
+                });
+            }
+
+            $users = $usersQuery->limit(20)
+                ->get()
+                ->map(function($user) {
+                    $orgNames = $user->organizations->pluck('name')->join(', ');
+                    return [
+                        'id' => $user->id,
+                        'text' => $user->full_name . ' (' . $user->phone . ') - ' . $orgNames,
+                        'name' => $user->full_name,
+                        'phone' => $user->phone,
+                        'email' => $user->email,
+                        'id_number' => $user->userProfile?->id_number,
+                        'organizations' => $orgNames,
+                    ];
+                });
+
+            Log::info('Found tenant users', ['count' => $users->count(), 'query' => $query]);
+            return response()->json($users);
+        } catch (\Exception $e) {
+            Log::error('Error searching tenant users: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json(['error' => 'Có lỗi xảy ra khi tìm kiếm người dùng: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Debug method to check all organizations and users
+     */
+    public function debugOrganizations()
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            $allOrgs = \App\Models\Organization::all();
+            
+            // Get agent's organization
+            $agentOrganization = $user->organizations()->first();
+            
+            // Try to find Default Organization
+            $defaultOrg = \App\Models\Organization::where('name', 'Default Organization')
+                ->orWhere('code', 'ORG_MAIN')
+                ->orWhere('name', 'Tổ chức mặc định')
+                ->orWhere('name', 'like', '%Default%')
+                ->orWhere('name', 'like', '%Mặc định%')
+                ->first();
+            
+            // Get users in each organization
+            $orgsWithUsers = $allOrgs->map(function($org) {
+                $users = $org->users()->limit(5)->get();
+                return [
+                    'id' => $org->id,
+                    'name' => $org->name,
+                    'code' => $org->code,
+                    'user_count' => $org->users()->count(),
+                    'sample_users' => $users->map(function($u) {
+                        return [
+                            'id' => $u->id,
+                            'name' => $u->full_name,
+                            'email' => $u->email,
+                            'phone' => $u->phone
+                        ];
+                    })
+                ];
+            });
+            
+            return response()->json([
+                'current_user' => [
+                    'id' => $user->id,
+                    'name' => $user->full_name,
+                    'email' => $user->email
+                ],
+                'agent_organization' => $agentOrganization ? [
+                    'id' => $agentOrganization->id,
+                    'name' => $agentOrganization->name,
+                    'code' => $agentOrganization->code
+                ] : null,
+                'default_organization' => $defaultOrg ? [
+                    'id' => $defaultOrg->id,
+                    'name' => $defaultOrg->name,
+                    'code' => $defaultOrg->code
+                ] : null,
+                'all_organizations' => $orgsWithUsers
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Test search with specific query
+     */
+    public function testSearch($query = 'test')
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            // Get agent's organization
+            $agentOrganization = $user->organizations()->first();
+            $agentOrgId = $agentOrganization ? $agentOrganization->id : null;
+            
+            // Get Default Organization
+            $defaultOrg = \App\Models\Organization::where('name', 'Default Organization')
+                ->orWhere('code', 'ORG_MAIN')
+                ->orWhere('name', 'Tổ chức mặc định')
+                ->orWhere('name', 'like', '%Default%')
+                ->orWhere('name', 'like', '%Mặc định%')
+                ->first();
+            $defaultOrgId = $defaultOrg ? $defaultOrg->id : null;
+            
+            // Build organization IDs array
+            $orgIds = [];
+            if ($agentOrgId) {
+                $orgIds[] = $agentOrgId;
+            }
+            if ($defaultOrgId && $defaultOrgId !== $agentOrgId) {
+                $orgIds[] = $defaultOrgId;
+            }
+            
+            // Test search in organizations
+            $usersInOrgs = [];
+            if (!empty($orgIds)) {
+                $usersInOrgs = \App\Models\User::where(function($q) use ($query) {
+                        $q->where('full_name', 'like', "%{$query}%")
+                          ->orWhere('phone', 'like', "%{$query}%")
+                          ->orWhere('email', 'like', "%{$query}%");
+                    })
+                    ->whereHas('organizations', function($orgQuery) use ($orgIds) {
+                        $orgQuery->whereIn('organizations.id', $orgIds);
+                    })
+                    ->with(['userProfile', 'organizations'])
+                    ->limit(10)
+                    ->get()
+                    ->map(function($user) {
+                        return [
+                            'id' => $user->id,
+                            'name' => $user->full_name,
+                            'email' => $user->email,
+                            'phone' => $user->phone,
+                            'organizations' => $user->organizations->pluck('name')->join(', ')
+                        ];
+                    });
+            }
+            
+            // Test search all users
+            $allUsers = \App\Models\User::where(function($q) use ($query) {
+                    $q->where('full_name', 'like', "%{$query}%")
+                      ->orWhere('phone', 'like', "%{$query}%")
+                      ->orWhere('email', 'like', "%{$query}%");
+                })
+                ->with(['userProfile', 'organizations'])
+                ->limit(10)
+                ->get()
+                ->map(function($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                        'organizations' => $user->organizations->pluck('name')->join(', ')
+                    ];
+                });
+            
+            return response()->json([
+                'query' => $query,
+                'agent_org_id' => $agentOrgId,
+                'default_org_id' => $defaultOrgId,
+                'org_ids' => $orgIds,
+                'users_in_organizations' => $usersInOrgs,
+                'all_users' => $allUsers,
+                'count_in_orgs' => count($usersInOrgs),
+                'count_all' => count($allUsers)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Debug organization ID = 3
+     */
+    public function debugOrg3()
+    {
+        try {
+            $org3 = \App\Models\Organization::find(3);
+            $usersInOrg3 = $org3 ? $org3->users()->with('userRoles')->get() : collect();
+            
+            return response()->json([
+                'org_3_exists' => $org3 ? true : false,
+                'org_3_details' => $org3 ? [
+                    'id' => $org3->id,
+                    'name' => $org3->name,
+                    'code' => $org3->code
+                ] : null,
+                'users_in_org_3' => $usersInOrg3->map(function($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                        'roles' => $user->userRoles->pluck('key_code')->toArray()
+                    ];
+                }),
+                'tenant_users_in_org_3' => $usersInOrg3->filter(function($user) {
+                    return $user->userRoles->where('key_code', 'tenant')->isNotEmpty();
+                })->map(function($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'email' => $user->email,
+                        'phone' => $user->phone
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Simple test method
+     */
+    public function simpleTest()
+    {
+        try {
+            // Test 1: Get all organizations
+            $allOrgs = \App\Models\Organization::all();
+            
+            // Test 2: Get all users
+            $allUsers = \App\Models\User::limit(5)->get();
+            
+            // Test 3: Get users with organizations
+            $usersWithOrgs = \App\Models\User::with('organizations')->limit(5)->get();
+            
+            // Test 4: Find Default Organization specifically
+            $defaultOrg1 = \App\Models\Organization::where('name', 'Default Organization')->first();
+            $defaultOrg2 = \App\Models\Organization::where('code', 'ORG_MAIN')->first();
+            $defaultOrg3 = \App\Models\Organization::where('name', 'like', '%Default%')->first();
+            
+            return response()->json([
+                'total_organizations' => $allOrgs->count(),
+                'organizations' => $allOrgs->map(function($org) {
+                    return [
+                        'id' => $org->id,
+                        'name' => $org->name,
+                        'code' => $org->code
+                    ];
+                }),
+                'total_users' => \App\Models\User::count(),
+                'sample_users' => $allUsers->map(function($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'email' => $user->email
+                    ];
+                }),
+                'users_with_organizations' => $usersWithOrgs->map(function($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->full_name,
+                        'organizations' => $user->organizations->pluck('name')->toArray()
+                    ];
+                }),
+                'default_org_tests' => [
+                    'by_name_exact' => $defaultOrg1 ? ['id' => $defaultOrg1->id, 'name' => $defaultOrg1->name] : null,
+                    'by_code' => $defaultOrg2 ? ['id' => $defaultOrg2->id, 'name' => $defaultOrg2->name] : null,
+                    'by_name_like' => $defaultOrg3 ? ['id' => $defaultOrg3->id, 'name' => $defaultOrg3->name] : null
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Test method to check users and organizations
+     */
+    public function testUsers()
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            // Get agent's organization
+            $agentOrganization = $user->organizations()->first();
+            $agentOrgId = $agentOrganization ? $agentOrganization->id : null;
+            
+            // Get Default Organization - try multiple ways to find it
+            $defaultOrg = \App\Models\Organization::where('name', 'Default Organization')
+                ->orWhere('code', 'ORG_MAIN')
+                ->orWhere('name', 'Tổ chức mặc định')
+                ->orWhere('name', 'like', '%Default%')
+                ->orWhere('name', 'like', '%Mặc định%')
+                ->first();
+            $defaultOrgId = $defaultOrg ? $defaultOrg->id : null;
+            
+            // Build organization IDs array
+            $orgIds = [];
+            if ($agentOrgId) {
+                $orgIds[] = $agentOrgId;
+            }
+            if ($defaultOrgId && $defaultOrgId !== $agentOrgId) {
+                $orgIds[] = $defaultOrgId;
+            }
+            
+            // Count users in these organizations
+            $usersInOrgs = \App\Models\User::whereHas('organizations', function($orgQuery) use ($orgIds) {
+                $orgQuery->whereIn('organizations.id', $orgIds);
+            })->count();
+            
+            $totalUsers = \App\Models\User::count();
+            
+            return response()->json([
+                'current_user' => [
+                    'id' => $user->id,
+                    'name' => $user->full_name,
+                    'email' => $user->email,
+                ],
+                'agent_organization' => $agentOrganization ? [
+                    'id' => $agentOrganization->id,
+                    'name' => $agentOrganization->name,
+                ] : null,
+                'default_organization' => $defaultOrg ? [
+                    'id' => $defaultOrg->id,
+                    'name' => $defaultOrg->name,
+                ] : null,
+                'organization_ids' => $orgIds,
+                'total_users' => $totalUsers,
+                'users_in_organizations' => $usersInOrgs,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Check if user should be moved to Default Organization
+     * Only move if user is not in agent's organization and has no active leases
+     */
+    private function checkAndMoveUserToDefaultOrganization($user, $agentId)
+    {
+        // Get agent's organization
+        $agent = \App\Models\User::find($agentId);
+        $agentOrganization = $agent ? $agent->organizations()->first() : null;
+        
+        // Check if user is in agent's organization
+        $isInAgentOrg = false;
+        if ($agentOrganization) {
+            $isInAgentOrg = $user->organizations()->where('organizations.id', $agentOrganization->id)->exists();
+        }
+        
+        // Check if user has active leases (as tenant or resident)
+        $hasActiveLeases = \App\Models\Lease::where('tenant_id', $user->id)
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->exists();
+            
+        $hasActiveResidentLeases = \App\Models\LeaseResident::where('user_id', $user->id)
+            ->whereHas('lease', function($query) {
+                $query->where('status', 'active')->whereNull('deleted_at');
+            })
+            ->exists();
+        
+        // Only move to Default Organization if:
+        // 1. User is not in agent's organization AND
+        // 2. User has no active leases (as tenant or resident)
+        if (!$isInAgentOrg && !$hasActiveLeases && !$hasActiveResidentLeases) {
+            $this->moveUserToDefaultOrganization($user);
+            
+            Log::info('User moved to Default Organization after checking conditions', [
+                'user_id' => $user->id,
+                'user_name' => $user->full_name,
+                'is_in_agent_org' => $isInAgentOrg,
+                'has_active_leases' => $hasActiveLeases,
+                'has_active_resident_leases' => $hasActiveResidentLeases,
+                'agent_id' => $agentId
+            ]);
+        } else {
+            Log::info('User kept in current organization after checking conditions', [
+                'user_id' => $user->id,
+                'user_name' => $user->full_name,
+                'is_in_agent_org' => $isInAgentOrg,
+                'has_active_leases' => $hasActiveLeases,
+                'has_active_resident_leases' => $hasActiveResidentLeases,
+                'agent_id' => $agentId
+            ]);
+        }
+    }
+
+    /**
+     * Move user to Default Organization (ID = 3)
+     */
+    private function moveUserToDefaultOrganization($user)
+    {
+        // Get Default Organization (ID = 3) or fallback to other default organizations
+        $defaultOrg = \App\Models\Organization::find(3);
+        if (!$defaultOrg) {
+            $defaultOrgs = \App\Models\Organization::where('name', 'Default Organization')
+                ->orWhere('code', 'ORG_MAIN')
+                ->orWhere('name', 'Tổ chức mặc định')
+                ->orWhere('name', 'like', '%Default%')
+                ->orWhere('name', 'like', '%Mặc định%')
+                ->get();
+            $defaultOrg = $defaultOrgs->where('name', 'Default Organization')->first() 
+                ?? $defaultOrgs->first();
+        }
+        
+        if ($defaultOrg) {
+            // Get tenant role
+            $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
+            if ($tenantRole) {
+                // Remove user from current organizations and add to Default Organization
+                $user->organizations()->detach();
+                
+                // Create organization user record with role_id
+                \App\Models\OrganizationUser::create([
+                    'organization_id' => $defaultOrg->id,
+                    'user_id' => $user->id,
+                    'role_id' => $tenantRole->id,
+                    'status' => 'active'
+                ]);
+                
+                Log::info('User moved to Default Organization', [
+                    'user_id' => $user->id,
+                    'user_name' => $user->full_name,
+                    'default_org_id' => $defaultOrg->id,
+                    'default_org_name' => $defaultOrg->name,
+                    'role_id' => $tenantRole->id
+                ]);
+            }
+        } else {
+            Log::warning('Default Organization not found when moving user', [
+                'user_id' => $user->id,
+                'user_name' => $user->full_name
+            ]);
+        }
+    }
+
+    /**
+     * Move tenant back to default organization when lease ends
+     */
+    private function moveTenantToDefaultOrganization($tenantId)
+    {
+        $tenant = User::find($tenantId);
+        if (!$tenant) {
+            return;
+        }
+
+        // Use the new method to move tenant to Default Organization
+        $this->moveUserToDefaultOrganization($tenant);
+        
+        Log::info('Tenant moved to Default Organization when lease ended', [
+            'tenant_id' => $tenant->id,
+            'tenant_name' => $tenant->full_name
+        ]);
+    }
+
+    /**
+     * Add resident to lease
+     */
+    public function addResident(Request $request, $leaseId)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Get lease created by this agent
+        $lease = Lease::where('agent_id', $user->id)->findOrFail($leaseId);
+
+        $request->validate([
+            'user_id' => 'nullable|exists:users,id',
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'id_number' => 'nullable|string|max:20',
+            'note' => 'nullable|string|max:500',
+        ], [
+            'user_id.exists' => 'Người dùng không tồn tại trong hệ thống.',
+            'name.required' => 'Vui lòng nhập tên người ở cùng.',
+            'name.max' => 'Tên không được vượt quá 255 ký tự.',
+            'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự.',
+            'id_number.max' => 'Số CMND/CCCD không được vượt quá 20 ký tự.',
+            'note.max' => 'Ghi chú không được vượt quá 500 ký tự.',
+        ]);
+
+        try {
+            // If user_id is provided, get user info and auto-fill some fields
+            $residentData = [
+                'lease_id' => $lease->id,
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'id_number' => $request->id_number,
+                'note' => $request->note,
+            ];
+
+            if ($request->user_id) {
+                $selectedUser = \App\Models\User::find($request->user_id);
+                if ($selectedUser) {
+                    $residentData['user_id'] = $selectedUser->id;
+                    
+                    // Auto-fill name and phone if not provided
+                    if (empty($residentData['name'])) {
+                        $residentData['name'] = $selectedUser->full_name;
+                    }
+                    if (empty($residentData['phone'])) {
+                        $residentData['phone'] = $selectedUser->phone;
+                    }
+                    
+                    // Auto-fill ID number from user profile if available
+                    if (empty($residentData['id_number']) && $selectedUser->userProfile) {
+                        $residentData['id_number'] = $selectedUser->userProfile->id_number;
+                    }
+                    
+                    // Assign user to agent's organization
+                    $agentOrganization = $user->organizations()->first();
+                    if ($agentOrganization) {
+                        // Get tenant role
+                        $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
+                        if ($tenantRole) {
+                            // Remove user from current organizations and add to agent's organization
+                            $selectedUser->organizations()->detach();
+                            
+                            // Create organization user record with role_id
+                            \App\Models\OrganizationUser::create([
+                                'organization_id' => $agentOrganization->id,
+                                'user_id' => $selectedUser->id,
+                                'role_id' => $tenantRole->id,
+                                'status' => 'active'
+                            ]);
+                            
+                            Log::info('User assigned to agent organization when adding resident', [
+                                'user_id' => $selectedUser->id,
+                                'user_name' => $selectedUser->full_name,
+                                'agent_id' => $user->id,
+                                'agent_org_id' => $agentOrganization->id,
+                                'agent_org_name' => $agentOrganization->name,
+                                'role_id' => $tenantRole->id,
+                                'lease_id' => $lease->id
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            $resident = \App\Models\LeaseResident::create($residentData);
+
+            // Load user relationship for response
+            $resident->load('user.userProfile');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã thêm người ở cùng thành công!',
+                'resident' => $resident
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error adding resident: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi thêm người ở cùng: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update resident
+     */
+    public function updateResident(Request $request, $leaseId, $residentId)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Get lease created by this agent
+        $lease = Lease::where('agent_id', $user->id)->findOrFail($leaseId);
+        
+        // Get resident
+        $resident = \App\Models\LeaseResident::where('lease_id', $lease->id)
+            ->where('id', $residentId)
+            ->firstOrFail();
+
+        $request->validate([
+            'user_id' => 'nullable|exists:users,id',
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'id_number' => 'nullable|string|max:20',
+            'note' => 'nullable|string|max:500',
+        ], [
+            'user_id.exists' => 'Người dùng không tồn tại trong hệ thống.',
+            'name.required' => 'Vui lòng nhập tên người ở cùng.',
+            'name.max' => 'Tên không được vượt quá 255 ký tự.',
+            'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự.',
+            'id_number.max' => 'Số CMND/CCCD không được vượt quá 20 ký tự.',
+            'note.max' => 'Ghi chú không được vượt quá 500 ký tự.',
+        ]);
+
+        try {
+            $updateData = [
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'id_number' => $request->id_number,
+                'note' => $request->note,
+            ];
+
+            // Handle user_id update
+            if ($request->has('user_id')) {
+                if ($request->user_id) {
+                    $selectedUser = \App\Models\User::find($request->user_id);
+                    if ($selectedUser) {
+                        $updateData['user_id'] = $selectedUser->id;
+                        
+                        // Auto-fill name and phone if not provided
+                        if (empty($updateData['name'])) {
+                            $updateData['name'] = $selectedUser->full_name;
+                        }
+                        if (empty($updateData['phone'])) {
+                            $updateData['phone'] = $selectedUser->phone;
+                        }
+                        
+                        // Auto-fill ID number from user profile if available
+                        if (empty($updateData['id_number']) && $selectedUser->userProfile) {
+                            $updateData['id_number'] = $selectedUser->userProfile->id_number;
+                        }
+                        
+                        // Assign user to agent's organization
+                        $agentOrganization = $user->organizations()->first();
+                        if ($agentOrganization) {
+                            // Get tenant role
+                            $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
+                            if ($tenantRole) {
+                                // Remove user from current organizations and add to agent's organization
+                                $selectedUser->organizations()->detach();
+                                
+                                // Create organization user record with role_id
+                                \App\Models\OrganizationUser::create([
+                                    'organization_id' => $agentOrganization->id,
+                                    'user_id' => $selectedUser->id,
+                                    'role_id' => $tenantRole->id,
+                                    'status' => 'active'
+                                ]);
+                                
+                                Log::info('User assigned to agent organization when updating resident', [
+                                    'user_id' => $selectedUser->id,
+                                    'user_name' => $selectedUser->full_name,
+                                    'agent_id' => $user->id,
+                                    'agent_org_id' => $agentOrganization->id,
+                                    'agent_org_name' => $agentOrganization->name,
+                                    'role_id' => $tenantRole->id,
+                                    'resident_id' => $resident->id,
+                                    'lease_id' => $lease->id
+                                ]);
+                            }
+                        }
+                    }
+                } else {
+                    // If removing user_id, check if user should be moved back to Default Organization
+                    if ($resident->user_id) {
+                        $previousUser = \App\Models\User::find($resident->user_id);
+                        if ($previousUser) {
+                            // Check if user should be moved back to Default Organization
+                            $this->checkAndMoveUserToDefaultOrganization($previousUser, $lease->agent_id);
+                        }
+                    }
+                    $updateData['user_id'] = null;
+                }
+            }
+
+            $resident->update($updateData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã cập nhật thông tin người ở cùng thành công!',
+                'resident' => $resident
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating resident: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi cập nhật thông tin người ở cùng: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete resident
+     */
+    public function deleteResident($leaseId, $residentId)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Get lease created by this agent
+        $lease = Lease::where('agent_id', $user->id)->findOrFail($leaseId);
+        
+        // Get resident
+        $resident = \App\Models\LeaseResident::where('lease_id', $lease->id)
+            ->where('id', $residentId)
+            ->firstOrFail();
+
+        try {
+            // If resident has a linked user, check if they should be moved back to Default Organization
+            if ($resident->user_id) {
+                $linkedUser = \App\Models\User::find($resident->user_id);
+                if ($linkedUser) {
+                    // Check if user should be moved back to Default Organization
+                    $this->checkAndMoveUserToDefaultOrganization($linkedUser, $lease->agent_id);
+                }
+            }
+            
+            $resident->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã xóa người ở cùng thành công!'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting resident: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi xóa người ở cùng: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Convert lead to lease
+     */
+    public function createFromLead(Request $request, $leadId)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Get lead
+        $lead = \App\Models\Lead::findOrFail($leadId);
+
+        // Get assigned properties
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        
+        if ($assignedPropertyIds->isEmpty()) {
+            return redirect()->route('agent.leads.index')
+                ->with('error', 'Bạn chưa được gán quản lý bất động sản nào.');
+        }
+
+        $properties = \App\Models\Property::whereIn('id', $assignedPropertyIds)
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        // Get tenants
+        $tenants = User::whereHas('userRoles', function($q) {
+            $q->where('key_code', 'tenant');
+        })->get();
+
+        // Get services
+        $services = Service::all();
+
+        // Pre-select property if provided
+        $selectedProperty = null;
+        if ($request->filled('property_id')) {
+            $selectedProperty = $properties->find($request->property_id);
+        }
+
+        return view('agent.leases.create-from-lead', [
+            'lead' => $lead,
+            'properties' => $properties,
+            'tenants' => $tenants,
+            'services' => $services,
+            'selectedProperty' => $selectedProperty
+        ]);
+    }
+
+    /**
+     * Store lease from lead
+     */
+    public function storeFromLead(Request $request, $leadId)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        // Get lead
+        $lead = \App\Models\Lead::findOrFail($leadId);
+
+        // Clean and validate currency inputs
+        $rentAmount = str_replace(['.', ','], '', $request->rent_amount);
+        $depositAmount = $request->deposit_amount ? str_replace(['.', ','], '', $request->deposit_amount) : null;
+        
+        // Validate request
+        $request->validate([
+            'unit_id' => 'required|exists:units,id',
+            'tenant_id' => 'required|exists:users,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'rent_amount' => 'required|string|regex:/^[\d.,]+$/',
+            'deposit_amount' => 'nullable|string|regex:/^[\d.,]+$/',
+            'billing_day' => 'nullable|integer|min:1|max:28',
+            'status' => 'required|in:draft,active,terminated,expired',
+            'contract_no' => 'nullable|string|max:100|unique:leases,contract_no',
+            'signed_at' => 'nullable|date',
+            'services' => 'nullable|array',
+            'services.*.service_id' => 'required_with:services|exists:services,id',
+            'services.*.price' => 'required_with:services|numeric|min:0',
+        ]);
+
+        // Check if unit belongs to assigned properties
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        $unit = Unit::with('property')->findOrFail($request->unit_id);
+        
+        if (!$assignedPropertyIds->contains($unit->property_id)) {
+            return back()->withErrors(['unit_id' => 'Bạn không có quyền tạo hợp đồng cho phòng này.']);
+        }
+
+        // Check if unit already has active lease
+        $hasActiveLease = Lease::where('unit_id', $request->unit_id)
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($hasActiveLease) {
+            return back()->withErrors(['unit_id' => 'Phòng này đã có hợp đồng hoạt động.']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Get organization from current user
+            $organization = $user->organizations()->first();
+            
+            if (!$organization) {
+                return back()->withInput()->with('error', 'Bạn chưa được gán vào tổ chức nào.');
+            }
+
+            // Auto-generate contract number if not provided
+            $contractNo = $request->contract_no;
+            if (empty($contractNo)) {
+                $contractNo = $this->generateContractNumber();
+            }
+
+            // Create lease
+            $lease = Lease::create([
+                'organization_id' => $organization?->id,
+                'unit_id' => $request->unit_id,
+                'tenant_id' => $request->tenant_id,
+                'agent_id' => $user->id,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'rent_amount' => $rentAmount,
+                'deposit_amount' => $depositAmount ?? 0,
+                'billing_day' => $request->billing_day ?? 1,
+                'status' => $request->status,
+                'contract_no' => $contractNo,
+                'signed_at' => $request->signed_at,
+            ]);
+
+            // Move tenant to agent's organization when creating lease
+            $tenant = User::find($request->tenant_id);
+            if ($tenant && $organization) {
+                // Get tenant role
+                $tenantRole = \App\Models\Role::where('key_code', 'tenant')->first();
+                if ($tenantRole) {
+                    // Remove tenant from current organizations and add to agent's organization
+                    $tenant->organizations()->detach();
+                    
+                    // Create organization user record with role_id
+                    \App\Models\OrganizationUser::create([
+                        'organization_id' => $organization->id,
+                        'user_id' => $tenant->id,
+                        'role_id' => $tenantRole->id,
+                        'status' => 'active'
+                    ]);
+                    
+                    Log::info('Tenant assigned to agent organization when creating lease from lead', [
+                        'tenant_id' => $tenant->id,
+                        'tenant_name' => $tenant->full_name,
+                        'agent_id' => $user->id,
+                        'agent_org_id' => $organization->id,
+                        'agent_org_name' => $organization->name,
+                        'role_id' => $tenantRole->id,
+                        'lease_id' => $lease->id,
+                        'lead_id' => $leadId
+                    ]);
+                }
+            }
+
+            // Add services if provided
+            if (!empty($request->services)) {
+                foreach ($request->services as $serviceData) {
+                    $lease->leaseServices()->create([
+                        'service_id' => $serviceData['service_id'],
+                        'price' => $serviceData['price'],
+                    ]);
+                }
+            }
+
+            // Update unit status if lease is active
+            if ($request->status === 'active') {
+                $unit->update(['status' => 'occupied']);
+            }
+
+            // Create commission events if lease is active
+            if ($request->status === 'active') {
+                try {
+                    $this->createCommissionEvents($lease, $organization);
+                } catch (\Exception $e) {
+                    Log::error('Error creating commission events: ' . $e->getMessage());
+                }
+            }
+
+            // Update lead status to converted
+            $lead->update(['status' => 'converted']);
+
+            DB::commit();
+
+            return redirect()->route('agent.leases.show', $lease->id)
+                ->with('success', 'Hợp đồng đã được tạo từ lead thành công!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating lease from lead: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi tạo hợp đồng từ lead: ' . $e->getMessage());
         }
     }
 }

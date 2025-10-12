@@ -383,7 +383,7 @@
                             <i class="fas fa-print me-2"></i>
                             In biên lai
                         </button>
-                        <a href="{{ route('appointments') }}" class="btn btn-success btn-lg">
+                        <a href="{{ route('tenant.appointments') }}" class="btn btn-success btn-lg">
                             <i class="fas fa-calendar me-2"></i>
                             Quản lý lịch hẹn
                         </a>

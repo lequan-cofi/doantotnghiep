@@ -22,6 +22,7 @@ use Illuminate\Notifications\Notifiable;
  * @method \Illuminate\Database\Eloquent\Relations\HasMany viewingsAsAgent()
  * @method \Illuminate\Database\Eloquent\Relations\HasMany payments()
  * @method \Illuminate\Database\Eloquent\Relations\HasMany bookingDepositsAsTenant()
+ * @method \Illuminate\Database\Eloquent\Relations\HasOne userProfile()
  */
 class User extends Authenticatable
 {
@@ -201,5 +202,21 @@ class User extends Authenticatable
     public function bookingDepositsAsTenant()
     {
         return $this->hasMany(BookingDeposit::class, 'tenant_user_id');
+    }
+
+    /**
+     * Get the user's profile.
+     */
+    public function userProfile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    /**
+     * Get or create user profile.
+     */
+    public function getOrCreateProfile()
+    {
+        return $this->userProfile ?: $this->userProfile()->create([]);
     }
 }

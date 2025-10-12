@@ -29,7 +29,7 @@
                 </div>
                 <div class="col-md-4 text-end">
                     <div class="header-actions">
-                        <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('tenant.dashboard') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Về Dashboard
                         </a>
                         <button class="btn btn-primary ms-2" onclick="openCreateRequestModal()">

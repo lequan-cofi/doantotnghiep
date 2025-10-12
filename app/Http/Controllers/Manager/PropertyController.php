@@ -15,13 +15,21 @@ use App\Models\GeoWard2025;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Services\ImageService;
 
 class PropertyController extends Controller
 {
+    protected $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
     public function index(Request $request)
     {
-        // Start with basic query - temporarily disable organization scope for debugging
-        $query = Property::withoutGlobalScope('organization')->with(['propertyType', 'location', 'location2025', 'owner']);
+        // Start with basic query
+        $query = Property::with(['propertyType', 'location', 'location2025', 'owner']);
 
         // // Debug: Log request parameters
         // Log::info('Request parameters: ' . json_encode($request->all()));
@@ -119,7 +127,7 @@ class PropertyController extends Controller
             $sortOrder = 'desc';
         }
         
-        $properties = $query->orderBy($sortBy, $sortOrder)->get();
+        $properties = $query->orderBy($sortBy, $sortOrder)->paginate(15);
         $propertyTypes = PropertyType::all();
         $owners = User::whereHas('userRoles', function($query) {
             $query->where('key_code', 'landlord');
@@ -156,22 +164,27 @@ class PropertyController extends Controller
     public function store(Request $request)
     {
         try {
+            // Log request data for debugging
+            Log::info('Property creation request data:', $request->all());
+            
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'property_type_id' => 'nullable|exists:property_types,id',
                 'owner_id' => 'nullable|exists:users,id',
                 'description' => 'nullable|string',
+                'images' => 'nullable|array|max:10',
+                'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
                 'total_floors' => 'nullable|integer|min:1',
                 'total_rooms' => 'nullable|integer|min:0',
                 'status' => 'nullable|integer|in:0,1',
                 // Old location fields
-                'province_code' => 'nullable|string|max:20|exists:geo_provinces,code',
-                'district_code' => 'nullable|string|max:20|exists:geo_districts,code',
-                'ward_code' => 'nullable|string|max:20|exists:geo_wards,code',
+                'province_code' => 'nullable|string|max:20',
+                'district_code' => 'nullable|string|max:20',
+                'ward_code' => 'nullable|string|max:20',
                 'street' => 'nullable|string|max:255',
                 // New location fields
-                'province_code_2025' => 'nullable|string|max:20|exists:geo_provinces_2025,code',
-                'ward_code_2025' => 'nullable|string|max:20|exists:geo_wards_2025,code',
+                'province_code_2025' => 'nullable|string|max:20',
+                'ward_code_2025' => 'nullable|string|max:20',
                 'street_2025' => 'nullable|string|max:255',
             ]);
 
@@ -206,6 +219,8 @@ class PropertyController extends Controller
 
             DB::beginTransaction();
             try {
+                Log::info('Starting property creation transaction');
+                
                 // Create old location if provided
                 $locationId = null;
                 if ($request->filled('province_code')) {
@@ -251,17 +266,66 @@ class PropertyController extends Controller
                     $locationId2025 = $location2025->id;
                 }
 
-                $property = Property::create([
+                // Process images
+                $imagePaths = [];
+                if ($request->hasFile('images')) {
+                    try {
+                        $uploadedImages = $this->imageService->uploadMultipleImages($request->file('images'), 'properties');
+                        $imagePaths = array_column($uploadedImages, 'original');
+                    } catch (\Exception $e) {
+                        Log::error('Error uploading images: ' . $e->getMessage());
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Lỗi khi upload ảnh: ' . $e->getMessage()
+                        ], 500);
+                    }
+                }
+
+                // Get current user's organization
+                $user = Auth::user();
+                $organizationUser = DB::table('organization_users')
+                    ->where('user_id', $user->id)
+                    ->first();
+                $organization = $organizationUser ? 
+                    DB::table('organizations')->where('id', $organizationUser->organization_id)->first() : 
+                    null;
+                
+                if (!$organization) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Không tìm thấy tổ chức của người dùng. Vui lòng liên hệ Admin.'
+                    ], 422);
+                }
+
+                Log::info('Creating property with data:', [
+                    'organization_id' => $organization->id,
                     'name' => $validated['name'],
                     'property_type_id' => $validated['property_type_id'] ?? null,
                     'owner_id' => $validated['owner_id'] ?? null,
                     'location_id' => $locationId,
                     'location_id_2025' => $locationId2025,
                     'description' => $validated['description'] ?? null,
+                    'images' => $imagePaths,
                     'total_floors' => $validated['total_floors'] ?? null,
                     'total_rooms' => $validated['total_rooms'] ?? 0,
                     'status' => $validated['status'] ?? 1,
                 ]);
+
+                $property = Property::create([
+                    'organization_id' => $organization->id,
+                    'name' => $validated['name'],
+                    'property_type_id' => $validated['property_type_id'] ?? null,
+                    'owner_id' => $validated['owner_id'] ?? null,
+                    'location_id' => $locationId,
+                    'location_id_2025' => $locationId2025,
+                    'description' => $validated['description'] ?? null,
+                    'images' => $imagePaths,
+                    'total_floors' => $validated['total_floors'] ?? null,
+                    'total_rooms' => $validated['total_rooms'] ?? 0,
+                    'status' => $validated['status'] ?? 1,
+                ]);
+                
+                Log::info('Property created successfully with ID: ' . $property->id);
 
                 DB::commit();
 
@@ -272,14 +336,21 @@ class PropertyController extends Controller
                 ]);
             } catch (\Exception $e) {
                 DB::rollBack();
+                Log::error('Error in property creation transaction: ' . $e->getMessage(), [
+                    'trace' => $e->getTraceAsString()
+                ]);
                 throw $e;
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error in property creation: ' . implode(', ', $e->validator->errors()->all()));
             return response()->json([
                 'success' => false,
                 'message' => 'Thông tin bất động sản không hợp lệ: ' . implode(', ', $e->validator->errors()->all()) . '. Vui lòng kiểm tra lại và thử lại.'
             ], 422);
         } catch (\Exception $e) {
+            Log::error('General error in property creation: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Đã xảy ra lỗi hệ thống: ' . $e->getMessage() . '. Vui lòng thử lại sau hoặc liên hệ Admin để được hỗ trợ.'
@@ -346,22 +417,31 @@ class PropertyController extends Controller
         $property = Property::findOrFail($id);
 
         try {
+            // Debug: Log request data
+            \Log::info('Property Update Request', [
+                'property_id' => $id,
+                'request_data' => $request->all(),
+                'files' => $request->hasFile('images') ? count($request->file('images')) : 0
+            ]);
+
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'property_type_id' => 'nullable|exists:property_types,id',
                 'owner_id' => 'nullable|exists:users,id',
                 'description' => 'nullable|string',
+                'images' => 'nullable|array|max:10',
+                'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
                 'total_floors' => 'nullable|integer|min:1',
                 'total_rooms' => 'nullable|integer|min:0',
                 'status' => 'nullable|integer|in:0,1',
                 // Old location fields
-                'province_code' => 'nullable|string|max:20|exists:geo_provinces,code',
-                'district_code' => 'nullable|string|max:20|exists:geo_districts,code',
-                'ward_code' => 'nullable|string|max:20|exists:geo_wards,code',
+                'province_code' => 'nullable|string|max:20',
+                'district_code' => 'nullable|string|max:20',
+                'ward_code' => 'nullable|string|max:20',
                 'street' => 'nullable|string|max:255',
                 // New location fields
-                'province_code_2025' => 'nullable|string|max:20|exists:geo_provinces_2025,code',
-                'ward_code_2025' => 'nullable|string|max:20|exists:geo_wards_2025,code',
+                'province_code_2025' => 'nullable|string|max:20',
+                'ward_code_2025' => 'nullable|string|max:20',
                 'street_2025' => 'nullable|string|max:255',
             ]);
 
@@ -465,11 +545,44 @@ class PropertyController extends Controller
                     }
                 }
 
+                // Process images
+                $imagePaths = $property->images ?? [];
+                
+                // Delete marked images
+                if ($request->has('deleted_images')) {
+                    try {
+                        $this->imageService->deleteMultipleImages($request->deleted_images);
+                        $imagePaths = array_diff($imagePaths, $request->deleted_images);
+                    } catch (\Exception $e) {
+                        Log::error('Error deleting images: ' . $e->getMessage());
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Lỗi khi xóa ảnh: ' . $e->getMessage()
+                        ], 500);
+                    }
+                }
+                
+                // Upload new images
+                if ($request->hasFile('images')) {
+                    try {
+                        $uploadedImages = $this->imageService->uploadMultipleImages($request->file('images'), 'properties');
+                        $newImagePaths = array_column($uploadedImages, 'original');
+                        $imagePaths = array_merge($imagePaths, $newImagePaths);
+                    } catch (\Exception $e) {
+                        Log::error('Error uploading images: ' . $e->getMessage());
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Lỗi khi upload ảnh: ' . $e->getMessage()
+                        ], 500);
+                    }
+                }
+
                 $property->update([
                     'name' => $validated['name'],
                     'property_type_id' => $validated['property_type_id'] ?? null,
                     'owner_id' => $validated['owner_id'] ?? null,
                     'description' => $validated['description'] ?? null,
+                    'images' => $imagePaths,
                     'total_floors' => $validated['total_floors'] ?? null,
                     'total_rooms' => $validated['total_rooms'] ?? 0,
                     'status' => $validated['status'] ?? 1,
@@ -486,11 +599,28 @@ class PropertyController extends Controller
                 throw $e;
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
+            // Log validation errors for debugging
+            \Log::error('Property Update Validation Error', [
+                'property_id' => $id,
+                'errors' => $e->validator->errors()->toArray(),
+                'request_data' => $request->all()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Thông tin bất động sản không hợp lệ: ' . implode(', ', $e->validator->errors()->all()) . '. Vui lòng kiểm tra lại và thử lại.'
+                'message' => 'Thông tin bất động sản không hợp lệ: ' . implode(', ', $e->validator->errors()->all()) . '. Vui lòng kiểm tra lại và thử lại.',
+                'errors' => $e->validator->errors()->toArray() // Include detailed errors for debugging
             ], 422);
         } catch (\Exception $e) {
+            // Log system errors for debugging
+            \Log::error('Property Update System Error', [
+                'property_id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Đã xảy ra lỗi hệ thống: ' . $e->getMessage() . '. Vui lòng thử lại sau hoặc liên hệ Admin để được hỗ trợ.'
@@ -503,6 +633,16 @@ class PropertyController extends Controller
         DB::beginTransaction();
         try {
             $property = Property::findOrFail($id);
+            
+            // Delete associated images if exist
+            if ($property->images && is_array($property->images)) {
+                try {
+                    $this->imageService->deleteMultipleImages($property->images);
+                } catch (\Exception $e) {
+                    Log::error('Error deleting property images: ' . $e->getMessage());
+                    // Continue with deletion even if image deletion fails
+                }
+            }
             
             // Delete associated locations if exist
             if ($property->location_id) {
@@ -520,7 +660,7 @@ class PropertyController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Bất động sản và địa chỉ đã được xóa thành công!'
+                'message' => 'Bất động sản, ảnh và địa chỉ đã được xóa thành công!'
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -112,6 +112,38 @@
                 </div>
             </div>
 
+            <!-- Property Images -->
+            @if ($property->images && count($property->images) > 0)
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-images me-2"></i>Hình ảnh bất động sản
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach ($property->images as $index => $image)
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="card property-image-card">
+                                <img src="{{ Storage::url($image) }}" 
+                                     class="card-img-top property-image" 
+                                     alt="Hình ảnh {{ $index + 1 }}"
+                                     style="height: 200px; object-fit: cover; cursor: pointer;"
+                                     data-bs-toggle="modal" 
+                                     data-bs-target="#imageModal"
+                                     data-bs-image="{{ Storage::url($image) }}"
+                                     data-bs-title="Hình ảnh {{ $index + 1 }}">
+                                <div class="card-body p-2">
+                                    <small class="text-muted">Hình ảnh {{ $index + 1 }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <!-- Old Location Info -->
             @if ($property->location)
             <div class="card shadow mb-4">
@@ -432,12 +464,75 @@
     </div>
     @endif
 </div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">Hình ảnh bất động sản</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" class="img-fluid" alt="Hình ảnh bất động sản">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+
+@push('styles')
+<style>
+.property-image {
+    transition: transform 0.3s ease;
+}
+
+.property-image:hover {
+    transform: scale(1.05);
+}
+
+.property-image-card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.35rem;
+    overflow: hidden;
+    transition: box-shadow 0.3s ease;
+}
+
+.property-image-card:hover {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+#modalImage {
+    max-height: 70vh;
+    width: auto;
+    border-radius: 0.35rem;
+}
+</style>
+@endpush
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Any additional JavaScript for the show page
+    // Image modal functionality
+    const imageModal = document.getElementById('imageModal');
+    if (imageModal) {
+        imageModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const imageSrc = button.getAttribute('data-bs-image');
+            const imageTitle = button.getAttribute('data-bs-title');
+            
+            const modalImage = imageModal.querySelector('#modalImage');
+            const modalTitle = imageModal.querySelector('#imageModalLabel');
+            
+            modalImage.src = imageSrc;
+            modalTitle.textContent = imageTitle;
+        });
+    }
+    
     console.log('Property show page loaded');
 });
 </script>

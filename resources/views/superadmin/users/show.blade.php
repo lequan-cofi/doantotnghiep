@@ -296,6 +296,121 @@
         </div>
     </div>
 
+    <!-- KYC Information -->
+    <div class="row">
+        <div class="col-12">
+            <div class="info-section">
+                <h5 class="section-title">
+                    <i class="fas fa-id-card me-2"></i>Thông tin KYC (Know Your Customer)
+                    @if($user->userProfile)
+                        <span class="badge {{ $user->userProfile->isKycComplete() ? 'bg-success' : 'bg-warning' }} ms-2">
+                            {{ $user->userProfile->getKycCompletionPercentage() }}% hoàn thành
+                        </span>
+                    @endif
+                </h5>
+                
+                @if($user->userProfile)
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <span class="info-label">Ngày sinh:</span>
+                                <span class="info-value">
+                                    @if($user->userProfile->dob)
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {{ $user->userProfile->formatted_dob }}
+                                        <small class="text-muted">({{ $user->userProfile->age }} tuổi)</small>
+                                    @else
+                                        <span class="text-muted">Chưa cập nhật</span>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Giới tính:</span>
+                                <span class="info-value">
+                                    @if($user->userProfile->gender)
+                                        <i class="fas fa-{{ $user->userProfile->gender == 'male' ? 'mars' : ($user->userProfile->gender == 'female' ? 'venus' : 'genderless') }} me-1"></i>
+                                        {{ $user->userProfile->gender_text }}
+                                    @else
+                                        <span class="text-muted">Chưa cập nhật</span>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Số CMND/CCCD:</span>
+                                <span class="info-value">
+                                    @if($user->userProfile->id_number)
+                                        <i class="fas fa-id-card me-1"></i>
+                                        {{ $user->userProfile->id_number }}
+                                    @else
+                                        <span class="text-muted">Chưa cập nhật</span>
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <span class="info-label">Ngày cấp CMND/CCCD:</span>
+                                <span class="info-value">
+                                    @if($user->userProfile->id_issued_at)
+                                        <i class="fas fa-calendar-check me-1"></i>
+                                        {{ $user->userProfile->formatted_id_issued_at }}
+                                    @else
+                                        <span class="text-muted">Chưa cập nhật</span>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Địa chỉ thường trú:</span>
+                                <span class="info-value">
+                                    @if($user->userProfile->address)
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{ $user->userProfile->address }}
+                                    @else
+                                        <span class="text-muted">Chưa cập nhật</span>
+                                    @endif
+                                </span>
+                            </div>
+                            @if($user->userProfile->note)
+                            <div class="info-item">
+                                <span class="info-label">Ghi chú:</span>
+                                <span class="info-value">
+                                    <i class="fas fa-sticky-note me-1"></i>
+                                    {{ $user->userProfile->note }}
+                                </span>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    @if(!$user->userProfile->isKycComplete())
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Thông tin KYC chưa đầy đủ:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach($user->userProfile->getMissingKycFields() as $field)
+                                <li>{{ $field }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @else
+                    <div class="alert alert-success mt-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Thông tin KYC đã hoàn thành!</strong> Tài khoản đã được xác thực đầy đủ.
+                    </div>
+                    @endif
+                @else
+                    <div class="text-center py-4">
+                        <div class="text-muted">
+                            <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                            <h5>Chưa có thông tin KYC</h5>
+                            <p>Người dùng chưa cập nhật thông tin xác thực danh tính.</p>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
     <!-- Commission Events -->
     @if($user->commissionEvents->count() > 0)
     <div class="row">

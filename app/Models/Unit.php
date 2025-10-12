@@ -20,6 +20,7 @@ class Unit extends Model
         'max_occupancy',
         'status',
         'note',
+        'images',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class Unit extends Model
         'deposit_amount' => 'decimal:2',
         'max_occupancy' => 'integer',
         'floor' => 'integer',
+        'images' => 'array',
     ];
 
     public function property()

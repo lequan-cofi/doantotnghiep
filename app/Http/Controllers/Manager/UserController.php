@@ -178,7 +178,7 @@ class UserController extends Controller
             abort(403, 'Bạn chưa được gán vào tổ chức nào. Vui lòng liên hệ Admin để được hỗ trợ.');
         }
 
-        $user = User::with(['userRoles'])
+        $user = User::with(['userRoles', 'userProfile'])
             ->whereHas('organizations', function($q) use ($managerOrganization) {
                 $q->where('organizations.id', $managerOrganization->id);
             })

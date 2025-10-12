@@ -19,6 +19,7 @@ class Property extends Model
         'location_id',
         'location_id_2025',
         'description',
+        'images',
         'total_floors',
         'total_rooms',
         'status',
@@ -29,6 +30,7 @@ class Property extends Model
         'status' => 'integer',
         'total_floors' => 'integer',
         'total_rooms' => 'integer',
+        'images' => 'array',
     ];
 
     // Relationships
@@ -173,6 +175,68 @@ class Property extends Model
             'low' => 'Thấp',
             default => 'Không xác định'
         };
+    }
+
+    // Accessor for old address (location)
+    public function getOldAddressAttribute()
+    {
+        if (!$this->location) {
+            return 'Chưa có địa chỉ cũ';
+        }
+
+        $parts = [];
+        
+        if ($this->location->street) {
+            $parts[] = $this->location->street;
+        }
+        
+        if ($this->location->ward) {
+            $parts[] = $this->location->ward;
+        }
+        
+        if ($this->location->district) {
+            $parts[] = $this->location->district;
+        }
+        
+        if ($this->location->city) {
+            $parts[] = $this->location->city;
+        }
+
+        return empty($parts) ? 'Chưa có địa chỉ cũ' : implode(', ', $parts);
+    }
+
+    // Accessor for new address (location2025)
+    public function getNewAddressAttribute()
+    {
+        if (!$this->location2025) {
+            return 'Chưa có địa chỉ mới';
+        }
+
+        $parts = [];
+        
+        if ($this->location2025->street) {
+            $parts[] = $this->location2025->street;
+        }
+        
+        if ($this->location2025->ward) {
+            $parts[] = $this->location2025->ward;
+        }
+        
+        if ($this->location2025->district) {
+            $parts[] = $this->location2025->district;
+        }
+        
+        if ($this->location2025->city) {
+            $parts[] = $this->location2025->city;
+        }
+
+        return empty($parts) ? 'Chưa có địa chỉ mới' : implode(', ', $parts);
+    }
+
+    // Accessor for owner name
+    public function getOwnerNameAttribute()
+    {
+        return $this->owner ? $this->owner->full_name : 'Chưa có thông tin chủ trọ';
     }
 }
 

@@ -201,6 +201,107 @@
                     </div>
                 </div>
 
+                <!-- KYC Information -->
+                @if($user->userProfile)
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-id-card me-2"></i>Thông tin KYC (Know Your Customer)
+                        </h6>
+                        <span class="badge {{ $user->userProfile->isKycComplete() ? 'bg-success' : 'bg-warning' }}">
+                            {{ $user->userProfile->getKycCompletionPercentage() }}% hoàn thành
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Ngày sinh:</label>
+                                    <div class="p-2 bg-light rounded">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {{ $user->userProfile->formatted_dob ?? 'Chưa cập nhật' }}
+                                        @if($user->userProfile->dob)
+                                            <small class="text-muted">({{ $user->userProfile->age }} tuổi)</small>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Giới tính:</label>
+                                    <div class="p-2 bg-light rounded">
+                                        <i class="fas fa-{{ $user->userProfile->gender == 'male' ? 'mars' : ($user->userProfile->gender == 'female' ? 'venus' : 'genderless') }} me-1"></i>
+                                        {{ $user->userProfile->gender_text }}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Số CMND/CCCD:</label>
+                                    <div class="p-2 bg-light rounded">
+                                        <i class="fas fa-id-card me-1"></i>
+                                        {{ $user->userProfile->id_number ?? 'Chưa cập nhật' }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Ngày cấp CMND/CCCD:</label>
+                                    <div class="p-2 bg-light rounded">
+                                        <i class="fas fa-calendar-check me-1"></i>
+                                        {{ $user->userProfile->formatted_id_issued_at ?? 'Chưa cập nhật' }}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Địa chỉ thường trú:</label>
+                                    <div class="p-2 bg-light rounded">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{ $user->userProfile->address ?? 'Chưa cập nhật' }}
+                                    </div>
+                                </div>
+                                @if($user->userProfile->note)
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Ghi chú:</label>
+                                    <div class="p-2 bg-light rounded">
+                                        <i class="fas fa-sticky-note me-1"></i>
+                                        {{ $user->userProfile->note }}
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                        
+                        @if(!$user->userProfile->isKycComplete())
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Thông tin KYC chưa đầy đủ:</strong>
+                            <ul class="mb-0 mt-2">
+                                @foreach($user->userProfile->getMissingKycFields() as $field)
+                                    <li>{{ $field }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        @else
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Thông tin KYC đã hoàn thành!</strong> Tài khoản đã được xác thực đầy đủ.
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @else
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-id-card me-2"></i>Thông tin KYC (Know Your Customer)
+                        </h6>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="text-muted">
+                            <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                            <h5>Chưa có thông tin KYC</h5>
+                            <p>Người dùng chưa cập nhật thông tin xác thực danh tính.</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Role Details -->
                 @if($user->userRoles->count() > 0)
                 <div class="card shadow-sm mt-4">

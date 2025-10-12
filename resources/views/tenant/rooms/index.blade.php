@@ -1,276 +1,481 @@
 @extends('layouts.app')
 
-@section('title', 'Danh sách phòng trọ')
+@section('title', 'Tìm phòng trọ')
 
 @section('content')
-<div class="container">
-    <div class="row">
-        <div class="col-12">
-            <div class="page-header">
-                <h1>Danh sách phòng trọ</h1>
-                <p>Tìm kiếm phòng trọ phù hợp với nhu cầu của bạn</p>
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-text">
+                <div class="hero-badge">
+                    <i class="fas fa-search"></i>
+                    <span>Tìm Kiếm Phòng Trọ</span>
+                </div>
+                <h1 class="hero-title">
+                    Khám Phá Những Phòng Trọ
+                    <span class="highlight">Phù Hợp Nhất</span>
+                    Với Bạn
+                </h1>
+                <p class="hero-description">
+                    Tìm kiếm và thuê phòng trọ chất lượng cao với giá cả hợp lý từ hàng ngàn chủ nhà uy tín trên toàn quốc.
+                </p>
             </div>
-        </div>
-    </div>
 
-    <!-- Filter Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="filter-card">
-                <form method="GET" action="{{ route('rooms.index') }}">
-                    <div class="row">
-                        <div class="col-md-3">
+            <div class="search-section">
+                <div class="search-card">
+                    <div class="search-tabs">
+                        <button class="tab-btn active" data-tab="rent">
+                            <i class="fas fa-home"></i>
+                            Thuê phòng
+                        </button>
+                        <button class="tab-btn" data-tab="post">
+                            <i class="fas fa-plus"></i>
+                            Đăng tin
+                        </button>
+                    </div>
+
+                    <form action="{{ route('search') }}" method="POST" class="search-form">
+                        @csrf
+                        <div class="form-row">
                             <div class="form-group">
-                                <label for="type">Loại phòng</label>
-                                <select name="type" id="type" class="form-control">
-                                    <option value="">Tất cả</option>
-                                    <option value="shared" {{ request('type') == 'shared' ? 'selected' : '' }}>Nhà trọ chung chủ</option>
-                                    <option value="mini" {{ request('type') == 'mini' ? 'selected' : '' }}>Chung cư mini</option>
-                                    <option value="apartment" {{ request('type') == 'apartment' ? 'selected' : '' }}>Căn hộ cao cấp</option>
-                                    <option value="house" {{ request('type') == 'house' ? 'selected' : '' }}>Nhà nguyên căn</option>
-                                    <option value="homestay" {{ request('type') == 'homestay' ? 'selected' : '' }}>Homestay</option>
-                                    <option value="hostel" {{ request('type') == 'hostel' ? 'selected' : '' }}>Hostel</option>
+                                <label>Khu vực</label>
+                                <select name="location" class="form-select">
+                                    <option value="">Chọn khu vực</option>
+                                    @foreach($locations as $city => $data)
+                                        <optgroup label="{{ $city }}">
+                                            @foreach($data['wards'] as $ward)
+                                                <option value="{{ $ward }}" {{ request('location') == $ward ? 'selected' : '' }}>{{ $ward }}, {{ $city }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Loại phòng</label>
+                                <select name="unit_type" class="form-select">
+                                    @foreach($unitTypes as $type)
+                                        <option value="{{ $type['value'] }}" {{ request('unit_type') == $type['value'] ? 'selected' : '' }}>{{ $type['label'] }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="form-row">
                             <div class="form-group">
-                                <label for="price_min">Giá tối thiểu (VND)</label>
-                                <input type="number" name="price_min" id="price_min" class="form-control" 
-                                       value="{{ request('price_min') }}" placeholder="0">
+                                <label>Giá thuê</label>
+                                <select name="price_range" class="form-select">
+                                    @foreach($priceRanges as $range)
+                                        <option value="{{ $range['value'] }}" {{ request('price_range') == $range['value'] ? 'selected' : '' }}>{{ $range['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Diện tích</label>
+                                <select name="area_range" class="form-select">
+                                    @foreach($areaRanges as $range)
+                                        <option value="{{ $range['value'] }}" {{ request('area_range') == $range['value'] ? 'selected' : '' }}>{{ $range['label'] }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label for="price_max">Giá tối đa (VND)</label>
-                                <input type="number" name="price_max" id="price_max" class="form-control" 
-                                       value="{{ request('price_max') }}" placeholder="10000000">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>&nbsp;</label>
-                                <button type="submit" class="btn btn-primary btn-block">
-                                    <i class="fas fa-search"></i> Tìm kiếm
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
+                        <button type="submit" class="btn-search">
+                            <i class="fas fa-search"></i>
+                            Tìm kiếm ngay
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
+</section>
 
-    <!-- Results Section -->
-    <div class="row">
-        <div class="col-12">
-            <div class="results-header">
-                <h3>Kết quả tìm kiếm</h3>
-                <p>Hiển thị {{ $rooms->count() ?? 0 }} phòng trọ</p>
-            </div>
+<!-- Results Section -->
+<section class="results-section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Kết Quả Tìm Kiếm</h2>
+            <p>Tìm thấy {{ $units->total() }} phòng trọ phù hợp với yêu cầu của bạn</p>
         </div>
-    </div>
 
-    <!-- Rooms Grid -->
-    <div class="row">
-        @if(isset($rooms) && $rooms->count() > 0)
-            @foreach($rooms as $room)
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="room-card">
-                    <div class="room-image">
-                        <img src="{{ $room->image ?? '/assets/images/placeholder-room.jpg' }}" 
-                             alt="{{ $room->title }}" class="img-fluid">
-                        <div class="room-badge">
-                            <span class="badge badge-primary">{{ $room->type ?? 'Phòng trọ' }}</span>
+        @if($units->count() > 0)
+            <div class="properties-grid">
+                @foreach($units as $unit)
+                <div class="property-card" onclick="window.location.href='{{ route('detail', $unit->id) }}'">
+                    <div class="property-image">
+                        @if($unit->images && count($unit->images) > 0)
+                            <img src="{{ Storage::url($unit->images[0]) }}" alt="{{ $unit->property->name }}">
+                        @else
+                            <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop" alt="{{ $unit->property->name }}">
+                        @endif
+                        <div class="property-badges">
+                            @if($unit->created_at->diffInDays(now()) <= 7)
+                                <span class="badge new">Mới</span>
+                            @endif
+                            <span class="badge type">
+                                @switch($unit->unit_type)
+                                    @case('room')
+                                        Phòng trọ
+                                        @break
+                                    @case('apartment')
+                                        Chung cư mini
+                                        @break
+                                    @case('dorm')
+                                        Chung cư cao cấp
+                                        @break
+                                    @case('shared')
+                                        Nhà nguyên căn
+                                        @break
+                                @endswitch
+                            </span>
+                        </div>
+                        <button class="favorite-btn" onclick="event.stopPropagation()">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                        <div class="image-indicators">
+                            <span class="indicator active"></span>
+                            <span class="indicator"></span>
+                            <span class="indicator"></span>
                         </div>
                     </div>
-                    <div class="room-content">
-                        <h4 class="room-title">{{ $room->title ?? 'Phòng trọ' }}</h4>
-                        <p class="room-location">
+                    <div class="property-content">
+                        <h3>{{ $unit->property->name }}</h3>
+                        <div class="property-location">
                             <i class="fas fa-map-marker-alt"></i>
-                            {{ $room->address ?? 'Địa chỉ không xác định' }}
-                        </p>
-                        <div class="room-features">
-                            <span class="feature">
-                                <i class="fas fa-bed"></i> {{ $room->bedrooms ?? 1 }} phòng ngủ
-                            </span>
-                            <span class="feature">
-                                <i class="fas fa-bath"></i> {{ $room->bathrooms ?? 1 }} phòng tắm
-                            </span>
-                            <span class="feature">
-                                <i class="fas fa-ruler-combined"></i> {{ $room->area ?? 20 }}m²
+                            <span>
+                                @if($unit->property->location2025)
+                                    {{ $unit->property->location2025->street }}, {{ $unit->property->location2025->ward }}, {{ $unit->property->location2025->city }}
+                                @else
+                                    Địa chỉ chưa cập nhật
+                                @endif
                             </span>
                         </div>
-                        <div class="room-price">
-                            <span class="price">{{ number_format($room->price ?? 0) }} VND</span>
-                            <span class="period">/tháng</span>
+                        <div class="property-details">
+                            <div class="detail">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                                <span>{{ $unit->area_m2 ?? 'N/A' }}m²</span>
+                            </div>
+                            <div class="detail">
+                                <i class="fas fa-users"></i>
+                                <span>{{ $unit->max_occupancy }} người</span>
+                            </div>
                         </div>
-                        <div class="room-actions">
-                            <a href="{{ route('rooms.show', $room->id ?? 1) }}" class="btn btn-primary">
-                                <i class="fas fa-eye"></i> Xem chi tiết
+                        @if($unit->amenities && $unit->amenities->count() > 0)
+                        <div class="property-amenities">
+                            @foreach($unit->amenities->take(3) as $amenity)
+                                <span class="amenity-badge">{{ $amenity->name }}</span>
+                            @endforeach
+                            @if($unit->amenities->count() > 3)
+                                <span class="amenity-badge">+{{ $unit->amenities->count() - 3 }}</span>
+                            @endif
+                        </div>
+                        @endif
+                        <div class="property-footer">
+                            <div class="price">{{ number_format($unit->base_rent, 0, ',', '.') }} VNĐ/tháng</div>
+                            <a href="{{ route('detail', $unit->id) }}" class="btn-view" onclick="event.stopPropagation()">
+                                <i class="fas fa-eye"></i>
+                                Chi tiết
                             </a>
-                            <button class="btn btn-outline-primary">
-                                <i class="fas fa-heart"></i> Yêu thích
-                            </button>
                         </div>
                     </div>
                 </div>
+                @endforeach
             </div>
-            @endforeach
+
+            <!-- Pagination -->
+            <div class="pagination-wrapper">
+                {{ $units->links() }}
+            </div>
         @else
-            <div class="col-12">
-                <div class="no-results">
-                    <div class="no-results-icon">
-                        <i class="fas fa-search fa-3x"></i>
-                    </div>
-                    <h3>Không tìm thấy phòng trọ nào</h3>
-                    <p>Hãy thử thay đổi bộ lọc tìm kiếm hoặc liên hệ với chúng tôi để được hỗ trợ.</p>
-                    <a href="{{ route('home') }}" class="btn btn-primary">
-                        <i class="fas fa-home"></i> Về trang chủ
-                    </a>
+            <div class="no-results">
+                <div class="no-results-icon">
+                    <i class="fas fa-search fa-3x"></i>
                 </div>
+                <h3>Không tìm thấy phòng trọ nào</h3>
+                <p>Hãy thử điều chỉnh bộ lọc tìm kiếm của bạn để có kết quả tốt hơn.</p>
+                <a href="{{ route('home') }}" class="btn-hero">
+                    <i class="fas fa-arrow-left"></i>
+                    Quay lại trang chủ
+                </a>
             </div>
         @endif
     </div>
-
-    <!-- Pagination -->
-    @if(isset($rooms) && $rooms->hasPages())
-    <div class="row">
-        <div class="col-12">
-            <div class="pagination-wrapper">
-                {{ $rooms->links() }}
-            </div>
-        </div>
-    </div>
-    @endif
-</div>
+</section>
 @endsection
 
 @push('styles')
 <style>
-.page-header {
+.results-section {
+    padding: 60px 0;
+    background-color: #f8f9fa;
+}
+
+.section-header {
     text-align: center;
-    padding: 2rem 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    margin-bottom: 2rem;
-    border-radius: 0.5rem;
+    margin-bottom: 40px;
 }
 
-.filter-card {
+.section-header h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.section-header p {
+    font-size: 1.1rem;
+    color: #6c757d;
+}
+
+.properties-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+.property-card {
     background: white;
-    padding: 1.5rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    margin-bottom: 2rem;
-}
-
-.results-header {
-    margin-bottom: 1.5rem;
-}
-
-.room-card {
-    background: white;
-    border-radius: 0.5rem;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    height: 100%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
-.room-card:hover {
+.property-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.room-image {
+.property-image {
     position: relative;
     height: 200px;
     overflow: hidden;
 }
 
-.room-image img {
+.property-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
 }
 
-.room-badge {
+.property-card:hover .property-image img {
+    transform: scale(1.05);
+}
+
+.property-badges {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
+    top: 15px;
+    left: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
-.room-content {
-    padding: 1.5rem;
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
-.room-title {
+.badge.new {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge.type {
+    background-color: #007bff;
+    color: white;
+}
+
+.favorite-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 35px;
+    height: 35px;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.favorite-btn:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+.favorite-btn.active {
+    background-color: #dc3545;
+    color: white;
+}
+
+.image-indicators {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+}
+
+.indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transition: background-color 0.3s ease;
+}
+
+.indicator.active {
+    background-color: white;
+}
+
+.property-content {
+    padding: 20px;
+}
+
+.property-content h3 {
     font-size: 1.25rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
     color: #2c3e50;
+    margin-bottom: 10px;
+    line-height: 1.3;
 }
 
-.room-location {
+.property-location {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
     color: #6c757d;
-    margin-bottom: 1rem;
     font-size: 0.9rem;
 }
 
-.room-features {
+.property-location i {
+    margin-right: 5px;
+    color: #007bff;
+}
+
+.property-details {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 20px;
+    margin-bottom: 15px;
 }
 
-.feature {
-    font-size: 0.85rem;
+.detail {
+    display: flex;
+    align-items: center;
     color: #6c757d;
+    font-size: 0.9rem;
 }
 
-.room-price {
-    margin-bottom: 1rem;
+.detail i {
+    margin-right: 5px;
+    color: #007bff;
+}
+
+.property-amenities {
+    margin-bottom: 15px;
+}
+
+.amenity-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    margin: 2px;
+    background-color: #e9ecef;
+    color: #495057;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.property-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .price {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    color: #e74c3c;
+    color: #28a745;
 }
 
-.period {
-    color: #6c757d;
+.btn-view {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
     font-size: 0.9rem;
+    transition: background-color 0.3s ease;
 }
 
-.room-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.room-actions .btn {
-    flex: 1;
-}
-
-.no-results {
-    text-align: center;
-    padding: 3rem 1rem;
-    background: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.no-results-icon {
-    color: #6c757d;
-    margin-bottom: 1rem;
+.btn-view:hover {
+    background-color: #0056b3;
+    color: white;
 }
 
 .pagination-wrapper {
     display: flex;
     justify-content: center;
-    margin-top: 2rem;
+    margin-top: 40px;
+}
+
+.no-results {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.no-results-icon {
+    margin-bottom: 20px;
+    color: #6c757d;
+}
+
+.no-results h3 {
+    font-size: 1.5rem;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.no-results p {
+    color: #6c757d;
+    margin-bottom: 30px;
+}
+
+.btn-hero {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-hero:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .properties-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .section-header h2 {
+        font-size: 2rem;
+    }
 }
 </style>
 @endpush

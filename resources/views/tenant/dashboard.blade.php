@@ -32,7 +32,7 @@
                         <a href="{{ route('home') }}" class="btn btn-outline-primary">
                             <i class="fas fa-search me-2"></i>Tìm phòng
                         </a>
-                        <a href="{{ route('profile') }}" class="btn btn-outline-secondary ms-2">
+                        <a href="{{ route('tenant.profile') }}" class="btn btn-outline-secondary ms-2">
                             <i class="fas fa-user me-2"></i>Hồ sơ cá nhân
                         </a>
                         <div class="dropdown d-inline-block ms-2">
@@ -40,7 +40,7 @@
                                 <i class="fas fa-plus me-2"></i>Thao tác
                             </button>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{{ route('booking', 1) }}"><i class="fas fa-calendar me-2"></i>Đặt lịch xem phòng</a></li>
+                                <li><a class="dropdown-item" href="{{ route('tenant.booking', 1) }}"><i class="fas fa-calendar me-2"></i>Đặt lịch xem phòng</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-file-contract me-2"></i>Gia hạn hợp đồng</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-tools me-2"></i>Yêu cầu sửa chữa</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-star me-2"></i>Đánh giá phòng</a></li>
@@ -129,7 +129,7 @@
                     </h3>
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('appointments') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.appointments') }}" class="quick-access-card">
                                 <div class="card-icon appointments">
                                     <i class="fas fa-calendar-check"></i>
                                 </div>
@@ -144,7 +144,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('profile') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.profile') }}" class="quick-access-card">
                                 <div class="card-icon">
                                     <i class="fas fa-user"></i>
                                 </div>
@@ -158,7 +158,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('contracts') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.contracts') }}" class="quick-access-card">
                                 <div class="card-icon contracts">
                                     <i class="fas fa-file-signature"></i>
                                 </div>
@@ -173,7 +173,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('invoices') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.invoices') }}" class="quick-access-card">
                                 <div class="card-icon invoices">
                                     <i class="fas fa-receipt"></i>
                                 </div>
@@ -188,7 +188,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('notifications') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.notifications') }}" class="quick-access-card">
                                 <div class="card-icon notifications">
                                     <i class="fas fa-bell"></i>
                                 </div>
@@ -203,7 +203,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('maintenance') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.maintenance') }}" class="quick-access-card">
                                 <div class="card-icon maintenance">
                                     <i class="fas fa-wrench"></i>
                                 </div>
@@ -218,7 +218,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('reviews') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.reviews') }}" class="quick-access-card">
                                 <div class="card-icon reviews">
                                     <i class="fas fa-star"></i>
                                 </div>
@@ -323,7 +323,7 @@
                                 </div>
                             </div>
                             <div class="rental-actions">
-                                <a href="{{ route('contracts') }}" class="btn btn-outline-primary btn-sm">
+                                <a href="{{ route('tenant.contracts') }}" class="btn btn-outline-primary btn-sm">
                                     <i class="fas fa-file-contract me-1"></i>Xem hợp đồng
                                 </a>
                                 <button class="btn btn-outline-success btn-sm" onclick="showComingSoon('Gia hạn')">

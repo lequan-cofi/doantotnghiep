@@ -29,7 +29,7 @@
                 </div>
                 <div class="col-md-4 text-end">
                     <div class="header-actions">
-                        <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('tenant.dashboard') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Về Dashboard
                         </a>
                         <button class="btn btn-outline-primary ms-2" onclick="markAllAsRead()">
@@ -170,7 +170,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('invoices') }}" class="btn btn-danger btn-sm">
+                        <a href="{{ route('tenant.invoices') }}" class="btn btn-danger btn-sm">
                             <i class="fas fa-credit-card me-1"></i>Thanh toán ngay
                         </a>
                         <button class="btn btn-outline-primary btn-sm" onclick="viewInvoiceDetail('HD2023001')">
@@ -210,7 +210,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('contracts') }}" class="btn btn-warning btn-sm">
+                        <a href="{{ route('tenant.contracts') }}" class="btn btn-warning btn-sm">
                             <i class="fas fa-refresh me-1"></i>Gia hạn ngay
                         </a>
                         <a href="tel:0912345678" class="btn btn-outline-success btn-sm">
@@ -250,7 +250,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('appointments') }}" class="btn btn-success btn-sm">
+                        <a href="{{ route('tenant.appointments') }}" class="btn btn-success btn-sm">
                             <i class="fas fa-calendar me-1"></i>Xem lịch hẹn
                         </a>
                         <a href="tel:0901234567" class="btn btn-outline-primary btn-sm">
@@ -285,7 +285,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('reviews') }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('tenant.reviews') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-eye me-1"></i>Xem phản hồi
                         </a>
                         <button class="btn btn-outline-success btn-sm" onclick="thankForReply('review2')">
@@ -357,7 +357,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('maintenance') }}" class="btn btn-success btn-sm">
+                        <a href="{{ route('tenant.maintenance') }}" class="btn btn-success btn-sm">
                             <i class="fas fa-star me-1"></i>Đánh giá KTV
                         </a>
                         <a href="tel:0987654321" class="btn btn-outline-primary btn-sm">
@@ -397,7 +397,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('appointments') }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('tenant.appointments') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-calendar me-1"></i>Xem lịch hẹn
                         </a>
                         <button class="btn btn-outline-warning btn-sm" onclick="setReminder('appointment1')">
@@ -437,7 +437,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('reviews') }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('tenant.reviews') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-star me-1"></i>Viết đánh giá
                         </a>
                     </div>
@@ -469,7 +469,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('maintenance') }}" class="btn btn-outline-primary btn-sm">
+                        <a href="{{ route('tenant.maintenance') }}" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-eye me-1"></i>Theo dõi
                         </a>
                         <a href="tel:0903456789" class="btn btn-outline-success btn-sm">

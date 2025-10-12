@@ -21,7 +21,7 @@
     <div class="content" id="content">
         <div class="card">
             <div class="card-body">
-                <form id="propertyForm" method="POST" action="{{ route('manager.properties.store') }}">
+                <form id="propertyForm" method="POST" action="{{ route('manager.properties.store') }}" enctype="multipart/form-data">
                     @csrf
                     
                     <!-- Basic Info -->
@@ -76,6 +76,28 @@
                     <div class="mb-4">
                         <label class="form-label">Mô tả</label>
                         <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <!-- Images -->
+                    <div class="mb-4">
+                        <label class="form-label">Hình ảnh</label>
+                        <div id="imageUploadContainer">
+                            <div class="image-upload-item mb-2">
+                                <div class="input-group">
+                                    <input type="file" name="images[]" class="form-control" accept="image/*" onchange="previewImage(this)">
+                                    <button type="button" class="btn btn-outline-danger" onclick="removeImageField(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="image-preview mt-2" style="display: none;">
+                                    <img src="" alt="Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addImageField()">
+                            <i class="fas fa-plus"></i> Thêm hình ảnh
+                        </button>
+                        <small class="form-text text-muted">Chọn file hình ảnh (JPEG, PNG, GIF, WebP - tối đa 5MB mỗi file)</small>
                     </div>
 
                     <hr class="my-4">
@@ -289,6 +311,50 @@ document.getElementById('provinceSelect2025').addEventListener('change', functio
             wardSelect2025.disabled = false;
         });
 });
+
+// Image upload functions
+function addImageField() {
+    const container = document.getElementById('imageUploadContainer');
+    const newField = document.createElement('div');
+    newField.className = 'image-upload-item mb-2';
+    newField.innerHTML = `
+        <div class="input-group">
+            <input type="file" name="images[]" class="form-control" accept="image/*" onchange="previewImage(this)">
+            <button type="button" class="btn btn-outline-danger" onclick="removeImageField(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        <div class="image-preview mt-2" style="display: none;">
+            <img src="" alt="Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+        </div>
+    `;
+    container.appendChild(newField);
+}
+
+function removeImageField(button) {
+    const container = document.getElementById('imageUploadContainer');
+    if (container.children.length > 1) {
+        button.closest('.image-upload-item').remove();
+    }
+}
+
+function previewImage(input) {
+    const preview = input.parentElement.parentElement.querySelector('.image-preview');
+    const img = preview.querySelector('img');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.style.display = 'none';
+    }
+}
 </script>
 @endsection
 

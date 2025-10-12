@@ -6,67 +6,186 @@
                 <i class="fas fa-user-tie"></i>
                 <span class="logo-text">Agent Panel</span>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle">
+            {{-- <button class="sidebar-toggle" id="sidebarToggle">
                 <i class="fas fa-chevron-left"></i>
-            </button>
+            </button> --}}
         </div>
         
         <nav class="sidebar-nav">
             <a href="{{ route('agent.dashboard') }}" class="nav-item {{ request()->routeIs('agent.dashboard') ? 'active' : '' }}">
                 <i class="fas fa-tachometer-alt"></i>
-                <span>Tổng quan</span>
+                <span>Dashboard</span>
             </a>
             
-            <a href="{{ route('agent.properties.index') }}" class="nav-item {{ request()->routeIs('agent.properties.*') ? 'active' : '' }}">
-                <i class="fas fa-building"></i>
-                <span>Bất động sản</span>
+           
+             <a href="{{ route('agent.properties.index') }}" class="nav-item {{ request()->routeIs('agent.properties.*') ? 'active' : '' }}">
+                    <i class="fas fa-building"></i>
+                    <span>Bất động sản</span>
+                  
             </a>
+               
+         
+            
+            <div class="nav-group" data-group="units">
+                <a href="#" class="nav-item has-submenu nav-parent {{ request()->routeIs('agent.units.*') || request()->routeIs('agent.rented.*') ? 'active' : '' }}">
+                    <i class="fas fa-door-open"></i>
+                    <span>Phòng</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('agent.units.index') }}" class="submenu-item">
+                        <i class="fas fa-list"></i>
+                        <span>Danh sách phòng</span>
+                    </a>
+                    <a href="{{ route('agent.units.create') }}" class="submenu-item">
+                        <i class="fas fa-plus"></i>
+                        <span>Thêm phòng mới</span>
+                    </a>
+                    <a href="{{ route('agent.rented.index') }}" class="submenu-item">
+                        <i class="fas fa-home"></i>
+                        <span>Phòng đã cho thuê</span>
+                    </a>
+                </div>
+            </div>
             
             <a href="{{ route('agent.units.index') }}" class="nav-item {{ request()->routeIs('agent.units.*') ? 'active' : '' }}">
                 <i class="fas fa-door-open"></i>
-                <span>Phòng trọ</span>
+                <span>Quản lý phòng</span>
             </a>
             
-            <a href="{{ route('agent.leases.index') }}" class="nav-item {{ request()->routeIs('agent.leases.*') ? 'active' : '' }}">
+            <a href="{{ route('agent.rented.index') }}" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Đã cho thuê</span>
+            </a>
+            
+            <a href="{{ route('agent.leases.index') }}" class="nav-item">
                 <i class="fas fa-file-contract"></i>
                 <span>Hợp đồng</span>
             </a>
             
-            <a href="{{ route('agent.profile') }}" class="nav-item {{ request()->routeIs('agent.profile') ? 'active' : '' }}">
-                <i class="fas fa-user"></i>
-                <span>Hồ sơ cá nhân</span>
+            <div class="nav-group" data-group="viewings">
+                <a href="#" class="nav-item has-submenu nav-parent">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Lịch hẹn</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('agent.viewings.index') }}" class="submenu-item">
+                        <i class="fas fa-list"></i>
+                        <span>Tất cả lịch hẹn</span>
+                    </a>
+                    <a href="{{ route('agent.viewings.today') }}" class="submenu-item">
+                        <i class="fas fa-calendar-day"></i>
+                        <span>Lịch hôm nay</span>
+                    </a>
+                    <a href="{{ route('agent.viewings.calendar') }}" class="submenu-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>Lịch tổng quan</span>
+                    </a>
+                    <a href="{{ route('agent.viewings.statistics') }}" class="submenu-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Thống kê</span>
+                    </a>
+                </div>
+            </div>
+            
+            <a href="{{ route('agent.meters.index') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Công tơ đo</span>
             </a>
+            
+            <div class="nav-group" data-group="payroll">
+                <a href="#" class="nav-item has-submenu nav-parent">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Lương</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('agent.salary-contracts.index') }}" class="submenu-item">
+                        <i class="fas fa-file-contract"></i>
+                        <span>Hợp đồng lương</span>
+                    </a>
+                    <a href="{{ route('agent.payroll-cycles.index') }}" class="submenu-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Kỳ lương</span>
+                    </a>
+                    <a href="{{ route('agent.payroll-payslips.index') }}" class="submenu-item">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <span>Phiếu lương</span>
+                    </a>
+                    <a href="{{ route('agent.salary-advances.index') }}" class="submenu-item">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <span>Ứng lương</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="nav-group" data-group="commission">
+                <a href="#" class="nav-item has-submenu nav-parent">
+                    <i class="fas fa-percentage"></i>
+                    <span>Hoa hồng</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('agent.commission-policies.index') }}" class="submenu-item">
+                        <i class="fas fa-cogs"></i>
+                        <span>Chính sách hoa hồng</span>
+                    </a>
+                    <a href="{{ route('agent.commission-events.index') }}" class="submenu-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Sự kiện hoa hồng</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="nav-group" data-group="reports">
+                <a href="#" class="nav-item has-submenu nav-parent">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Báo cáo</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('agent.revenue-reports.index') }}" class="submenu-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Báo cáo doanh thu</span>
+                    </a>
+                    <a href="{{ route('agent.reports.payments') }}" class="submenu-item">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Thanh toán</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="nav-group" data-group="settings">
+                <a href="#" class="nav-item has-submenu nav-parent">
+                    <i class="fas fa-cog"></i>
+                    <span>Cài đặt</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('agent.profile') }}" class="submenu-item">
+                        <i class="fas fa-user"></i>
+                        <span>Hồ sơ cá nhân</span>
+                    </a>
+                    <a href="{{ route('agent.settings.general') }}" class="submenu-item">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Cài đặt chung</span>
+                    </a>
+                </div>
+            </div>
         </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <a href="{{ route('agent.profile') }}">
+                        <i class="fas fa-user-tie"></i>
+                    </a>
+                </div>
+                <div class="user-details">
+                    <div class="user-name">{{ auth()->user()?->full_name ?? 'Agent' }}</div>
+                    <div class="user-email">{{ auth()->user()?->email ?? '' }}</div>
+                </div>
+            </div>
+        </div>
     </aside>
-
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Sidebar toggle functionality
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const sidebar = document.getElementById('sidebar');
-    
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('collapsed');
-        });
-    }
-    
-    if (mobileMenuToggle) {
-        mobileMenuToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('mobile-open');
-        });
-    }
-    
-    // Close mobile menu when clicking outside
-    document.addEventListener('click', function(e) {
-        if (window.innerWidth <= 768) {
-            if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                sidebar.classList.remove('mobile-open');
-            }
-        }
-    });
-});
-</script>

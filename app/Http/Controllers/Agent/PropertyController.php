@@ -4,68 +4,97 @@ namespace App\Http\Controllers\Agent;
 
 use App\Http\Controllers\Controller;
 use App\Models\Property;
-use App\Models\Unit;
-use App\Models\Lease;
+use App\Models\PropertyType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PropertyController extends Controller
 {
     /**
-     * Display a listing of the properties assigned to the agent.
+     * Display a listing of properties assigned to the agent.
      */
     public function index(Request $request)
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
         
-        // Get sorting parameters
-        $sortBy = $request->get('sort_by', 'id');
-        $sortOrder = $request->get('sort_order', 'desc');
+        // Lấy các properties được gán cho agent này
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        
+        if ($assignedPropertyIds->isEmpty()) {
+            return view('agent.properties.index', [
+                'properties' => collect(),
+                'propertyTypes' => collect()
+            ]);
+        }
+
+        // Query properties với filter
+        $query = Property::whereIn('id', $assignedPropertyIds)
+            ->with([
+                'propertyType', 
+                'owner',
+                'location' => function($q) {
+                    $q->with(['province', 'district', 'ward']);
+                },
+                'location2025' => function($q) {
+                    $q->with(['province', 'ward']);
+                },
+                'units' => function($q) {
+                    $q->with(['leases' => function($leaseQuery) {
+                        $leaseQuery->where('status', 'active')->whereNull('deleted_at');
+                    }]);
+                }
+            ]);
+
+        // Filter by search
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        // Filter by property type
+        if ($request->filled('property_type_id')) {
+            $query->where('property_type_id', $request->property_type_id);
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Get properties with sorting
+        $sortBy = $request->get('sort_by', 'name');
+        $sortOrder = $request->get('sort_order', 'asc');
         
         // Validate sort fields
-        $allowedSortFields = ['id', 'created_at', 'name', 'status'];
+        $allowedSortFields = ['name', 'created_at', 'total_rooms', 'total_floors'];
         if (!in_array($sortBy, $allowedSortFields)) {
-            $sortBy = 'id';
+            $sortBy = 'name';
         }
         
         if (!in_array($sortOrder, ['asc', 'desc'])) {
-            $sortOrder = 'desc';
+            $sortOrder = 'asc';
         }
         
-        // Lấy các properties được gán cho agent này
-        $properties = $user->assignedProperties()
-            ->with(['location', 'location2025', 'propertyType', 'owner', 'units' => function($query) {
-                $query->with(['leases' => function($leaseQuery) {
-                    $leaseQuery->where('status', 'active')
-                        ->whereNull('deleted_at')
-                        ->with('tenant');
-                }]);
-            }])
-            ->where('properties.status', 1)
-            ->orderBy($sortBy, $sortOrder)
-            ->get();
+        $properties = $query->orderBy($sortBy, $sortOrder)->paginate(12);
 
-        // Thêm thống kê cho mỗi property
-        $properties->each(function ($property) {
-            $property->total_units = $property->units->count();
-            $property->available_units = $property->units->filter(function($unit) {
-                return $unit->leases->count() == 0;
-            })->count();
-            $property->occupied_units = $property->units->filter(function($unit) {
-                return $unit->leases->count() > 0;
-            })->count();
-            $property->active_leases = $property->units->sum(function($unit) {
-                return $unit->leases->count();
-            });
-            $property->monthly_revenue = $property->units->sum(function($unit) {
-                return $unit->leases->sum('rent_amount');
-            });
-            $property->occupancy_rate = $property->total_units > 0 ? 
-                round(($property->occupied_units / $property->total_units) * 100, 1) : 0;
+        // Lấy danh sách property types để hiển thị trong filter
+        $propertyTypes = PropertyType::orderBy('name')->get();
+
+        // Thêm thông tin thống kê cho mỗi property
+        $properties->getCollection()->each(function ($property) {
+            $property->total_units = $property->getTotalUnitsCount();
+            $property->occupied_units = $property->getOccupiedUnitsCount();
+            $property->available_units = $property->getAvailableUnitsCount();
+            $property->occupancy_rate = $property->getOccupancyRate();
         });
 
-        return view('agent.properties.index', compact('properties'));
+        return view('agent.properties.index', [
+            'properties' => $properties,
+            'propertyTypes' => $propertyTypes,
+            'search' => $request->search,
+            'selectedPropertyType' => $request->property_type_id,
+            'selectedStatus' => $request->status
+        ]);
     }
 
     /**
@@ -76,46 +105,27 @@ class PropertyController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
         
-        // Kiểm tra xem property có được gán cho agent này không
-        $property = $user->assignedProperties()
-            ->with(['location', 'location2025', 'propertyType', 'owner', 'units' => function($query) {
-                $query->with(['leases' => function($leaseQuery) {
-                    $leaseQuery->where('status', 'active')
-                        ->whereNull('deleted_at')
-                        ->with('tenant');
-                }]);
-            }])
-            ->where('properties.id', $id)
-            ->where('properties.status', 1)
-            ->firstOrFail();
-
-        // Thống kê chi tiết
-        $stats = [
-            'total_units' => $property->units->count(),
-            'available_units' => $property->units->filter(function($unit) {
-                return $unit->leases->count() == 0;
-            })->count(),
-            'occupied_units' => $property->units->filter(function($unit) {
-                return $unit->leases->count() > 0;
-            })->count(),
-            'active_leases' => $property->units->sum(function($unit) {
-                return $unit->leases->count();
-            }),
-            'monthly_revenue' => $property->units->sum(function($unit) {
-                return $unit->leases->sum('rent_amount');
-            }),
-        ];
+        // Lấy property và kiểm tra quyền truy cập
+        $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
-        $stats['occupancy_rate'] = $stats['total_units'] > 0 ? 
-            round(($stats['occupied_units'] / $stats['total_units']) * 100, 1) : 0;
+        $property = Property::whereIn('id', $assignedPropertyIds)
+            ->with([
+                'propertyType', 
+                'owner',
+                'location' => function($q) {
+                    $q->with(['province', 'district', 'ward']);
+                },
+                'location2025' => function($q) {
+                    $q->with(['province', 'ward']);
+                },
+                'units' => function($q) {
+                    $q->with(['leases' => function($leaseQuery) {
+                        $leaseQuery->where('status', 'active')->whereNull('deleted_at');
+                    }]);
+                }
+            ])
+            ->findOrFail($id);
 
-        // Lấy danh sách units với thông tin chi tiết
-        $units = $property->units->map(function($unit) {
-            $unit->current_lease = $unit->leases->first();
-            $unit->is_available = $unit->leases->count() == 0;
-            return $unit;
-        });
-
-        return view('agent.properties.show', compact('property', 'stats', 'units'));
+        return view('agent.properties.show', compact('property'));
     }
 }

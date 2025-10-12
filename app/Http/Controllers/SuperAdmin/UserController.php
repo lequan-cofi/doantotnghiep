@@ -9,6 +9,7 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -141,7 +142,7 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        $user->load(['organizations.roles', 'userRoles', 'commissionEvents', 'salaryContracts']);
+        $user->load(['organizations.roles', 'userRoles', 'userProfile', 'commissionEvents', 'salaryContracts']);
         
         // Get user statistics
         $stats = $this->getUserStats($user);

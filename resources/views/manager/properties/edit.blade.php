@@ -22,7 +22,7 @@
     <div class="content" id="content">
         <div class="card">
             <div class="card-body">
-                <form id="propertyForm" method="POST" action="{{ route('manager.properties.update', $property->id) }}">
+                <form id="propertyForm" method="POST" action="{{ route('manager.properties.update', $property->id) }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     
@@ -82,6 +82,46 @@
                     <div class="mb-4">
                         <label class="form-label">Mô tả</label>
                         <textarea name="description" class="form-control" rows="3">{{ $property->description }}</textarea>
+                    </div>
+
+                    <!-- Images -->
+                    <div class="mb-4">
+                        <label class="form-label">Hình ảnh hiện tại</label>
+                        @if($property->images && count($property->images) > 0)
+                            <div class="row mb-3">
+                                @foreach($property->images as $index => $image)
+                                    <div class="col-md-3 mb-2">
+                                        <div class="position-relative">
+                                            <img src="{{ Storage::url($image) }}" alt="Property Image" class="img-thumbnail" style="width: 100%; height: 150px; object-fit: cover;">
+                                            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removeExistingImage(this, '{{ $image }}')">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="text-muted">Chưa có hình ảnh nào</p>
+                        @endif
+                        
+                        <label class="form-label">Thêm hình ảnh mới</label>
+                        <div id="imageUploadContainer">
+                            <div class="image-upload-item mb-2">
+                                <div class="input-group">
+                                    <input type="file" name="images[]" class="form-control" accept="image/*" onchange="previewImage(this)">
+                                    <button type="button" class="btn btn-outline-danger" onclick="removeImageField(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="image-preview mt-2" style="display: none;">
+                                    <img src="" alt="Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addImageField()">
+                            <i class="fas fa-plus"></i> Thêm hình ảnh
+                        </button>
+                        <small class="form-text text-muted">Chọn file hình ảnh (JPEG, PNG, GIF, WebP - tối đa 5MB mỗi file)</small>
                     </div>
 
                     <hr class="my-4">
@@ -309,6 +349,64 @@ document.getElementById('provinceSelect2025').addEventListener('change', functio
             });
         });
 });
+
+// Image upload functions
+function addImageField() {
+    const container = document.getElementById('imageUploadContainer');
+    const newField = document.createElement('div');
+    newField.className = 'image-upload-item mb-2';
+    newField.innerHTML = `
+        <div class="input-group">
+            <input type="file" name="images[]" class="form-control" accept="image/*" onchange="previewImage(this)">
+            <button type="button" class="btn btn-outline-danger" onclick="removeImageField(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        <div class="image-preview mt-2" style="display: none;">
+            <img src="" alt="Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+        </div>
+    `;
+    container.appendChild(newField);
+}
+
+function removeImageField(button) {
+    const container = document.getElementById('imageUploadContainer');
+    if (container.children.length > 1) {
+        button.closest('.image-upload-item').remove();
+    }
+}
+
+function previewImage(input) {
+    const preview = input.parentElement.parentElement.querySelector('.image-preview');
+    const img = preview.querySelector('img');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+function removeExistingImage(button, imagePath) {
+    if (confirm('Bạn có chắc chắn muốn xóa hình ảnh này?')) {
+        // Add hidden input to mark image for deletion
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'deleted_images[]';
+        hiddenInput.value = imagePath;
+        document.getElementById('propertyForm').appendChild(hiddenInput);
+        
+        // Remove the image element
+        button.closest('.col-md-3').remove();
+    }
+}
 </script>
 @endsection
 
