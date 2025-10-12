@@ -177,15 +177,12 @@
                                                        class="btn btn-outline-warning btn-sm" title="Chỉnh sửa">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    <form action="{{ route('agent.leases.destroy', $lease->id) }}" 
-                                                          method="POST" class="d-inline" 
-                                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa hợp đồng này?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Xóa">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm delete-lease-btn" 
+                                                            data-lease-id="{{ $lease->id }}" 
+                                                            data-lease-contract="{{ $lease->contract_no ?? 'Hợp đồng #' . $lease->id }}" 
+                                                            title="Xóa">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -226,4 +223,74 @@
     margin-right: 0;
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete lease functionality
+    document.querySelectorAll('.delete-lease-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const leaseId = this.dataset.leaseId;
+            const leaseContract = this.dataset.leaseContract;
+            
+            // Show confirmation dialog
+            if (typeof Notify !== 'undefined') {
+                Notify.confirmDelete(`hợp đồng "${leaseContract}"`, () => {
+                    // User confirmed deletion
+                    deleteLease(leaseId);
+                });
+            } else {
+                // Fallback to browser confirm
+                if (confirm(`Bạn có chắc chắn muốn xóa hợp đồng "${leaseContract}"?`)) {
+                    deleteLease(leaseId);
+                }
+            }
+        });
+    });
+
+    // Delete lease function
+    function deleteLease(leaseId) {
+        fetch(`/agent/leases/${leaseId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.success(data.message, 'Xóa thành công');
+                } else {
+                    alert(data.message);
+                }
+                // Remove the row from table
+                const row = document.querySelector(`[data-lease-id="${leaseId}"]`).closest('tr');
+                if (row) {
+                    row.remove();
+                }
+            } else {
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error(data.message, 'Lỗi xóa');
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Show error notification
+            if (typeof Notify !== 'undefined') {
+                Notify.error('Có lỗi xảy ra khi xóa hợp đồng', 'Lỗi hệ thống');
+            } else {
+                alert('Có lỗi xảy ra khi xóa hợp đồng');
+            }
+        });
+    }
+});
+</script>
 @endpush

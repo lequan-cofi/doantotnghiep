@@ -526,6 +526,157 @@ Route::middleware('auth')->group(function () {
         Route::get('/leads/{leadId}/create-lease', [\App\Http\Controllers\Agent\LeaseController::class, 'createFromLead'])->name('leads.create-lease');
         Route::post('/leads/{leadId}/create-lease', [\App\Http\Controllers\Agent\LeaseController::class, 'storeFromLead'])->name('leads.store-lease');
         
+        // Link tenant to lease when lead creates account
+        Route::post('/leases/{leaseId}/link-tenant', [\App\Http\Controllers\Agent\LeaseController::class, 'linkTenantToLease'])->name('leases.link-tenant');
+        Route::get('/api/leases/needing-tenant-link', [\App\Http\Controllers\Agent\LeaseController::class, 'getLeasesNeedingTenantLink'])->name('api.leases.needing-tenant-link');
+        
+        // Meters management (CRUD)
+        Route::resource('meters', \App\Http\Controllers\Agent\MeterController::class);
+        Route::get('/meters/get-units', [\App\Http\Controllers\Agent\MeterController::class, 'getUnits'])->name('meters.get-units');
+        
+        // Test route
+        Route::get('/test-units', function() {
+            return response()->json(['message' => 'Test route works']);
+        });
+        
+        // Very simple test route
+        Route::get('/units-test', function() {
+            $propertyId = request('property_id');
+            
+            if (!$propertyId) {
+                return response()->json([
+                    'message' => 'No property ID provided',
+                    'property_id' => $propertyId,
+                    'units' => []
+                ]);
+            }
+            
+            try {
+                $units = \App\Models\Unit::where('property_id', $propertyId)
+                    ->select('id', 'code', 'unit_type')
+                    ->get();
+                
+                return response()->json([
+                    'message' => 'Units loaded successfully',
+                    'property_id' => $propertyId,
+                    'units' => $units
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'Error loading units',
+                    'property_id' => $propertyId,
+                    'error' => $e->getMessage(),
+                    'units' => []
+                ]);
+            }
+        });
+        
+        // Test controller method
+        Route::get('/test-controller', [\App\Http\Controllers\Agent\MeterController::class, 'getUnits']);
+        
+        // Simple test route
+        Route::get('/simple-test', function() {
+            try {
+                $propertyId = request('property_id');
+                
+                if (!$propertyId) {
+                    return response()->json(['units' => []]);
+                }
+
+                $units = \App\Models\Unit::where('property_id', $propertyId)
+                    ->select('id', 'code', 'unit_type')
+                    ->get();
+
+                return response()->json(['units' => $units]);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'error' => $e->getMessage(),
+                    'units' => []
+                ], 500);
+            }
+        });
+        
+        // Meter readings management (CRUD)
+        Route::resource('meter-readings', \App\Http\Controllers\Agent\MeterReadingController::class);
+        Route::get('/meter-readings/get-last-reading', [\App\Http\Controllers\Agent\MeterReadingController::class, 'getLastReading'])->name('meter-readings.get-last-reading');
+        
+        // Debug route for testing units loading
+        Route::get('/debug/units/{propertyId}', function($propertyId) {
+            try {
+                $units = \App\Models\Unit::where('property_id', $propertyId)
+                    ->select('id', 'code', 'unit_type')
+                    ->get();
+                
+                return response()->json([
+                    'success' => true,
+                    'property_id' => $propertyId,
+                    'units_count' => $units->count(),
+                    'units' => $units
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'property_id' => $propertyId
+                ]);
+            }
+        });
+        
+        // Debug page
+        Route::get('/debug-units', function() {
+            return view('debug-units');
+        });
+        
+        // Test page
+        Route::get('/test-units-page', function() {
+            return view('test-units');
+        });
+        
+        // Data test route
+        Route::get('/data-test', function() {
+            try {
+                $properties = \App\Models\Property::all();
+                $units = \App\Models\Unit::all();
+                
+                $result = [
+                    'properties_count' => $properties->count(),
+                    'units_count' => $units->count(),
+                    'properties' => $properties->map(function($p) {
+                        return [
+                            'id' => $p->id,
+                            'name' => $p->name
+                        ];
+                    }),
+                    'units_by_property' => []
+                ];
+                
+                foreach ($properties as $property) {
+                    $propertyUnits = \App\Models\Unit::where('property_id', $property->id)->get();
+                    $result['units_by_property'][$property->id] = [
+                        'property_name' => $property->name,
+                        'units_count' => $propertyUnits->count(),
+                        'units' => $propertyUnits->map(function($u) {
+                            return [
+                                'id' => $u->id,
+                                'code' => $u->code,
+                                'unit_type' => $u->unit_type,
+                                'status' => $u->status
+                            ];
+                        })
+                    ];
+                }
+                
+                return response()->json($result);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        });
+        
         // Viewings management
         Route::get('/viewings', [\App\Http\Controllers\Agent\ViewingController::class, 'index'])->name('viewings.index');
         Route::get('/viewings/today', [\App\Http\Controllers\Agent\ViewingController::class, 'today'])->name('viewings.today');

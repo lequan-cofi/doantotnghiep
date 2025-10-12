@@ -84,7 +84,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('leads.store-lease', $lead->id) }}" method="POST" id="leaseForm">
+                    <form action="{{ route('agent.leads.store-lease', $lead->id) }}" method="POST" id="leaseForm">
                         @csrf
                         
                         <div class="row">
@@ -118,13 +118,17 @@
 
                             <!-- Tenant Selection -->
                             <div class="col-md-6 mb-3">
-                                <label for="tenant_id" class="form-label">Khách thuê <span class="text-danger">*</span></label>
-                                <select class="form-select @error('tenant_id') is-invalid @enderror" id="tenant_id" name="tenant_id" required>
-                                    <option value="">Chọn khách thuê</option>
+                                <label for="tenant_id" class="form-label">Khách thuê</label>
+                                <select class="form-select @error('tenant_id') is-invalid @enderror" id="tenant_id" name="tenant_id">
+                                    <option value="">Chọn khách thuê (tùy chọn)</option>
                                     @foreach($tenants as $tenant)
                                         <option value="{{ $tenant->id }}">{{ $tenant->full_name }} ({{ $tenant->phone }})</option>
                                     @endforeach
                                 </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle text-info"></i>
+                                    Nếu không chọn, hợp đồng sẽ được tạo với thông tin từ lead: <strong>{{ $lead->name }}</strong> ({{ $lead->phone }})
+                                </div>
                                 @error('tenant_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

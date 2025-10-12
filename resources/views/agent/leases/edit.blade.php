@@ -332,6 +332,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
                     console.error('Error loading units:', error);
                     unitSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+                    // Show error notification
+                    if (typeof Notify !== 'undefined') {
+                        Notify.error('Có lỗi xảy ra khi tải danh sách phòng', 'Lỗi tải dữ liệu');
+                    }
                 });
         } else {
             unitSelect.innerHTML = '<option value="">Chọn phòng</option>';
@@ -349,6 +353,10 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error generating contract number:', error);
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error('Có lỗi xảy ra khi tạo mã hợp đồng', 'Lỗi hệ thống');
+                }
             });
     });
 
@@ -411,6 +419,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (propertySelect.value) {
         propertySelect.dispatchEvent(new Event('change'));
     }
+
+    // Form submission notification
+    const form = document.getElementById('leaseForm');
+    form.addEventListener('submit', function(e) {
+        // Show loading notification
+        if (typeof Notify !== 'undefined') {
+            Notify.info('Đang cập nhật hợp đồng...', 'Đang xử lý');
+        }
+    });
+
+    // Show success notification if redirected with success message
+    @if(session('success'))
+        if (typeof Notify !== 'undefined') {
+            Notify.success('{{ session('success') }}', 'Thành công');
+        }
+    @endif
+
+    // Show error notification if redirected with error message
+    @if(session('error'))
+        if (typeof Notify !== 'undefined') {
+            Notify.error('{{ session('error') }}', 'Lỗi');
+        }
+    @endif
 });
 </script>
 @endpush

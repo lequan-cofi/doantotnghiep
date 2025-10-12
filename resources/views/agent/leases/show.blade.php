@@ -100,41 +100,79 @@
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="fas fa-user me-2"></i>Thông tin khách thuê
+                        @if($lease->isFromLead())
+                            <span class="badge bg-warning ms-2">Từ Lead</span>
+                        @endif
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="info-item mb-3">
-                                <label class="form-label text-muted small">Họ và tên</label>
-                                <p class="mb-0 fw-bold">{{ $lease->tenant->full_name ?? 'N/A' }}</p>
+                    @php
+                        $tenantInfo = $lease->getTenantInfo();
+                    @endphp
+                    
+                    @if($tenantInfo)
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item mb-3">
+                                    <label class="form-label text-muted small">Họ và tên</label>
+                                    <p class="mb-0 fw-bold">{{ $tenantInfo['name'] }}</p>
+                                </div>
+                                <div class="info-item mb-3">
+                                    <label class="form-label text-muted small">Số điện thoại</label>
+                                    <p class="mb-0">{{ $tenantInfo['phone'] }}</p>
+                                </div>
+                                <div class="info-item mb-3">
+                                    <label class="form-label text-muted small">Email</label>
+                                    <p class="mb-0">{{ $tenantInfo['email'] }}</p>
+                                </div>
                             </div>
-                            <div class="info-item mb-3">
-                                <label class="form-label text-muted small">Số điện thoại</label>
-                                <p class="mb-0">{{ $lease->tenant->phone ?? 'N/A' }}</p>
-                            </div>
-                            <div class="info-item mb-3">
-                                <label class="form-label text-muted small">Email</label>
-                                <p class="mb-0">{{ $lease->tenant->email ?? 'N/A' }}</p>
+                            <div class="col-md-6">
+                                @if($tenantInfo['type'] === 'user')
+                                    <div class="info-item mb-3">
+                                        <label class="form-label text-muted small">Ngày tạo tài khoản</label>
+                                        <p class="mb-0">{{ $lease->tenant->created_at ? $lease->tenant->created_at->format('d/m/Y H:i') : 'N/A' }}</p>
+                                    </div>
+                                    <div class="info-item mb-3">
+                                        <label class="form-label text-muted small">Trạng thái tài khoản</label>
+                                        <p class="mb-0">
+                                            @if($lease->tenant->email_verified_at)
+                                                <span class="badge bg-success">Đã xác thực</span>
+                                            @else
+                                                <span class="badge bg-warning">Chưa xác thực</span>
+                                            @endif
+                                        </p>
+                                    </div>
+                                @else
+                                    <div class="info-item mb-3">
+                                        <label class="form-label text-muted small">Nguồn</label>
+                                        <p class="mb-0">
+                                            <span class="badge bg-info">Lead - Chưa có tài khoản</span>
+                                        </p>
+                                    </div>
+                                    <div class="info-item mb-3">
+                                        <label class="form-label text-muted small">Trạng thái Lead</label>
+                                        <p class="mb-0">
+                                            <span class="badge bg-{{ $lease->lead->status === 'converted' ? 'success' : 'warning' }}">
+                                                {{ ucfirst($lease->lead->status) }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                @endif
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="info-item mb-3">
-                                <label class="form-label text-muted small">Ngày tạo tài khoản</label>
-                                <p class="mb-0">{{ $lease->tenant->created_at ? $lease->tenant->created_at->format('d/m/Y H:i') : 'N/A' }}</p>
+                        
+                        @if($lease->isFromLead())
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Lưu ý:</strong> Hợp đồng này được tạo từ lead. Khi khách hàng tạo tài khoản, bạn có thể gắn tài khoản vào hợp đồng này.
                             </div>
-                            <div class="info-item mb-3">
-                                <label class="form-label text-muted small">Trạng thái tài khoản</label>
-                                <p class="mb-0">
-                                    @if($lease->tenant->email_verified_at)
-                                        <span class="badge bg-success">Đã xác thực</span>
-                                    @else
-                                        <span class="badge bg-warning">Chưa xác thực</span>
-                                    @endif
-                                </p>
-                            </div>
+                        @endif
+                    @else
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Không có thông tin khách thuê.
                         </div>
-                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -668,14 +706,30 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Show success notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.success(data.message, 'Thêm thành công');
+                } else {
+                    alert(data.message);
+                }
                 location.reload();
             } else {
-                alert('Lỗi: ' + data.message);
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error(data.message, 'Lỗi thêm');
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Có lỗi xảy ra khi thêm người ở cùng');
+            // Show error notification
+            if (typeof Notify !== 'undefined') {
+                Notify.error('Có lỗi xảy ra khi thêm người ở cùng', 'Lỗi hệ thống');
+            } else {
+                alert('Có lỗi xảy ra khi thêm người ở cùng');
+            }
         });
     });
     
@@ -721,14 +775,30 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Show success notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.success(data.message, 'Cập nhật thành công');
+                } else {
+                    alert(data.message);
+                }
                 location.reload();
             } else {
-                alert('Lỗi: ' + data.message);
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error(data.message, 'Lỗi cập nhật');
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Có lỗi xảy ra khi cập nhật thông tin người ở cùng');
+            // Show error notification
+            if (typeof Notify !== 'undefined') {
+                Notify.error('Có lỗi xảy ra khi cập nhật thông tin người ở cùng', 'Lỗi hệ thống');
+            } else {
+                alert('Có lỗi xảy ra khi cập nhật thông tin người ở cùng');
+            }
         });
     });
     
@@ -738,28 +808,58 @@ document.addEventListener('DOMContentLoaded', function() {
             const button = e.target.closest('.delete-resident');
             const residentId = button.dataset.residentId;
             
-            if (confirm('Bạn có chắc chắn muốn xóa người ở cùng này?')) {
-                fetch(`/agent/leases/${leaseId}/residents/${residentId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Lỗi: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Có lỗi xảy ra khi xóa người ở cùng');
+            // Show confirmation dialog
+            if (typeof Notify !== 'undefined') {
+                Notify.confirmDelete('người ở cùng này', () => {
+                    // User confirmed deletion
+                    deleteResident(residentId);
                 });
+            } else {
+                // Fallback to browser confirm
+                if (confirm('Bạn có chắc chắn muốn xóa người ở cùng này?')) {
+                    deleteResident(residentId);
+                }
             }
         }
     });
+
+    // Delete resident function
+    function deleteResident(residentId) {
+        fetch(`/agent/leases/${leaseId}/residents/${residentId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.success(data.message, 'Xóa thành công');
+                } else {
+                    alert(data.message);
+                }
+                location.reload();
+            } else {
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error(data.message, 'Lỗi xóa');
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Show error notification
+            if (typeof Notify !== 'undefined') {
+                Notify.error('Có lỗi xảy ra khi xóa người ở cùng', 'Lỗi hệ thống');
+            } else {
+                alert('Có lỗi xảy ra khi xóa người ở cùng');
+            }
+        });
+    }
 });
 </script>
 @endpush

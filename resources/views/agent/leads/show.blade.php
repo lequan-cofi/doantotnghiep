@@ -157,7 +157,7 @@
                                                     <small class="text-muted">{{ $viewing->unit->property->name ?? 'N/A' }}</small>
                                                 </div>
                                             </td>
-                                            <td>{{ $viewing->scheduled_at ? $viewing->scheduled_at->format('d/m/Y H:i') : 'N/A' }}</td>
+                                            <td>{{ $viewing->schedule_at ? $viewing->schedule_at->format('d/m/Y H:i') : 'N/A' }}</td>
                                             <td>
                                                 @switch($viewing->status)
                                                     @case('scheduled')
@@ -315,14 +315,30 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Show success notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.success(data.message, 'Cập nhật trạng thái');
+                } else {
+                    alert(data.message);
+                }
                 location.reload();
             } else {
-                alert('Lỗi: ' + data.message);
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error(data.message, 'Lỗi cập nhật');
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Có lỗi xảy ra khi cập nhật trạng thái');
+            // Show error notification
+            if (typeof Notify !== 'undefined') {
+                Notify.error('Có lỗi xảy ra khi cập nhật trạng thái', 'Lỗi hệ thống');
+            } else {
+                alert('Có lỗi xảy ra khi cập nhật trạng thái');
+            }
         });
     });
 });

@@ -45,5 +45,30 @@ class Lead extends Model
     {
         return $this->hasMany(BookingDeposit::class);
     }
+
+    /**
+     * Get the leases created from this lead.
+     */
+    public function leases()
+    {
+        return $this->hasMany(Lease::class);
+    }
+
+    /**
+     * Check if lead has been converted to a user account
+     */
+    public function hasUserAccount()
+    {
+        return $this->leases()->whereNotNull('tenant_id')->exists();
+    }
+
+    /**
+     * Get the user account if lead has been converted
+     */
+    public function getUserAccount()
+    {
+        $lease = $this->leases()->whereNotNull('tenant_id')->first();
+        return $lease ? $lease->tenant : null;
+    }
 }
 

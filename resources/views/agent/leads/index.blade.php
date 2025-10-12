@@ -180,15 +180,12 @@
                                                             <i class="fas fa-file-contract"></i>
                                                         </a>
                                                     @endif
-                                                    <form action="{{ route('agent.leads.destroy', $lead->id) }}" 
-                                                          method="POST" class="d-inline" 
-                                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa lead này?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Xóa">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm delete-lead-btn" 
+                                                            data-lead-id="{{ $lead->id }}" 
+                                                            data-lead-name="{{ $lead->name }}" 
+                                                            title="Xóa">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -240,23 +237,32 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Show success message
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-success alert-dismissible fade show';
-                    alert.innerHTML = `
-                        ${data.message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    `;
-                    document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
+                    // Show success notification
+                    if (typeof Notify !== 'undefined') {
+                        Notify.success(data.message, 'Cập nhật trạng thái');
+                    } else {
+                        // Fallback to alert
+                        alert(data.message);
+                    }
                 } else {
-                    alert('Lỗi: ' + data.message);
+                    // Show error notification
+                    if (typeof Notify !== 'undefined') {
+                        Notify.error(data.message, 'Lỗi cập nhật');
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                    }
                     // Revert selection
                     this.value = this.dataset.originalValue || 'new';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Có lỗi xảy ra khi cập nhật trạng thái');
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error('Có lỗi xảy ra khi cập nhật trạng thái', 'Lỗi hệ thống');
+                } else {
+                    alert('Có lỗi xảy ra khi cập nhật trạng thái');
+                }
                 // Revert selection
                 this.value = this.dataset.originalValue || 'new';
             });
@@ -265,6 +271,70 @@ document.addEventListener('DOMContentLoaded', function() {
         // Store original value
         select.dataset.originalValue = select.value;
     });
+
+    // Delete lead functionality
+    document.querySelectorAll('.delete-lead-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const leadId = this.dataset.leadId;
+            const leadName = this.dataset.leadName;
+            
+            // Show confirmation dialog
+            if (typeof Notify !== 'undefined') {
+                Notify.confirmDelete(`lead "${leadName}"`, () => {
+                    // User confirmed deletion
+                    deleteLead(leadId);
+                });
+            } else {
+                // Fallback to browser confirm
+                if (confirm(`Bạn có chắc chắn muốn xóa lead "${leadName}"?`)) {
+                    deleteLead(leadId);
+                }
+            }
+        });
+    });
+
+    // Delete lead function
+    function deleteLead(leadId) {
+        fetch(`/agent/leads/${leadId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.success(data.message, 'Xóa thành công');
+                } else {
+                    alert(data.message);
+                }
+                // Remove the row from table
+                const row = document.querySelector(`[data-lead-id="${leadId}"]`).closest('tr');
+                if (row) {
+                    row.remove();
+                }
+            } else {
+                // Show error notification
+                if (typeof Notify !== 'undefined') {
+                    Notify.error(data.message, 'Lỗi xóa');
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Show error notification
+            if (typeof Notify !== 'undefined') {
+                Notify.error('Có lỗi xảy ra khi xóa lead', 'Lỗi hệ thống');
+            } else {
+                alert('Có lỗi xảy ra khi xóa lead');
+            }
+        });
+    }
 });
 </script>
 @endpush

@@ -100,14 +100,19 @@ class LeadController extends Controller
      */
     public function store(Request $request)
     {
+        // Clean and validate currency inputs
+        $budgetMin = $request->budget_min ? str_replace(['.', ','], '', $request->budget_min) : null;
+        $budgetMax = $request->budget_max ? str_replace(['.', ','], '', $request->budget_max) : null;
+        
+        // Validate request
         $request->validate([
             'source' => 'required|string|max:100',
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255',
             'desired_city' => 'nullable|string|max:100',
-            'budget_min' => 'nullable|numeric|min:0',
-            'budget_max' => 'nullable|numeric|min:0|gte:budget_min',
+            'budget_min' => 'nullable|string|regex:/^[\d.,]+$/',
+            'budget_max' => 'nullable|string|regex:/^[\d.,]+$/',
             'note' => 'nullable|string|max:1000',
             'status' => 'required|in:new,contacted,qualified,proposal,negotiation,converted,lost',
         ], [
@@ -115,10 +120,25 @@ class LeadController extends Controller
             'name.required' => 'Vui lòng nhập tên khách hàng.',
             'phone.required' => 'Vui lòng nhập số điện thoại.',
             'email.email' => 'Email không hợp lệ.',
-            'budget_max.gte' => 'Ngân sách tối đa phải lớn hơn hoặc bằng ngân sách tối thiểu.',
+            'budget_min.regex' => 'Ngân sách tối thiểu chỉ được chứa số và dấu phẩy/chấm.',
+            'budget_max.regex' => 'Ngân sách tối đa chỉ được chứa số và dấu phẩy/chấm.',
             'status.required' => 'Vui lòng chọn trạng thái.',
             'status.in' => 'Trạng thái không hợp lệ.',
         ]);
+
+        // Additional validation for budget ranges
+        if ($budgetMin && $budgetMax && (int)$budgetMin > (int)$budgetMax) {
+            return back()->withErrors(['budget_max' => 'Ngân sách tối đa phải lớn hơn hoặc bằng ngân sách tối thiểu.'])->withInput();
+        }
+
+        // Validate numeric values after cleaning
+        if ($budgetMin && (!is_numeric($budgetMin) || (int)$budgetMin < 0)) {
+            return back()->withErrors(['budget_min' => 'Ngân sách tối thiểu phải là số dương hợp lệ.'])->withInput();
+        }
+        
+        if ($budgetMax && (!is_numeric($budgetMax) || (int)$budgetMax < 0)) {
+            return back()->withErrors(['budget_max' => 'Ngân sách tối đa phải là số dương hợp lệ.'])->withInput();
+        }
 
         try {
             $lead = Lead::create([
@@ -127,8 +147,8 @@ class LeadController extends Controller
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'desired_city' => $request->desired_city,
-                'budget_min' => $request->budget_min,
-                'budget_max' => $request->budget_max,
+                'budget_min' => $budgetMin ? (int)$budgetMin : null,
+                'budget_max' => $budgetMax ? (int)$budgetMax : null,
                 'note' => $request->note,
                 'status' => $request->status,
             ]);
@@ -151,7 +171,7 @@ class LeadController extends Controller
         // Get viewings for this lead
         $viewings = $lead->viewings()
             ->with(['unit.property', 'agent'])
-            ->orderBy('scheduled_at', 'desc')
+            ->orderBy('schedule_at', 'desc')
             ->get();
 
         // Get booking deposits for this lead
@@ -179,14 +199,19 @@ class LeadController extends Controller
     {
         $lead = Lead::findOrFail($id);
 
+        // Clean and validate currency inputs
+        $budgetMin = $request->budget_min ? str_replace(['.', ','], '', $request->budget_min) : null;
+        $budgetMax = $request->budget_max ? str_replace(['.', ','], '', $request->budget_max) : null;
+        
+        // Validate request
         $request->validate([
             'source' => 'required|string|max:100',
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255',
             'desired_city' => 'nullable|string|max:100',
-            'budget_min' => 'nullable|numeric|min:0',
-            'budget_max' => 'nullable|numeric|min:0|gte:budget_min',
+            'budget_min' => 'nullable|string|regex:/^[\d.,]+$/',
+            'budget_max' => 'nullable|string|regex:/^[\d.,]+$/',
             'note' => 'nullable|string|max:1000',
             'status' => 'required|in:new,contacted,qualified,proposal,negotiation,converted,lost',
         ], [
@@ -194,10 +219,25 @@ class LeadController extends Controller
             'name.required' => 'Vui lòng nhập tên khách hàng.',
             'phone.required' => 'Vui lòng nhập số điện thoại.',
             'email.email' => 'Email không hợp lệ.',
-            'budget_max.gte' => 'Ngân sách tối đa phải lớn hơn hoặc bằng ngân sách tối thiểu.',
+            'budget_min.regex' => 'Ngân sách tối thiểu chỉ được chứa số và dấu phẩy/chấm.',
+            'budget_max.regex' => 'Ngân sách tối đa chỉ được chứa số và dấu phẩy/chấm.',
             'status.required' => 'Vui lòng chọn trạng thái.',
             'status.in' => 'Trạng thái không hợp lệ.',
         ]);
+
+        // Additional validation for budget ranges
+        if ($budgetMin && $budgetMax && (int)$budgetMin > (int)$budgetMax) {
+            return back()->withErrors(['budget_max' => 'Ngân sách tối đa phải lớn hơn hoặc bằng ngân sách tối thiểu.'])->withInput();
+        }
+
+        // Validate numeric values after cleaning
+        if ($budgetMin && (!is_numeric($budgetMin) || (int)$budgetMin < 0)) {
+            return back()->withErrors(['budget_min' => 'Ngân sách tối thiểu phải là số dương hợp lệ.'])->withInput();
+        }
+        
+        if ($budgetMax && (!is_numeric($budgetMax) || (int)$budgetMax < 0)) {
+            return back()->withErrors(['budget_max' => 'Ngân sách tối đa phải là số dương hợp lệ.'])->withInput();
+        }
 
         try {
             $lead->update([
@@ -206,8 +246,8 @@ class LeadController extends Controller
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'desired_city' => $request->desired_city,
-                'budget_min' => $request->budget_min,
-                'budget_max' => $request->budget_max,
+                'budget_min' => $budgetMin ? (int)$budgetMin : null,
+                'budget_max' => $budgetMax ? (int)$budgetMax : null,
                 'note' => $request->note,
                 'status' => $request->status,
             ]);

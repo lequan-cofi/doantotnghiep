@@ -17,6 +17,7 @@ class Lease extends Model
         'organization_id',
         'unit_id',
         'tenant_id',
+        'lead_id',
         'agent_id',
         'start_date',
         'end_date',
@@ -52,6 +53,11 @@ class Lease extends Model
         return $this->belongsTo(User::class, 'tenant_id');
     }
 
+    public function lead()
+    {
+        return $this->belongsTo(Lead::class, 'lead_id');
+    }
+
     public function agent()
     {
         return $this->belongsTo(User::class, 'agent_id');
@@ -85,5 +91,47 @@ class Lease extends Model
     public function commissionEvents()
     {
         return $this->hasMany(CommissionEvent::class);
+    }
+
+    /**
+     * Get tenant information - either from User or Lead
+     */
+    public function getTenantInfo()
+    {
+        if ($this->tenant_id) {
+            return [
+                'type' => 'user',
+                'id' => $this->tenant_id,
+                'name' => $this->tenant->full_name ?? $this->tenant->name ?? 'N/A',
+                'phone' => $this->tenant->phone ?? 'N/A',
+                'email' => $this->tenant->email ?? 'N/A',
+            ];
+        } elseif ($this->lead_id) {
+            return [
+                'type' => 'lead',
+                'id' => $this->lead_id,
+                'name' => $this->lead->name ?? 'N/A',
+                'phone' => $this->lead->phone ?? 'N/A',
+                'email' => $this->lead->email ?? 'N/A',
+            ];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Check if lease is created from lead (not yet converted to user)
+     */
+    public function isFromLead()
+    {
+        return $this->lead_id && !$this->tenant_id;
+    }
+
+    /**
+     * Check if lease has tenant user account
+     */
+    public function hasTenantAccount()
+    {
+        return $this->tenant_id !== null;
     }
 }

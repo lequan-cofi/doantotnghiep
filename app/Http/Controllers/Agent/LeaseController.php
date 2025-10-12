@@ -1669,10 +1669,10 @@ class LeaseController extends Controller
         $rentAmount = str_replace(['.', ','], '', $request->rent_amount);
         $depositAmount = $request->deposit_amount ? str_replace(['.', ','], '', $request->deposit_amount) : null;
         
-        // Validate request
+        // Validate request - tenant_id is optional when creating from lead
         $request->validate([
             'unit_id' => 'required|exists:units,id',
-            'tenant_id' => 'required|exists:users,id',
+            'tenant_id' => 'nullable|exists:users,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'rent_amount' => 'required|string|regex:/^[\d.,]+$/',
@@ -1685,6 +1685,11 @@ class LeaseController extends Controller
             'services.*.service_id' => 'required_with:services|exists:services,id',
             'services.*.price' => 'required_with:services|numeric|min:0',
         ]);
+
+        // Ensure either tenant_id or lead_id is provided
+        if (!$request->tenant_id && !$leadId) {
+            return back()->withErrors(['tenant_id' => 'Vui lòng chọn khách thuê hoặc tạo từ lead.'])->withInput();
+        }
 
         // Check if unit belongs to assigned properties
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
@@ -1725,6 +1730,7 @@ class LeaseController extends Controller
                 'organization_id' => $organization?->id,
                 'unit_id' => $request->unit_id,
                 'tenant_id' => $request->tenant_id,
+                'lead_id' => $leadId, // Link to lead if creating from lead
                 'agent_id' => $user->id,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
@@ -1803,5 +1809,53 @@ class LeaseController extends Controller
             Log::error('Error creating lease from lead: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Có lỗi xảy ra khi tạo hợp đồng từ lead: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Link tenant_id to lease when lead creates user account
+     */
+    public function linkTenantToLease(Request $request, $leaseId)
+    {
+        $request->validate([
+            'tenant_id' => 'required|exists:users,id',
+        ]);
+
+        $lease = Lease::findOrFail($leaseId);
+        
+        // Check if lease is from lead and doesn't have tenant_id yet
+        if (!$lease->isFromLead()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hợp đồng này không phải từ lead hoặc đã có tenant.'
+            ], 400);
+        }
+
+        try {
+            $lease->update(['tenant_id' => $request->tenant_id]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã gắn tài khoản khách thuê vào hợp đồng thành công.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error linking tenant to lease: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi gắn tài khoản khách thuê.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get leases that need tenant linking (created from leads without tenant_id)
+     */
+    public function getLeasesNeedingTenantLink()
+    {
+        $leases = Lease::whereNotNull('lead_id')
+            ->whereNull('tenant_id')
+            ->with(['lead', 'unit.property'])
+            ->get();
+
+        return response()->json($leases);
     }
 }
