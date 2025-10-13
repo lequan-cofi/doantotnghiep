@@ -3,45 +3,58 @@
 namespace App\Http\Controllers\Agent;
 
 use App\Http\Controllers\Controller;
+use App\Models\PayrollCycle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PayrollCycleController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('agent.payroll-cycles.index');
-    }
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        $query = PayrollCycle::whereHas('payslips', function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })->with(['payslips' => function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        }]);
 
-    public function create()
-    {
-        return view('agent.payroll-cycles.create');
-    }
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
-    public function store(Request $request)
-    {
-        // Implementation for storing payroll cycle
-        return redirect()->route('agent.payroll-cycles.index');
+        // Filter by period
+        if ($request->filled('period')) {
+            $query->where('period_month', 'like', '%' . $request->period . '%');
+        }
+
+        $payrollCycles = $query->orderBy('period_month', 'desc')->paginate(15);
+
+        $statuses = [
+            'open' => 'Mở',
+            'locked' => 'Đã khóa',
+            'paid' => 'Đã thanh toán'
+        ];
+
+        return view('agent.payroll-cycles.index', compact('payrollCycles', 'statuses'));
     }
 
     public function show($id)
     {
-        return view('agent.payroll-cycles.show', compact('id'));
-    }
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        $payrollCycle = PayrollCycle::where('id', $id)
+            ->whereHas('payslips', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->with(['payslips' => function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            }])
+            ->firstOrFail();
 
-    public function edit($id)
-    {
-        return view('agent.payroll-cycles.edit', compact('id'));
-    }
-
-    public function update(Request $request, $id)
-    {
-        // Implementation for updating payroll cycle
-        return redirect()->route('agent.payroll-cycles.index');
-    }
-
-    public function destroy($id)
-    {
-        // Implementation for deleting payroll cycle
-        return redirect()->route('agent.payroll-cycles.index');
+        return view('agent.payroll-cycles.show', compact('payrollCycle'));
     }
 }

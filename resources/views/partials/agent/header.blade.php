@@ -109,7 +109,10 @@
                     </a>
                 </div>
             </div>
-            
+            <a href="{{ route('agent.tickets.index') }}" class="nav-item">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Ticket</span>
+            </a>
             <a href="{{ route('agent.meters.index') }}" class="nav-item">
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Công tơ đo</span>
@@ -130,7 +133,7 @@
                         <i class="fas fa-calendar-alt"></i>
                         <span>Kỳ lương</span>
                     </a>
-                    <a href="{{ route('agent.payroll-payslips.index') }}" class="submenu-item">
+                    <a href="{{ route('agent.payslips.index') }}" class="submenu-item">
                         <i class="fas fa-file-invoice-dollar"></i>
                         <span>Phiếu lương</span>
                     </a>
@@ -155,6 +158,32 @@
                     <a href="{{ route('agent.commission-events.index') }}" class="submenu-item">
                         <i class="fas fa-chart-line"></i>
                         <span>Sự kiện hoa hồng</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="nav-group" data-group="salary">
+                <a href="#" class="nav-item has-submenu nav-parent {{ request()->routeIs('agent.salary-*') || request()->routeIs('agent.payroll-*') || request()->routeIs('agent.payslips.*') ? 'active' : '' }}">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Quản lý lương</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="submenu">
+                    <a href="{{ route('agent.salary-contracts.index') }}" class="submenu-item">
+                        <i class="fas fa-file-signature"></i>
+                        <span>Hợp đồng lương</span>
+                    </a>
+                    <a href="{{ route('agent.payroll-cycles.index') }}" class="submenu-item">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Kỳ lương</span>
+                    </a>
+                    <a href="{{ route('agent.payslips.index') }}" class="submenu-item">
+                        <i class="fas fa-receipt"></i>
+                        <span>Phiếu lương</span>
+                    </a>
+                    <a href="{{ route('agent.salary-advances.index') }}" class="submenu-item">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <span>Ứng lương</span>
                     </a>
                 </div>
             </div>

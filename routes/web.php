@@ -376,26 +376,17 @@ Route::middleware('auth')->group(function () {
         Route::delete('/meters/{id}', [\App\Http\Controllers\Agent\MeterController::class, 'destroy'])->name('meters.destroy');
 
         // Salary management
+        // Salary Contracts (read-only for agents)
         Route::get('/salary-contracts', [\App\Http\Controllers\Agent\SalaryContractController::class, 'index'])->name('salary-contracts.index');
-        Route::get('/salary-contracts/create', [\App\Http\Controllers\Agent\SalaryContractController::class, 'create'])->name('salary-contracts.create');
-        Route::post('/salary-contracts', [\App\Http\Controllers\Agent\SalaryContractController::class, 'store'])->name('salary-contracts.store');
         Route::get('/salary-contracts/{id}', [\App\Http\Controllers\Agent\SalaryContractController::class, 'show'])->name('salary-contracts.show');
-        Route::get('/salary-contracts/{id}/edit', [\App\Http\Controllers\Agent\SalaryContractController::class, 'edit'])->name('salary-contracts.edit');
-        Route::put('/salary-contracts/{id}', [\App\Http\Controllers\Agent\SalaryContractController::class, 'update'])->name('salary-contracts.update');
-        Route::delete('/salary-contracts/{id}', [\App\Http\Controllers\Agent\SalaryContractController::class, 'destroy'])->name('salary-contracts.destroy');
 
+        // Payroll Cycles (read-only for agents)
         Route::get('/payroll-cycles', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'index'])->name('payroll-cycles.index');
-        Route::get('/payroll-cycles/create', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'create'])->name('payroll-cycles.create');
-        Route::post('/payroll-cycles', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'store'])->name('payroll-cycles.store');
         Route::get('/payroll-cycles/{id}', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'show'])->name('payroll-cycles.show');
-        Route::get('/payroll-cycles/{id}/edit', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'edit'])->name('payroll-cycles.edit');
-        Route::put('/payroll-cycles/{id}', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'update'])->name('payroll-cycles.update');
-        Route::delete('/payroll-cycles/{id}', [\App\Http\Controllers\Agent\PayrollCycleController::class, 'destroy'])->name('payroll-cycles.destroy');
 
-        Route::get('/payroll-payslips', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'index'])->name('payroll-payslips.index');
-        Route::get('/payroll-payslips/{id}', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'show'])->name('payroll-payslips.show');
-        Route::get('/payroll-payslips/{id}/edit', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'edit'])->name('payroll-payslips.edit');
-        Route::put('/payroll-payslips/{id}', [\App\Http\Controllers\Agent\PayrollPayslipController::class, 'update'])->name('payroll-payslips.update');
+        // Payslips (read-only for agents)
+        Route::get('/payslips', [\App\Http\Controllers\Agent\PayslipController::class, 'index'])->name('payslips.index');
+        Route::get('/payslips/{id}', [\App\Http\Controllers\Agent\PayslipController::class, 'show'])->name('payslips.show');
 
         Route::get('/salary-advances', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'index'])->name('salary-advances.index');
         Route::get('/salary-advances/create', [\App\Http\Controllers\Agent\SalaryAdvanceController::class, 'create'])->name('salary-advances.create');
@@ -465,6 +456,21 @@ Route::middleware('auth')->group(function () {
         Route::post('/invoices/{id}/issue', [\App\Http\Controllers\Agent\InvoiceController::class, 'issue'])->name('invoices.issue');
         Route::post('/invoices/{id}/cancel', [\App\Http\Controllers\Agent\InvoiceController::class, 'cancel'])->name('invoices.cancel');
         Route::get('/invoices/lease-info/{leaseId}', [\App\Http\Controllers\Agent\InvoiceController::class, 'getLeaseInfo'])->name('invoices.lease-info');
+
+        // Tickets management (CRU - no Delete)
+        Route::get('/tickets', [\App\Http\Controllers\Agent\TicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/create', [\App\Http\Controllers\Agent\TicketController::class, 'create'])->name('tickets.create');
+        Route::post('/tickets', [\App\Http\Controllers\Agent\TicketController::class, 'store'])->name('tickets.store');
+        Route::get('/tickets/{id}', [\App\Http\Controllers\Agent\TicketController::class, 'show'])->name('tickets.show');
+        Route::get('/tickets/{id}/edit', [\App\Http\Controllers\Agent\TicketController::class, 'edit'])->name('tickets.edit');
+        Route::put('/tickets/{id}', [\App\Http\Controllers\Agent\TicketController::class, 'update'])->name('tickets.update');
+        Route::post('/tickets/{id}/logs', [\App\Http\Controllers\Agent\TicketController::class, 'addLog'])->name('tickets.addLog');
+
+        // API endpoints for tickets
+        Route::prefix('api/tickets')->group(function () {
+            Route::get('/properties/{propertyId}/units', [\App\Http\Controllers\Agent\TicketController::class, 'getUnits']);
+            Route::get('/units/{unitId}/leases', [\App\Http\Controllers\Agent\TicketController::class, 'getLeases']);
+        });
     });
 
     /*

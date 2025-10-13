@@ -14,6 +14,7 @@
         <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/agent/dashboard.css') }}">
         <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/agent/properties.css') }}">
         <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/agent/units.css') }}">
+        <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/agent/salary.css') }}">
         <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/preloader.css') }}?v={{ time() }}">
         <link rel="stylesheet" type="text/css" href="{{ asset('assets/css/notifications.css') }}?v={{ time() }}">
         @stack('styles')

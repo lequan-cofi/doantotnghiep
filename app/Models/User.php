@@ -205,6 +205,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the salary advances for the user.
+     */
+    public function salaryAdvances()
+    {
+        return $this->hasMany(SalaryAdvance::class);
+    }
+
+    /**
+     * Get the payslips for the user.
+     */
+    public function payslips()
+    {
+        return $this->hasMany(PayrollPayslip::class);
+    }
+
+    /**
      * Get the user's profile.
      */
     public function userProfile()

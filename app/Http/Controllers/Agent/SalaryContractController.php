@@ -3,45 +3,54 @@
 namespace App\Http\Controllers\Agent;
 
 use App\Http\Controllers\Controller;
+use App\Models\SalaryContract;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class SalaryContractController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('agent.salary-contracts.index');
-    }
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        $query = $user->salaryContracts()->with('organization');
 
-    public function create()
-    {
-        return view('agent.salary-contracts.create');
-    }
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
-    public function store(Request $request)
-    {
-        // Implementation for storing salary contract
-        return redirect()->route('agent.salary-contracts.index');
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->where('effective_from', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->where('effective_from', '<=', $request->date_to);
+        }
+
+        $salaryContracts = $query->orderBy('effective_from', 'desc')->paginate(15);
+
+        $statuses = [
+            'active' => 'Đang hoạt động',
+            'inactive' => 'Không hoạt động',
+            'terminated' => 'Đã chấm dứt'
+        ];
+
+        return view('agent.salary-contracts.index', compact('salaryContracts', 'statuses'));
     }
 
     public function show($id)
     {
-        return view('agent.salary-contracts.show', compact('id'));
-    }
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        $salaryContract = SalaryContract::where('id', $id)
+            ->where('user_id', $user->id)
+            ->with('organization')
+            ->firstOrFail();
 
-    public function edit($id)
-    {
-        return view('agent.salary-contracts.edit', compact('id'));
-    }
-
-    public function update(Request $request, $id)
-    {
-        // Implementation for updating salary contract
-        return redirect()->route('agent.salary-contracts.index');
-    }
-
-    public function destroy($id)
-    {
-        // Implementation for deleting salary contract
-        return redirect()->route('agent.salary-contracts.index');
+        return view('agent.salary-contracts.show', compact('salaryContract'));
     }
 }
