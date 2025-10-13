@@ -113,12 +113,48 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Ngày thanh toán hàng tháng</label>
+                                <label class="form-label">Ngày tạo hóa đơn</label>
                                 <select name="billing_day" class="form-select">
                                     @for ($i = 1; $i <= 28; $i++)
                                     <option value="{{ $i }}" {{ $i == 1 ? 'selected' : '' }}>Ngày {{ $i }}</option>
                                     @endfor
                                 </select>
+                                <div class="form-text">Ngày trong tháng để tạo hóa đơn</div>
+                            </div>
+
+                            <!-- Payment Cycle Settings -->
+                            <div class="mb-3">
+                                <label class="form-label">Chu kỳ thanh toán</label>
+                                <select name="lease_payment_cycle" id="lease_payment_cycle" class="form-select">
+                                    <option value="">-- Chọn chu kỳ --</option>
+                                    <option value="monthly">Hàng tháng</option>
+                                    <option value="quarterly">Hàng quý</option>
+                                    <option value="yearly">Hàng năm</option>
+                                    <option value="custom">Tùy chỉnh (nhập số tháng)</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3" id="lease_custom_months_field" style="display: none;">
+                                <label class="form-label">Số tháng tùy chỉnh</label>
+                                <input type="number" name="lease_custom_months" id="lease_custom_months" class="form-control" 
+                                       min="1" max="60" placeholder="Nhập số tháng (1-60)">
+                                <div class="form-text">Số tháng cho chu kỳ thanh toán tùy chỉnh (1-60)</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Hạn thanh toán</label>
+                                <select name="lease_payment_day" class="form-select">
+                                    @for ($i = 1; $i <= 31; $i++)
+                                    <option value="{{ $i }}" {{ $i == 1 ? 'selected' : '' }}>Ngày {{ $i }}</option>
+                                    @endfor
+                                </select>
+                                <div class="form-text">Ngày hạn thanh toán trong chu kỳ</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Ghi chú chu kỳ thanh toán</label>
+                                <textarea name="lease_payment_notes" class="form-control" rows="2" 
+                                          placeholder="Ghi chú về chu kỳ thanh toán..."></textarea>
                             </div>
 
                             <div class="mb-3">
@@ -284,6 +320,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     unitSelect.appendChild(option);
                 });
                 unitSelect.disabled = false;
+                
+                // Load payment cycle settings from property
+                loadPropertyPaymentCycle(propertyId);
             })
             .catch(error => {
                 console.error('Error fetching units:', error);
@@ -325,6 +364,58 @@ document.addEventListener('DOMContentLoaded', function() {
     servicesContainer.addEventListener('click', function(e) {
         if (e.target.closest('.remove-service')) {
             e.target.closest('.service-item').remove();
+        }
+    });
+
+    // Load payment cycle settings from property
+    function loadPropertyPaymentCycle(propertyId) {
+        fetch(`/manager/api/properties/${propertyId}/payment-cycle`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Set payment cycle values from property
+                const paymentCycleSelect = document.getElementById('lease_payment_cycle');
+                const paymentDaySelect = document.querySelector('select[name="lease_payment_day"]');
+                const paymentNotesTextarea = document.querySelector('textarea[name="lease_payment_notes"]');
+                const customMonthsInput = document.getElementById('lease_custom_months');
+                
+                if (paymentCycleSelect && data.property.prop_payment_cycle) {
+                    paymentCycleSelect.value = data.property.prop_payment_cycle;
+                    // Trigger change event to show/hide custom months field
+                    paymentCycleSelect.dispatchEvent(new Event('change'));
+                }
+                
+                if (paymentDaySelect && data.property.prop_payment_day) {
+                    paymentDaySelect.value = data.property.prop_payment_day;
+                }
+                
+                if (paymentNotesTextarea && data.property.prop_payment_notes) {
+                    paymentNotesTextarea.value = data.property.prop_payment_notes;
+                }
+                
+                if (customMonthsInput && data.property.prop_custom_months) {
+                    customMonthsInput.value = data.property.prop_custom_months;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading property payment cycle:', error);
+        });
+    }
+
+    // Payment cycle change handler
+    document.getElementById('lease_payment_cycle').addEventListener('change', function() {
+        const customMonthsField = document.getElementById('lease_custom_months_field');
+        if (this.value === 'custom') {
+            customMonthsField.style.display = 'block';
+        } else {
+            customMonthsField.style.display = 'none';
         }
     });
 

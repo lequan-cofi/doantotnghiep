@@ -205,68 +205,6 @@ class CommissionEventController extends Controller
     
     // Invoice sync methods removed - commission events no longer create invoices
 
-    public function test()
-    {
-        try {
-            $user = Auth::user();
-            
-            // Get user's organization_id from organization_users table
-            $userOrganization = DB::table('organization_users')
-                ->where('user_id', $user->id)
-                ->where('status', 'active')
-                ->first();
-                
-            $organizationId = $userOrganization ? $userOrganization->organization_id : null;
-            
-            $allEvents = CommissionEvent::all();
-            $allPolicies = CommissionPolicy::all();
-            
-            $userEvents = CommissionEvent::where('organization_id', $organizationId)
-                ->where('agent_id', $user->id)
-                ->get();
-                
-            $userPolicies = CommissionPolicy::where('organization_id', $organizationId)
-                ->get();
-            
-            return response()->json([
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'organization_id' => $organizationId
-                ],
-                'database' => [
-                    'total_events' => $allEvents->count(),
-                    'total_policies' => $allPolicies->count(),
-                    'user_events' => $userEvents->count(),
-                    'user_policies' => $userPolicies->count()
-                ],
-                'sample_events' => $userEvents->take(5)->map(function($event) {
-                    return [
-                        'id' => $event->id,
-                        'organization_id' => $event->organization_id,
-                        'agent_id' => $event->agent_id,
-                        'policy_id' => $event->policy_id,
-                        'trigger_event' => $event->trigger_event,
-                        'status' => $event->status,
-                        'deleted_at' => $event->deleted_at
-                    ];
-                }),
-                'sample_policies' => $userPolicies->take(5)->map(function($policy) {
-                    return [
-                        'id' => $policy->id,
-                        'organization_id' => $policy->organization_id,
-                        'title' => $policy->title,
-                        'active' => $policy->active,
-                        'deleted_at' => $policy->deleted_at
-                    ];
-                })
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
-        }
-    }
+    // Test method removed - no longer needed
 
 }

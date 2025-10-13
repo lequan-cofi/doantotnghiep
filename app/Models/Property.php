@@ -23,6 +23,10 @@ class Property extends Model
         'total_floors',
         'total_rooms',
         'status',
+        'prop_payment_cycle',
+        'prop_payment_day',
+        'prop_payment_notes',
+        'prop_custom_months',
         'deleted_by',
     ];
 
@@ -32,6 +36,19 @@ class Property extends Model
         'total_rooms' => 'integer',
         'images' => 'array',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            if ($model->prop_custom_months !== null) {
+                if ($model->prop_custom_months < 1 || $model->prop_custom_months > 60) {
+                    throw new \InvalidArgumentException('Số tháng tùy chỉnh phải từ 1 đến 60.');
+                }
+            }
+        });
+    }
 
     // Relationships
     public function organization()

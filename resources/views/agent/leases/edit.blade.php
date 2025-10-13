@@ -43,16 +43,24 @@
                                 <label for="property_id" class="form-label">Bất động sản <span class="text-danger">*</span></label>
                                 <select class="form-select @error('property_id') is-invalid @enderror" id="property_id" name="property_id" required>
                                     <option value="">Chọn bất động sản</option>
-                                    @foreach($properties as $property)
+                                    @forelse($properties as $property)
                                         <option value="{{ $property->id }}" 
                                             {{ old('property_id', $lease->unit->property_id) == $property->id ? 'selected' : '' }}>
                                             {{ $property->name }}
                                         </option>
-                                    @endforeach
+                                    @empty
+                                        <option value="" disabled>Không có bất động sản nào có phòng trống</option>
+                                    @endforelse
                                 </select>
                                 @error('property_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                @if($properties->isEmpty())
+                                    <div class="form-text text-warning">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        Hiện tại không có bất động sản nào có phòng trống. Bất động sản hiện tại vẫn được hiển thị để chỉnh sửa.
+                                    </div>
+                                @endif
                             </div>
 
                             <!-- Unit Selection -->
@@ -70,6 +78,22 @@
                                 @error('unit_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                
+                                <!-- Existing Deposits Display -->
+                                <div id="existing-deposits" class="mt-3" style="display: none;">
+                                    <div class="card border-info">
+                                        <div class="card-header bg-info text-white py-2">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-money-bill-wave me-2"></i>Cọc hiện có của phòng
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div id="deposits-content">
+                                                <!-- Deposits will be loaded here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Tenant Selection -->
@@ -158,7 +182,7 @@
 
                             <!-- Billing Day -->
                             <div class="col-md-6 mb-3">
-                                <label for="billing_day" class="form-label">Ngày thanh toán</label>
+                                <label for="billing_day" class="form-label">Ngày tạo hóa đơn</label>
                                 <select class="form-select @error('billing_day') is-invalid @enderror" id="billing_day" name="billing_day">
                                     @for($i = 1; $i <= 28; $i++)
                                         <option value="{{ $i }}" {{ old('billing_day', $lease->billing_day) == $i ? 'selected' : '' }}>
@@ -166,7 +190,60 @@
                                         </option>
                                     @endfor
                                 </select>
+                                <div class="form-text">Ngày trong tháng để tạo hóa đơn</div>
                                 @error('billing_day')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <!-- Payment Cycle Settings -->
+                            <div class="col-md-6 mb-3">
+                                <label for="lease_payment_cycle" class="form-label">Chu kỳ thanh toán</label>
+                                <select class="form-select @error('lease_payment_cycle') is-invalid @enderror" id="lease_payment_cycle" name="lease_payment_cycle">
+                                    <option value="">-- Chọn chu kỳ --</option>
+                                    <option value="monthly" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'monthly' ? 'selected' : '' }}>Hàng tháng</option>
+                                    <option value="quarterly" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'quarterly' ? 'selected' : '' }}>Hàng quý</option>
+                                    <option value="yearly" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'yearly' ? 'selected' : '' }}>Hàng năm</option>
+                                    <option value="custom" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'custom' ? 'selected' : '' }}>Tùy chỉnh (nhập số tháng)</option>
+                                </select>
+                                @error('lease_payment_cycle')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6 mb-3" id="lease_custom_months_field" style="display: {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'custom' ? 'block' : 'none' }};">
+                                <label for="lease_custom_months" class="form-label">Số tháng tùy chỉnh</label>
+                                <input type="number" class="form-control @error('lease_custom_months') is-invalid @enderror" 
+                                       id="lease_custom_months" name="lease_custom_months" 
+                                       value="{{ old('lease_custom_months', $lease->lease_custom_months) }}" min="1" max="60" 
+                                       placeholder="Nhập số tháng (1-60)">
+                                <div class="form-text">Số tháng cho chu kỳ thanh toán tùy chỉnh (1-60)</div>
+                                @error('lease_custom_months')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="lease_payment_day" class="form-label">Hạn thanh toán</label>
+                                <select class="form-select @error('lease_payment_day') is-invalid @enderror" id="lease_payment_day" name="lease_payment_day">
+                                    @for($i = 1; $i <= 31; $i++)
+                                        <option value="{{ $i }}" {{ old('lease_payment_day', $lease->lease_payment_day) == $i ? 'selected' : '' }}>
+                                            Ngày {{ $i }}
+                                        </option>
+                                    @endfor
+                                </select>
+                                <div class="form-text">Ngày hạn thanh toán trong chu kỳ</div>
+                                @error('lease_payment_day')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-12 mb-3">
+                                <label for="lease_payment_notes" class="form-label">Ghi chú chu kỳ thanh toán</label>
+                                <textarea class="form-control @error('lease_payment_notes') is-invalid @enderror" 
+                                          id="lease_payment_notes" name="lease_payment_notes" rows="2" 
+                                          placeholder="Ghi chú về chu kỳ thanh toán...">{{ old('lease_payment_notes', $lease->lease_payment_notes) }}</textarea>
+                                @error('lease_payment_notes')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -291,6 +368,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         unitSelect.innerHTML = '<option value="">Đang tải...</option>';
         
+        // Hide existing deposits when property changes
+        document.getElementById('existing-deposits').style.display = 'none';
+        
         if (propertyId) {
             fetch(`/agent/api/leases/units/${propertyId}`)
                 .then(response => {
@@ -339,6 +419,110 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         } else {
             unitSelect.innerHTML = '<option value="">Chọn phòng</option>';
+        }
+    });
+
+    // Unit change handler - load existing deposits
+    document.getElementById('unit_id').addEventListener('change', function() {
+        const unitId = this.value;
+        const depositsContainer = document.getElementById('existing-deposits');
+        const depositsContent = document.getElementById('deposits-content');
+        
+        if (unitId) {
+            // Show loading state
+            depositsContent.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin me-2"></i>Đang tải thông tin cọc...</div>';
+            depositsContainer.style.display = 'block';
+            
+            fetch(`/agent/api/leases/deposits/${unitId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.deposits.length > 0) {
+                        let html = `
+                            <div class="mb-3">
+                                <strong>Tổng cọc hiện có: <span class="text-success">${data.total_amount_formatted}</span></strong>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Loại cọc</th>
+                                            <th>Số tiền</th>
+                                            <th>Trạng thái</th>
+                                            <th>Khách hàng</th>
+                                            <th>Ngày tạo</th>
+                                            <th>Ghi chú</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        data.deposits.forEach(deposit => {
+                            const statusClass = deposit.payment_status === 'paid' ? 'success' : 
+                                              deposit.payment_status === 'pending' ? 'warning' : 'secondary';
+                            
+                            html += `
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-info">${deposit.deposit_type_text}</span>
+                                    </td>
+                                    <td class="fw-bold">${deposit.amount_formatted}</td>
+                                    <td>
+                                        <span class="badge bg-${statusClass}">${deposit.payment_status_text}</span>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>${deposit.tenant_name}</strong><br>
+                                            <small class="text-muted">${deposit.tenant_phone}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small>${deposit.created_at}</small>
+                                        ${deposit.hold_until ? `<br><small class="text-muted">Hết hạn: ${deposit.hold_until}</small>` : ''}
+                                    </td>
+                                    <td>
+                                        ${deposit.notes ? `<small>${deposit.notes}</small>` : '-'}
+                                        ${deposit.reference_number ? `<br><small class="text-muted">Mã: ${deposit.reference_number}</small>` : ''}
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Lưu ý:</strong> Khi chỉnh sửa hợp đồng, hãy xem xét các khoản cọc hiện có để tránh trùng lặp.
+                            </div>
+                        `;
+                        
+                        depositsContent.innerHTML = html;
+                    } else {
+                        depositsContent.innerHTML = `
+                            <div class="text-center text-muted">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Phòng này chưa có cọc nào
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading deposits:', error);
+                    depositsContent.innerHTML = `
+                        <div class="text-center text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Lỗi tải thông tin cọc
+                        </div>
+                    `;
+                });
+        } else {
+            depositsContainer.style.display = 'none';
         }
     });
 
@@ -397,6 +581,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Payment cycle change handler
+    document.getElementById('lease_payment_cycle').addEventListener('change', function() {
+        const customMonthsField = document.getElementById('lease_custom_months_field');
+        if (this.value === 'custom') {
+            customMonthsField.style.display = 'block';
+        } else {
+            customMonthsField.style.display = 'none';
+        }
+    });
+
+    // Trigger change event on page load to show/hide custom months field
+    document.addEventListener('DOMContentLoaded', function() {
+        const paymentCycleSelect = document.getElementById('lease_payment_cycle');
+        if (paymentCycleSelect) {
+            paymentCycleSelect.dispatchEvent(new Event('change'));
+        }
+    });
+
     // Format currency inputs
     function formatCurrency(input) {
         let value = input.value.replace(/[^\d]/g, '');
@@ -418,6 +620,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const propertySelect = document.getElementById('property_id');
     if (propertySelect.value) {
         propertySelect.dispatchEvent(new Event('change'));
+    }
+
+    // Trigger unit change to load deposits for current unit
+    const unitSelect = document.getElementById('unit_id');
+    if (unitSelect.value) {
+        unitSelect.dispatchEvent(new Event('change'));
     }
 
     // Form submission notification

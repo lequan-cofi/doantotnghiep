@@ -92,6 +92,17 @@
                                                 <span class="badge badge-dark">Đã hủy</span>
                                                 @break
                                         @endswitch
+                                        
+                                        @if($invoice->is_auto_created)
+                                            <br><small class="text-info">
+                                                <i class="fas fa-robot"></i> 
+                                                @if($invoice->booking_deposit_id)
+                                                    Hóa đơn đặt cọc được tạo tự động
+                                                @elseif($invoice->lease_id)
+                                                    Hóa đơn hợp đồng thuê được tạo tự động
+                                                @endif
+                                            </small>
+                                        @endif
                                     </td>
                                 </tr>
                             </table>
@@ -547,11 +558,15 @@ $(document).ready(function() {
         });
     });
 
-    // Show invoice type info
-    @if($invoice->bookingDeposit)
-        Notify.info('Đây là hóa đơn đặt cọc được tạo tự động', 'Loại hóa đơn');
-    @elseif($invoice->lease)
-        Notify.info('Đây là hóa đơn hợp đồng thuê', 'Loại hóa đơn');
+    // Show enhanced invoice type and creation info
+    @if($invoice->is_auto_created)
+        @if($invoice->booking_deposit_id)
+            Notify.info('Hóa đơn đặt cọc được tạo tự động. Hóa đơn này được tạo tự động khi tạo đặt cọc. Bạn có thể chỉnh sửa một số thông tin cơ bản.', 'Hóa đơn đặt cọc tự động');
+        @elseif($invoice->lease_id)
+            Notify.info('Hóa đơn hợp đồng thuê được tạo tự động. Hóa đơn này được tạo tự động khi tạo hợp đồng thuê. Bao gồm tiền thuê chu kỳ đầu và tiền cọc.', 'Hóa đơn hợp đồng thuê tự động');
+        @endif
+    @else
+        Notify.info('Hóa đơn này được tạo trực tiếp bởi người dùng.', 'Hóa đơn thủ công');
     @endif
 
     // Status change notifications
@@ -569,6 +584,19 @@ $(document).ready(function() {
             Notify.info(statusMessages[status], 'Trạng thái hóa đơn');
         }, 1000);
     }
+
+    // Show editing restrictions for auto-created invoices
+    @if($invoice->is_auto_created && $invoice->status === 'draft')
+        @if($invoice->booking_deposit_id)
+            setTimeout(() => {
+                Notify.warning('Một số thông tin có thể bị hạn chế chỉnh sửa vì được liên kết với đặt cọc. Thay đổi đặt cọc sẽ tự động cập nhật hóa đơn.', 'Lưu ý chỉnh sửa hóa đơn đặt cọc tự động');
+            }, 2000);
+        @elseif($invoice->lease_id)
+            setTimeout(() => {
+                Notify.warning('Một số thông tin có thể bị hạn chế chỉnh sửa vì được liên kết với hợp đồng. Thay đổi hợp đồng sẽ tự động cập nhật hóa đơn.', 'Lưu ý chỉnh sửa hóa đơn hợp đồng thuê tự động');
+            }, 2000);
+        @endif
+    @endif
 });
 </script>
 @endpush

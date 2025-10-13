@@ -23,201 +23,6 @@ Route::post('/search', [\App\Http\Controllers\HomeController::class, 'search'])-
 Route::get('/properties', [\App\Http\Controllers\PropertyController::class, 'index'])->name('property.index');
 Route::get('/properties/{id}', [\App\Http\Controllers\PropertyController::class, 'show'])->name('property.show');
 
-// Debug routes (only in debug mode)
-if (config('app.debug')) {
-    Route::get('/debug-active-properties', [\App\Http\Controllers\HomeController::class, 'debugActiveProperties'])->name('debug.active.properties');
-    Route::get('/test-database', [\App\Http\Controllers\HomeController::class, 'testDatabase'])->name('test.database');
-    Route::get('/test-home-data', [\App\Http\Controllers\HomeController::class, 'testHomeData'])->name('test.home.data');
-    Route::get('/test-organization-bypass', [\App\Http\Controllers\HomeController::class, 'testOrganizationBypass'])->name('test.organization.bypass');
-    Route::get('/test-soft-delete', [\App\Http\Controllers\HomeController::class, 'testSoftDelete'])->name('test.soft.delete');
-    Route::get('/test-property-controller', [\App\Http\Controllers\PropertyController::class, 'index'])->name('test.property.controller');
-    Route::get('/test-property-data', [\App\Http\Controllers\PropertyController::class, 'test'])->name('test.property.data');
-    Route::get('/test-categories-calculation', [\App\Http\Controllers\HomeController::class, 'testCategoriesCalculation'])->name('test.categories.calculation');
-    Route::get('/test-property-prices', function() {
-        try {
-            // Test step by step
-            $totalProperties = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->count();
-            $activeProperties = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->count();
-            $propertiesWithUnits = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->whereHas('units')->count();
-            $propertiesWithAvailableUnits = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->whereHas('units', function($query) {
-                $query->where('status', 'available');
-            })->count();
-            
-            // Check unit statuses
-            $unitStatuses = \App\Models\Unit::selectRaw('status, count(*) as count')->groupBy('status')->get();
-            
-            return response()->json([
-                'success' => true,
-                'debug_info' => [
-                    'total_properties' => $totalProperties,
-                    'active_properties' => $activeProperties,
-                    'properties_with_units' => $propertiesWithUnits,
-                    'properties_with_available_units' => $propertiesWithAvailableUnits,
-                    'unit_statuses' => $unitStatuses->toArray()
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ]);
-        }
-    });
-    
-    Route::get('/test-property-8', function() {
-        try {
-            $propertyId = 8;
-            
-            // Test step by step
-            $propertyExists = \App\Models\Property::withoutGlobalScope('organization')->find($propertyId);
-            $propertyNotDeleted = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->find($propertyId);
-            $propertyActive = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->active()->find($propertyId);
-            $propertyWithUnits = \App\Models\Property::withoutGlobalScope('organization')
-                ->whereNull('deleted_at')
-                ->active()
-                ->whereHas('units')
-                ->find($propertyId);
-            $propertyWithAvailableUnits = \App\Models\Property::withoutGlobalScope('organization')
-                ->whereNull('deleted_at')
-                ->active()
-                ->whereHas('units', function($query) {
-                    $query->where('status', 'available');
-                })
-                ->find($propertyId);
-            
-            return response()->json([
-                'success' => true,
-                'property_id' => $propertyId,
-                'debug_info' => [
-                    'property_exists' => $propertyExists ? true : false,
-                    'property_not_deleted' => $propertyNotDeleted ? true : false,
-                    'property_active' => $propertyActive ? true : false,
-                    'property_with_units' => $propertyWithUnits ? true : false,
-                    'property_with_available_units' => $propertyWithAvailableUnits ? true : false,
-                    'property_data' => $propertyExists ? [
-                        'id' => $propertyExists->id,
-                        'name' => $propertyExists->name,
-                        'status' => $propertyExists->status,
-                        'deleted_at' => $propertyExists->deleted_at,
-                        'organization_id' => $propertyExists->organization_id
-                    ] : null
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ]);
-        }
-    });
-    
-    Route::get('/test-property-validation', function() {
-        try {
-            // Test validation rules
-            $propertyTypes = \App\Models\PropertyType::where('status', 1)->count();
-            $users = \App\Models\User::count();
-            $provinces = \DB::table('geo_provinces')->count();
-            $districts = \DB::table('geo_districts')->count();
-            $wards = \DB::table('geo_wards')->count();
-            $provinces2025 = \DB::table('geo_provinces_2025')->count();
-            $wards2025 = \DB::table('geo_wards_2025')->count();
-            
-            return response()->json([
-                'success' => true,
-                'validation_data' => [
-                    'property_types_count' => $propertyTypes,
-                    'users_count' => $users,
-                    'geo_provinces_count' => $provinces,
-                    'geo_districts_count' => $districts,
-                    'geo_wards_count' => $wards,
-                    'geo_provinces_2025_count' => $provinces2025,
-                    'geo_wards_2025_count' => $wards2025
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ]);
-        }
-    });
-    
-    Route::get('/test-property-simple', function() {
-        try {
-            $properties = \App\Models\Property::withoutGlobalScope('organization')
-                ->whereNull('deleted_at')
-                ->active()
-                ->whereHas('units', function($query) {
-                    $query->where('status', 'available'); // Only properties with available units
-                })
-                ->with(['location2025', 'propertyType', 'units' => function($query) {
-                    $query->where('status', 'available'); // Only load available units
-                }])
-                ->limit(3)
-                ->get();
-            
-            $result = [];
-            foreach($properties as $property) {
-                $minPrice = $property->units->min('base_rent');
-                $maxPrice = $property->units->max('base_rent');
-                
-                $result[] = [
-                    'id' => $property->id,
-                    'name' => $property->name,
-                    'available_units' => $property->units->count(), // Only available units loaded
-                    'min_price' => $minPrice,
-                    'max_price' => $maxPrice,
-                    'price_display' => $minPrice && $maxPrice ? 
-                        ($minPrice == $maxPrice ? 
-                            number_format($minPrice, 0, ',', '.') . ' VNĐ/tháng' :
-                            number_format($minPrice, 0, ',', '.') . ' - ' . number_format($maxPrice, 0, ',', '.') . ' VNĐ/tháng'
-                        ) : 'Liên hệ'
-                ];
-            }
-            
-            return response()->json([
-                'success' => true,
-                'properties' => $result
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
-        }
-    });
-    
-    // Simple test route
-    Route::get('/simple-test', function() {
-        try {
-            $properties = \App\Models\Property::withoutGlobalScope('organization')->whereNull('deleted_at')->count();
-            $units = \App\Models\Unit::count();
-            $propertyTypes = \App\Models\PropertyType::whereNull('deleted_at')->count();
-            
-            // Check unit statuses
-            $unitStatuses = \App\Models\Unit::selectRaw('status, count(*) as count')
-                ->groupBy('status')
-                ->get();
-            
-            $statusHtml = '';
-            foreach($unitStatuses as $status) {
-                $statusHtml .= "<p>Status '{$status->status}': {$status->count} units</p>";
-            }
-            
-            return "<h1>Database Test (Public Access)</h1>
-                    <p>Properties (all organizations): {$properties}</p>
-                    <p>Units: {$units}</p>
-                    <p>Property Types: {$propertyTypes}</p>
-                    <h3>Unit Statuses:</h3>
-                    {$statusHtml}
-                    <p>Status: OK - Organization scope bypassed</p>";
-        } catch (\Exception $e) {
-            return "<h1>Database Error</h1><p>Error: " . $e->getMessage() . "</p>";
-        }
-    });
-}
 
 Route::get('/demo/preloader', function () {
     return view('demo.preloader');
@@ -241,21 +46,6 @@ Route::get('/detail/{id?}', function ($id = 1) {
 
 // Property detail route
 Route::get('/property/{id}', [\App\Http\Controllers\HomeController::class, 'propertyDetail'])->name('property.detail');
-
-Route::get('/test', function () {
-    return view('test');
-})->name('test');
-
-// Test route to debug routing issues
-Route::get('/test-routing', function () {
-    return response()->json([
-        'message' => 'Routing is working!',
-        'timestamp' => now(),
-        'url' => request()->url(),
-        'path' => request()->path()
-    ]);
-})->name('test.routing');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -454,6 +244,16 @@ Route::middleware('auth')->group(function () {
             return view('manager.settings.general');
         })->name('settings.general');
         
+        // Payment Cycle Settings
+        Route::prefix('payment-cycle-settings')->name('payment-cycle-settings.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Manager\PaymentCycleSettingController::class, 'index'])->name('index');
+            Route::put('/organization', [\App\Http\Controllers\Manager\PaymentCycleSettingController::class, 'updateOrganization'])->name('organization.update');
+            Route::put('/property/{propertyId}', [\App\Http\Controllers\Manager\PaymentCycleSettingController::class, 'updateProperty'])->name('property.update');
+            Route::put('/lease/{leaseId}', [\App\Http\Controllers\Manager\PaymentCycleSettingController::class, 'updateLease'])->name('lease.update');
+            Route::get('/property/{propertyId}/leases', [\App\Http\Controllers\Manager\PaymentCycleSettingController::class, 'getPropertyLeases'])->name('property.leases');
+            Route::post('/apply-to-properties', [\App\Http\Controllers\Manager\PaymentCycleSettingController::class, 'applyToProperties'])->name('apply-to-properties');
+        });
+        
         // Legacy rooms routes (admin context) - REMOVED FOR NOW
         // Will be re-implemented later when needed
         // API endpoints for geo data (cascading dropdowns)
@@ -466,6 +266,7 @@ Route::middleware('auth')->group(function () {
         // API endpoints for properties
         Route::prefix('api/properties')->group(function () {
             Route::get('/{propertyId}/units', [LeaseController::class, 'getUnits']);
+            Route::get('/{propertyId}/payment-cycle', [LeaseController::class, 'getPropertyPaymentCycle']);
         });
 
         // API endpoints for leases
@@ -545,155 +346,22 @@ Route::middleware('auth')->group(function () {
         Route::resource('meters', \App\Http\Controllers\Agent\MeterController::class);
         Route::get('/meters/get-units', [\App\Http\Controllers\Agent\MeterController::class, 'getUnits'])->name('meters.get-units');
         
-        // Test route
-        Route::get('/test-units', function() {
-            return response()->json(['message' => 'Test route works']);
-        });
-        
-        // Very simple test route
-        Route::get('/units-test', function() {
-            $propertyId = request('property_id');
-            
-            if (!$propertyId) {
-                return response()->json([
-                    'message' => 'No property ID provided',
-                    'property_id' => $propertyId,
-                    'units' => []
-                ]);
-            }
-            
-            try {
-                $units = \App\Models\Unit::where('property_id', $propertyId)
-                    ->select('id', 'code', 'unit_type')
-                    ->get();
-                
-                return response()->json([
-                    'message' => 'Units loaded successfully',
-                    'property_id' => $propertyId,
-                    'units' => $units
-                ]);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'message' => 'Error loading units',
-                    'property_id' => $propertyId,
-                    'error' => $e->getMessage(),
-                    'units' => []
-                ]);
-            }
-        });
-        
-        // Test controller method
-        Route::get('/test-controller', [\App\Http\Controllers\Agent\MeterController::class, 'getUnits']);
-        
-        // Simple test route
-        Route::get('/simple-test', function() {
-            try {
-                $propertyId = request('property_id');
-                
-                if (!$propertyId) {
-                    return response()->json(['units' => []]);
-                }
-
-                $units = \App\Models\Unit::where('property_id', $propertyId)
-                    ->select('id', 'code', 'unit_type')
-                    ->get();
-
-                return response()->json(['units' => $units]);
-
-            } catch (\Exception $e) {
-                return response()->json([
-                    'error' => $e->getMessage(),
-                    'units' => []
-                ], 500);
-            }
-        });
-        
         // Meter readings management (CRUD)
         Route::resource('meter-readings', \App\Http\Controllers\Agent\MeterReadingController::class);
         Route::get('/meter-readings/get-last-reading', [\App\Http\Controllers\Agent\MeterReadingController::class, 'getLastReading'])->name('meter-readings.get-last-reading');
         
-        // Debug route for testing units loading
-        Route::get('/debug/units/{propertyId}', function($propertyId) {
-            try {
-                $units = \App\Models\Unit::where('property_id', $propertyId)
-                    ->select('id', 'code', 'unit_type')
-                    ->get();
-                
-                return response()->json([
-                    'success' => true,
-                    'property_id' => $propertyId,
-                    'units_count' => $units->count(),
-                    'units' => $units
-                ]);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'error' => $e->getMessage(),
-                    'property_id' => $propertyId
-                ]);
-            }
-        });
-        
-        // Debug page
-        Route::get('/debug-units', function() {
-            return view('debug-units');
-        });
-        
-        // Test page
-        Route::get('/test-units-page', function() {
-            return view('test-units');
-        });
-        
-        // Data test route
-        Route::get('/data-test', function() {
-            try {
-                $properties = \App\Models\Property::all();
-                $units = \App\Models\Unit::all();
-                
-                $result = [
-                    'properties_count' => $properties->count(),
-                    'units_count' => $units->count(),
-                    'properties' => $properties->map(function($p) {
-                        return [
-                            'id' => $p->id,
-                            'name' => $p->name
-                        ];
-                    }),
-                    'units_by_property' => []
-                ];
-                
-                foreach ($properties as $property) {
-                    $propertyUnits = \App\Models\Unit::where('property_id', $property->id)->get();
-                    $result['units_by_property'][$property->id] = [
-                        'property_name' => $property->name,
-                        'units_count' => $propertyUnits->count(),
-                        'units' => $propertyUnits->map(function($u) {
-                            return [
-                                'id' => $u->id,
-                                'code' => $u->code,
-                                'unit_type' => $u->unit_type,
-                                'status' => $u->status
-                            ];
-                        })
-                    ];
-                }
-                
-                return response()->json($result);
-                
-            } catch (\Exception $e) {
-                return response()->json([
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
-        });
-        
-        // Viewings management
-        Route::get('/viewings', [\App\Http\Controllers\Agent\ViewingController::class, 'index'])->name('viewings.index');
+        // Custom viewing routes (must be before resource routes to avoid conflicts)
         Route::get('/viewings/today', [\App\Http\Controllers\Agent\ViewingController::class, 'today'])->name('viewings.today');
         Route::get('/viewings/calendar', [\App\Http\Controllers\Agent\ViewingController::class, 'calendar'])->name('viewings.calendar');
         Route::get('/viewings/statistics', [\App\Http\Controllers\Agent\ViewingController::class, 'statistics'])->name('viewings.statistics');
-        Route::get('/viewings/{id}', [\App\Http\Controllers\Agent\ViewingController::class, 'show'])->name('viewings.show');
+        
+        // AJAX routes for viewings
+        Route::get('/viewings/get-units', [\App\Http\Controllers\Agent\ViewingController::class, 'getUnits'])->name('viewings.get-units');
+        
+        // Viewings management (CRUD)
+        Route::resource('viewings', \App\Http\Controllers\Agent\ViewingController::class);
+        
+        // Action routes for viewings (after resource routes)
         Route::post('/viewings/{id}/confirm', [\App\Http\Controllers\Agent\ViewingController::class, 'confirm'])->name('viewings.confirm');
         Route::post('/viewings/{id}/cancel', [\App\Http\Controllers\Agent\ViewingController::class, 'cancel'])->name('viewings.cancel');
         Route::post('/viewings/{id}/mark-done', [\App\Http\Controllers\Agent\ViewingController::class, 'markDone'])->name('viewings.mark-done');
@@ -745,7 +413,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/commission-policies/{id}/edit', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'edit'])->name('commission-policies.edit');
         Route::put('/commission-policies/{id}', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'update'])->name('commission-policies.update');
         Route::delete('/commission-policies/{id}', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'destroy'])->name('commission-policies.destroy');
-        Route::get('/commission-policies/test', [\App\Http\Controllers\Agent\CommissionPolicyController::class, 'test'])->name('commission-policies.test');
 
         Route::get('/commission-events', [\App\Http\Controllers\Agent\CommissionEventController::class, 'index'])->name('commission-events.index');
         Route::get('/commission-events/create', [\App\Http\Controllers\Agent\CommissionEventController::class, 'create'])->name('commission-events.create');
@@ -754,7 +421,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/commission-events/{id}/edit', [\App\Http\Controllers\Agent\CommissionEventController::class, 'edit'])->name('commission-events.edit');
         Route::put('/commission-events/{id}', [\App\Http\Controllers\Agent\CommissionEventController::class, 'update'])->name('commission-events.update');
         Route::delete('/commission-events/{id}', [\App\Http\Controllers\Agent\CommissionEventController::class, 'destroy'])->name('commission-events.destroy');
-        Route::get('/commission-events/test', [\App\Http\Controllers\Agent\CommissionEventController::class, 'test'])->name('commission-events.test');
         // Invoice sync routes removed - commission events no longer create invoices
 
         // Reports
@@ -785,23 +451,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings/general', [\App\Http\Controllers\Agent\SettingsController::class, 'general'])->name('settings.general');
         Route::put('/settings/general', [\App\Http\Controllers\Agent\SettingsController::class, 'updateGeneral'])->name('settings.update-general');
         
-    // API endpoints for leases
-    Route::prefix('api/leases')->group(function () {
-        Route::get('/units/{propertyId}', [\App\Http\Controllers\Agent\LeaseController::class, 'getUnits']);
-        Route::get('/next-contract-number', [\App\Http\Controllers\Agent\LeaseController::class, 'getNextContractNumber']);
-        Route::get('/search-users', [\App\Http\Controllers\Agent\LeaseController::class, 'searchUsers']);
-        Route::get('/test-users', [\App\Http\Controllers\Agent\LeaseController::class, 'testUsers']);
-        Route::get('/debug-organizations', [\App\Http\Controllers\Agent\LeaseController::class, 'debugOrganizations']);
-        Route::get('/test-search/{query?}', [\App\Http\Controllers\Agent\LeaseController::class, 'testSearch']);
-        Route::get('/simple-test', [\App\Http\Controllers\Agent\LeaseController::class, 'simpleTest']);
-        Route::get('/debug-org-3', [\App\Http\Controllers\Agent\LeaseController::class, 'debugOrg3']);
-    });
+        // API endpoints for leases
+        Route::prefix('api/leases')->group(function () {
+            Route::get('/units/{propertyId}', [\App\Http\Controllers\Agent\LeaseController::class, 'getUnits']);
+            Route::get('/next-contract-number', [\App\Http\Controllers\Agent\LeaseController::class, 'getNextContractNumber']);
+            Route::get('/search-users', [\App\Http\Controllers\Agent\LeaseController::class, 'searchUsers']);
+            Route::get('/deposits/{unitId}', [\App\Http\Controllers\Agent\LeaseController::class, 'getUnitDeposits']);
+            Route::get('/properties/{propertyId}/payment-cycle', [\App\Http\Controllers\Agent\LeaseController::class, 'getPropertyPaymentCycle']);
+        });
 
-    // Invoices management (CRUD)
-    Route::resource('invoices', \App\Http\Controllers\Agent\InvoiceController::class);
-    Route::post('/invoices/{id}/issue', [\App\Http\Controllers\Agent\InvoiceController::class, 'issue'])->name('invoices.issue');
-    Route::post('/invoices/{id}/cancel', [\App\Http\Controllers\Agent\InvoiceController::class, 'cancel'])->name('invoices.cancel');
-    Route::get('/invoices/lease-info/{leaseId}', [\App\Http\Controllers\Agent\InvoiceController::class, 'getLeaseInfo'])->name('invoices.lease-info');
+        // Invoices management (CRUD)
+        Route::resource('invoices', \App\Http\Controllers\Agent\InvoiceController::class);
+        Route::post('/invoices/{id}/issue', [\App\Http\Controllers\Agent\InvoiceController::class, 'issue'])->name('invoices.issue');
+        Route::post('/invoices/{id}/cancel', [\App\Http\Controllers\Agent\InvoiceController::class, 'cancel'])->name('invoices.cancel');
+        Route::get('/invoices/lease-info/{leaseId}', [\App\Http\Controllers\Agent\InvoiceController::class, 'getLeaseInfo'])->name('invoices.lease-info');
     });
 
     /*

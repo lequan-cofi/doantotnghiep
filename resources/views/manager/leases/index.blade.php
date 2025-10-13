@@ -158,6 +158,7 @@
                                         @endif
                                     </a>
                                 </th>
+                                <th>Chu kỳ thanh toán</th>
                                 <th>
                                     <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'status', 'sort_order' => request('sort_by') == 'status' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" 
                                        class="text-decoration-none text-dark">
@@ -247,6 +248,33 @@
                                         @endif
                                     </td>
                                     <td>
+                                        @if($lease->lease_payment_cycle)
+                                            @switch($lease->lease_payment_cycle)
+                                                @case('monthly')
+                                                    <span class="badge bg-primary">Hàng tháng</span>
+                                                    @break
+                                                @case('quarterly')
+                                                    <span class="badge bg-info">Hàng quý</span>
+                                                    @break
+                                                @case('yearly')
+                                                    <span class="badge bg-success">Hàng năm</span>
+                                                    @break
+                                                @case('custom')
+                                                    <span class="badge bg-warning">
+                                                        {{ $lease->lease_custom_months ? $lease->lease_custom_months . ' tháng' : 'Tùy chỉnh' }}
+                                                    </span>
+                                                    @break
+                                                @default
+                                                    <span class="badge bg-secondary">{{ $lease->lease_payment_cycle }}</span>
+                                            @endswitch
+                                            @if($lease->lease_payment_day)
+                                                <br><small class="text-muted">Hạn: Ngày {{ $lease->lease_payment_day }}</small>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         @if($lease->status === 'active')
                                             <span class="badge bg-success">Đang hoạt động</span>
                                         @elseif($lease->status === 'draft')
@@ -276,7 +304,7 @@
                                 @endforeach
                             @else
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted py-4">
+                                    <td colspan="11" class="text-center text-muted py-4">
                                         <i class="fas fa-file-contract fa-3x mb-3 text-muted"></i>
                                         <br>Chưa có hợp đồng nào
                                     </td>

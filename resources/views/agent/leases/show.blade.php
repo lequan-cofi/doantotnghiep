@@ -66,7 +66,7 @@
                                 <p class="mb-0 fw-bold">{{ $lease->deposit_amount ? number_format($lease->deposit_amount) . 'đ' : 'Không có' }}</p>
                             </div>
                             <div class="info-item mb-3">
-                                <label class="form-label text-muted small">Ngày thanh toán</label>
+                                <label class="form-label text-muted small">Ngày tạo hóa đơn</label>
                                 <p class="mb-0">Ngày {{ $lease->billing_day }}</p>
                             </div>
                             <div class="info-item mb-3">
@@ -90,6 +90,83 @@
                                     @endswitch
                                 </p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Cycle Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>Chu kỳ thanh toán
+                    </h5>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editPaymentCycleModal">
+                        <i class="fas fa-edit me-1"></i>Chỉnh sửa
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item mb-3">
+                                <label class="form-label text-muted small">Chu kỳ thanh toán</label>
+                                <div>
+                                    @if($lease->lease_payment_cycle)
+                                        @switch($lease->lease_payment_cycle)
+                                            @case('monthly')
+                                                <span class="badge bg-primary fs-6">Hàng tháng</span>
+                                                @break
+                                            @case('quarterly')
+                                                <span class="badge bg-info fs-6">Hàng quý</span>
+                                                @break
+                                            @case('yearly')
+                                                <span class="badge bg-success fs-6">Hàng năm</span>
+                                                @break
+                                            @case('custom')
+                                                <span class="badge bg-warning fs-6">
+                                                    {{ $lease->lease_custom_months ? $lease->lease_custom_months . ' tháng' : 'Tùy chỉnh' }}
+                                                </span>
+                                                @break
+                                            @default
+                                                <span class="badge bg-secondary fs-6">{{ $lease->lease_payment_cycle }}</span>
+                                        @endswitch
+                                    @else
+                                        <span class="text-muted">Chưa thiết lập</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="info-item mb-3">
+                                <label class="form-label text-muted small">Hạn thanh toán</label>
+                                <div>
+                                    @if($lease->lease_payment_day)
+                                        <strong>Ngày {{ $lease->lease_payment_day }}</strong>
+                                    @else
+                                        <span class="text-muted">Chưa thiết lập</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="info-item mb-3">
+                                <label class="form-label text-muted small">Ngày tạo hóa đơn (cũ)</label>
+                                <div>
+                                    <span class="text-muted">Ngày {{ $lease->billing_day }} hàng tháng</span>
+                                    <br><small class="text-muted">Thông tin cũ, có thể được thay thế bởi chu kỳ thanh toán mới</small>
+                                </div>
+                            </div>
+
+                            @if($lease->lease_payment_notes)
+                            <div class="info-item mb-3">
+                                <label class="form-label text-muted small">Ghi chú chu kỳ thanh toán</label>
+                                <div>
+                                    <div class="bg-light p-3 rounded">
+                                        {{ $lease->lease_payment_notes }}
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -281,6 +358,167 @@
                     </div>
                 </div>
             @endif
+
+            <!-- Invoices Section -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-file-invoice me-2"></i>Hóa đơn
+                    </h5>
+                    <a href="{{ route('agent.invoices.index', ['lease_id' => $lease->id]) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list me-1"></i>Xem tất cả
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if($lease->invoices->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Mã hóa đơn</th>
+                                        <th>Ngày phát hành</th>
+                                        <th>Hạn thanh toán</th>
+                                        <th>Tổng tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($lease->invoices->take(5) as $invoice)
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold">{{ $invoice->invoice_no ?? 'N/A' }}</div>
+                                                <small class="text-muted">#{{ $invoice->id }}</small>
+                                            </td>
+                                            <td>{{ $invoice->issue_date ? $invoice->issue_date->format('d/m/Y') : 'N/A' }}</td>
+                                            <td>{{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : 'N/A' }}</td>
+                                            <td class="fw-bold text-success">{{ number_format($invoice->total_amount) }}đ</td>
+                                            <td>
+                                                @switch($invoice->status)
+                                                    @case('draft')
+                                                        <span class="badge bg-secondary">Nháp</span>
+                                                        @break
+                                                    @case('issued')
+                                                        <span class="badge bg-primary">Đã phát hành</span>
+                                                        @break
+                                                    @case('paid')
+                                                        <span class="badge bg-success">Đã thanh toán</span>
+                                                        @break
+                                                    @case('overdue')
+                                                        <span class="badge bg-danger">Quá hạn</span>
+                                                        @break
+                                                    @case('cancelled')
+                                                        <span class="badge bg-warning">Đã hủy</span>
+                                                        @break
+                                                    @default
+                                                        <span class="badge bg-secondary">{{ $invoice->status }}</span>
+                                                @endswitch
+                                            </td>
+                                            <td>
+                                                <a href="{{ route('agent.invoices.show', $invoice->id) }}" class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        @if($lease->invoices->count() > 5)
+                            <div class="text-center mt-3">
+                                <a href="{{ route('agent.invoices.index', ['lease_id' => $lease->id]) }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-list me-1"></i>Xem tất cả {{ $lease->invoices->count() }} hóa đơn
+                                </a>
+                            </div>
+                        @endif
+                    @else
+                        <div class="text-center py-3">
+                            <i class="fas fa-file-invoice fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Chưa có hóa đơn nào</p>
+                            <small class="text-muted">Hóa đơn sẽ được tạo tự động hoặc thủ công</small>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Meters Section -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tachometer-alt me-2"></i>Công tơ và số liệu
+                    </h5>
+                    <a href="{{ route('agent.meters.index', ['unit_id' => $lease->unit_id]) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list me-1"></i>Quản lý công tơ
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if($meters->count() > 0)
+                        @foreach($meters as $meter)
+                            <div class="meter-item mb-4 p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="fas fa-tachometer-alt me-1"></i>
+                                            {{ $meter->service->name ?? 'Dịch vụ không xác định' }}
+                                        </h6>
+                                        <small class="text-muted">
+                                            Số seri: {{ $meter->serial_no ?? 'N/A' }} | 
+                                            Lắp đặt: {{ $meter->installed_at ? $meter->installed_at->format('d/m/Y') : 'N/A' }}
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-{{ $meter->status ? 'success' : 'danger' }}">
+                                        {{ $meter->status ? 'Hoạt động' : 'Ngừng hoạt động' }}
+                                    </span>
+                                </div>
+                                
+                                @if($meter->readings->count() > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Ngày đọc</th>
+                                                    <th>Chỉ số</th>
+                                                    <th>Người đọc</th>
+                                                    <th>Ghi chú</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($meter->readings->take(5) as $reading)
+                                                    <tr>
+                                                        <td>{{ $reading->reading_date->format('d/m/Y') }}</td>
+                                                        <td class="fw-bold">{{ number_format($reading->value, 3) }}</td>
+                                                        <td>{{ $reading->takenBy->full_name ?? 'N/A' }}</td>
+                                                        <td>{{ $reading->note ?? 'N/A' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    @if($meter->readings->count() > 5)
+                                        <div class="text-center mt-2">
+                                            <small class="text-muted">
+                                                Hiển thị 5 chỉ số gần nhất. 
+                                                <a href="{{ route('agent.meters.show', $meter->id) }}">Xem tất cả</a>
+                                            </small>
+                                        </div>
+                                    @endif
+                                @else
+                                    <div class="text-center py-2">
+                                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                        <span class="text-muted">Chưa có số liệu đọc công tơ</span>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center py-3">
+                            <i class="fas fa-tachometer-alt fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Chưa có công tơ nào</p>
+                            <small class="text-muted">Công tơ cần được lắp đặt cho phòng này</small>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <!-- Sidebar -->
@@ -860,6 +1098,123 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+});
+</script>
+
+<!-- Edit Payment Cycle Modal -->
+<div class="modal fade" id="editPaymentCycleModal" tabindex="-1" aria-labelledby="editPaymentCycleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPaymentCycleModalLabel">Chỉnh sửa chu kỳ thanh toán</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editPaymentCycleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_lease_payment_cycle" class="form-label">Chu kỳ thanh toán</label>
+                        <select class="form-select" id="edit_lease_payment_cycle" name="lease_payment_cycle">
+                            <option value="">-- Chọn chu kỳ --</option>
+                            <option value="monthly" {{ $lease->lease_payment_cycle == 'monthly' ? 'selected' : '' }}>Hàng tháng</option>
+                            <option value="quarterly" {{ $lease->lease_payment_cycle == 'quarterly' ? 'selected' : '' }}>Hàng quý</option>
+                            <option value="yearly" {{ $lease->lease_payment_cycle == 'yearly' ? 'selected' : '' }}>Hàng năm</option>
+                            <option value="custom" {{ $lease->lease_payment_cycle == 'custom' ? 'selected' : '' }}>Tùy chỉnh (nhập số tháng)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="edit_lease_custom_months_field" style="display: {{ $lease->lease_payment_cycle == 'custom' ? 'block' : 'none' }};">
+                        <label for="edit_lease_custom_months" class="form-label">Số tháng tùy chỉnh</label>
+                        <input type="number" class="form-control" id="edit_lease_custom_months" name="lease_custom_months" 
+                               value="{{ $lease->lease_custom_months }}" min="1" max="60" 
+                               placeholder="Nhập số tháng (1-60)">
+                        <div class="form-text">Số tháng cho chu kỳ thanh toán tùy chỉnh (1-60)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_lease_payment_day" class="form-label">Hạn thanh toán</label>
+                        <select class="form-select" id="edit_lease_payment_day" name="lease_payment_day">
+                            @for($i = 1; $i <= 31; $i++)
+                                <option value="{{ $i }}" {{ $i == $lease->lease_payment_day ? 'selected' : '' }}>
+                                    Ngày {{ $i }}
+                                </option>
+                            @endfor
+                        </select>
+                        <div class="form-text">Ngày hạn thanh toán trong chu kỳ</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_lease_payment_notes" class="form-label">Ghi chú chu kỳ thanh toán</label>
+                        <textarea class="form-control" id="edit_lease_payment_notes" name="lease_payment_notes" rows="3" 
+                                  placeholder="Ghi chú về chu kỳ thanh toán...">{{ $lease->lease_payment_notes }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Payment cycle change handler for modal
+document.getElementById('edit_lease_payment_cycle').addEventListener('change', function() {
+    const customMonthsField = document.getElementById('edit_lease_custom_months_field');
+    if (this.value === 'custom') {
+        customMonthsField.style.display = 'block';
+    } else {
+        customMonthsField.style.display = 'none';
+    }
+});
+
+// Edit payment cycle form submission
+document.getElementById('editPaymentCycleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    fetch(`{{ route('agent.leases.update', $lease->id) }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            ...data,
+            _method: 'PUT',
+            // Include other required fields with current values
+            unit_id: {{ $lease->unit_id }},
+            tenant_id: {{ $lease->tenant_id }},
+            start_date: '{{ $lease->start_date }}',
+            end_date: '{{ $lease->end_date }}',
+            rent_amount: '{{ number_format($lease->rent_amount, 0, ',', '.') }}',
+            deposit_amount: '{{ number_format($lease->deposit_amount, 0, ',', '.') }}',
+            billing_day: {{ $lease->billing_day }},
+            status: '{{ $lease->status }}',
+            contract_no: '{{ $lease->contract_no }}',
+            signed_at: '{{ $lease->signed_at }}'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success || response.ok) {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editPaymentCycleModal'));
+            modal.hide();
+            
+            // Reload page to show updated data
+            location.reload();
+        } else {
+            alert('Có lỗi xảy ra khi cập nhật chu kỳ thanh toán');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Có lỗi xảy ra khi cập nhật chu kỳ thanh toán');
+    });
 });
 </script>
 @endpush

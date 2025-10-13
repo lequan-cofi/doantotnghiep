@@ -10,6 +10,7 @@ use App\Models\BookingDeposit;
 use App\Models\Service;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -107,8 +108,8 @@ class InvoiceController extends Controller
                 $query->where('issue_date', '<=', $request->date_to);
             }
 
-            // Sort
-            $sortBy = $request->get('sort_by', 'issue_date');
+            // Sort - mặc định sắp xếp theo ID giảm dần
+            $sortBy = $request->get('sort_by', 'id');
             $sortOrder = $request->get('sort_order', 'desc');
             $query->orderBy($sortBy, $sortOrder);
 
@@ -157,7 +158,7 @@ class InvoiceController extends Controller
             // Lấy các dịch vụ có sẵn (nếu bảng tồn tại)
             $services = collect();
             try {
-                $services = Service::where('status', 'active')->get();
+                $services = Service::all();
             } catch (\Exception $e) {
                 Log::warning('Services table not found or error: ' . $e->getMessage());
             }
@@ -165,7 +166,7 @@ class InvoiceController extends Controller
             // Lấy các phương thức thanh toán (nếu bảng tồn tại)
             $paymentMethods = collect();
             try {
-                $paymentMethods = PaymentMethod::where('status', 'active')->get();
+                $paymentMethods = PaymentMethod::all();
             } catch (\Exception $e) {
                 Log::warning('PaymentMethods table not found or error: ' . $e->getMessage());
             }
@@ -213,7 +214,7 @@ class InvoiceController extends Controller
             DB::beginTransaction();
 
             // Generate invoice number
-            $invoiceNo = $this->generateInvoiceNumber();
+            $invoiceNo = Invoice::generateInvoiceNumber();
 
             // Calculate totals
             $subtotal = collect($request->items)->sum('amount');
@@ -222,9 +223,14 @@ class InvoiceController extends Controller
             $discountAmount = $request->discount_amount ?? 0;
             $totalAmount = $subtotal + $taxAmount - $discountAmount;
 
+            // Get user's organization
+            $userOrganization = $user->organizations()->first();
+            $organizationId = $userOrganization ? $userOrganization->id : null;
+
             // Create invoice
             $invoice = Invoice::create([
-                'organization_id' => $user->organization_id,
+                'organization_id' => $organizationId,
+                'is_auto_created' => false, // Manual invoice creation
                 'lease_id' => $request->lease_id,
                 'invoice_no' => $invoiceNo,
                 'issue_date' => $request->issue_date,
@@ -345,7 +351,7 @@ class InvoiceController extends Controller
                 ->get();
 
             // Lấy các dịch vụ có sẵn
-            $services = Service::where('status', 'active')->get();
+            $services = Service::all();
 
             return view('agent.invoices.edit', compact('invoice', 'managedLeases', 'services'));
         } catch (\Exception $e) {
@@ -573,30 +579,4 @@ class InvoiceController extends Controller
         }
     }
 
-    private function generateInvoiceNumber()
-    {
-        $year = date('Y');
-        $month = date('m');
-        
-        // Get the last invoice number for this month
-        $lastInvoice = Invoice::whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->orderBy('id', 'desc')
-            ->first();
-
-        if ($lastInvoice && $lastInvoice->invoice_no) {
-            // Extract number from existing invoice number
-            $parts = explode('-', $lastInvoice->invoice_no);
-            if (count($parts) >= 3) {
-                $lastNumber = (int) $parts[2];
-                $newNumber = $lastNumber + 1;
-            } else {
-                $newNumber = 1;
-            }
-        } else {
-            $newNumber = 1;
-        }
-
-        return "HD-{$year}{$month}-" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
-    }
 }

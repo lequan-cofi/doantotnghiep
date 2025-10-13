@@ -14,6 +14,7 @@ class Viewing extends Model
 
     protected $fillable = [
         'lead_id',
+        'tenant_id',
         'listing_id',
         'property_id',
         'agent_id',
@@ -39,6 +40,14 @@ class Viewing extends Model
     public function lead()
     {
         return $this->belongsTo(User::class, 'lead_id');
+    }
+
+    /**
+     * Get the tenant user for the viewing.
+     */
+    public function tenant()
+    {
+        return $this->belongsTo(User::class, 'tenant_id');
     }
 
     /**
@@ -114,6 +123,14 @@ class Viewing extends Model
     }
 
     /**
+     * Scope for filtering by tenant
+     */
+    public function scopeByTenant($query, $tenantId)
+    {
+        return $query->where('tenant_id', $tenantId);
+    }
+
+    /**
      * Scope for upcoming viewings
      */
     public function scopeUpcoming($query)
@@ -174,6 +191,57 @@ class Viewing extends Model
             'cancelled' => 'Đã hủy',
             default => 'Không xác định'
         };
+    }
+
+    /**
+     * Get customer name (prioritize tenant, fallback to lead_name)
+     */
+    public function getCustomerNameAttribute()
+    {
+        if ($this->tenant) {
+            return $this->tenant->full_name;
+        }
+        return $this->lead_name;
+    }
+
+    /**
+     * Get customer type (tenant or lead)
+     */
+    public function getCustomerTypeAttribute()
+    {
+        return $this->tenant_id ? 'tenant' : 'lead';
+    }
+
+    /**
+     * Get customer type badge class
+     */
+    public function getCustomerTypeBadgeClass()
+    {
+        return $this->customer_type === 'tenant' ? 'badge-info' : 'badge-warning';
+    }
+
+    /**
+     * Get customer type text
+     */
+    public function getCustomerTypeText()
+    {
+        return $this->customer_type === 'tenant' ? 'Khách thuê' : 'Lead';
+    }
+
+    /**
+     * Get status badge class attribute
+     */
+    public function getStatusBadgeClassAttribute()
+    {
+        return $this->getStatusBadgeClass();
+    }
+
+    /**
+     * Get status text attribute
+     */
+    public function getStatusTextAttribute()
+    {
+        return $this->getStatusText();
     }
 }
 

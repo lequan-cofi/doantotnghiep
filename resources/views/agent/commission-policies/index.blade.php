@@ -555,18 +555,6 @@ $(document).ready(function() {
     }
 });
 
-// Test database function
-function testDatabase() {
-    fetch('{{ route("agent.commission-policies.test") }}')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Database Test Results:', data);
-            Notify.info('Database test completed. Check console for details.', 'Test Results');
-        })
-        .catch(error => {
-            console.error('Database Test Error:', error);
-            Notify.error('Database test failed. Check console for details.', 'Test Error');
-        });
-}
+// Test database function removed - route no longer exists
 </script>
 @endpush

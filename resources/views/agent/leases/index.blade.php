@@ -113,6 +113,7 @@
                                         <th>Ngày bắt đầu</th>
                                         <th>Ngày kết thúc</th>
                                         <th>Tiền thuê</th>
+                                        <th>Chu kỳ thanh toán</th>
                                         <th>Trạng thái</th>
                                         <th>Thao tác</th>
                                     </tr>
@@ -148,6 +149,33 @@
                                                 <span class="fw-bold text-success">
                                                     {{ number_format($lease->rent_amount) }}đ
                                                 </span>
+                                            </td>
+                                            <td>
+                                                @if($lease->lease_payment_cycle)
+                                                    @switch($lease->lease_payment_cycle)
+                                                        @case('monthly')
+                                                            <span class="badge bg-primary">Hàng tháng</span>
+                                                            @break
+                                                        @case('quarterly')
+                                                            <span class="badge bg-info">Hàng quý</span>
+                                                            @break
+                                                        @case('yearly')
+                                                            <span class="badge bg-success">Hàng năm</span>
+                                                            @break
+                                                        @case('custom')
+                                                            <span class="badge bg-warning">
+                                                                {{ $lease->lease_custom_months ? $lease->lease_custom_months . ' tháng' : 'Tùy chỉnh' }}
+                                                            </span>
+                                                            @break
+                                                        @default
+                                                            <span class="badge bg-secondary">{{ $lease->lease_payment_cycle }}</span>
+                                                    @endswitch
+                                                    @if($lease->lease_payment_day)
+                                                        <br><small class="text-muted">Hạn: Ngày {{ $lease->lease_payment_day }}</small>
+                                                    @endif
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
                                             </td>
                                             <td>
                                                 @switch($lease->status)

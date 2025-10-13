@@ -194,6 +194,10 @@ class LeaseController extends Controller
                 'services' => 'nullable|array',
                 'services.*.service_id' => 'required_with:services|exists:services,id',
                 'services.*.price' => 'required_with:services|numeric|min:0',
+                'lease_payment_cycle' => 'nullable|in:monthly,quarterly,yearly,custom',
+                'lease_payment_day' => 'nullable|integer|min:1|max:31',
+                'lease_payment_notes' => 'nullable|string|max:1000',
+                'lease_custom_months' => 'nullable|integer|min:1|max:60',
             ]);
 
             // Tự động sinh mã hợp đồng nếu không được cung cấp
@@ -237,6 +241,10 @@ class LeaseController extends Controller
                 'status' => $validated['status'],
                 'contract_no' => $validated['contract_no'],
                 'signed_at' => $validated['signed_at'],
+                'lease_payment_cycle' => $validated['lease_payment_cycle'],
+                'lease_payment_day' => $validated['lease_payment_day'],
+                'lease_payment_notes' => $validated['lease_payment_notes'],
+                'lease_custom_months' => $validated['lease_custom_months'],
             ]);
 
             // Add services if provided
@@ -369,6 +377,10 @@ class LeaseController extends Controller
                 'services' => 'nullable|array',
                 'services.*.service_id' => 'required_with:services|exists:services,id',
                 'services.*.price' => 'required_with:services|numeric|min:0',
+                'lease_payment_cycle' => 'nullable|in:monthly,quarterly,yearly,custom',
+                'lease_payment_day' => 'nullable|integer|min:1|max:31',
+                'lease_payment_notes' => 'nullable|string|max:1000',
+                'lease_custom_months' => 'nullable|integer|min:1|max:60',
             ]);
 
             // Kiểm tra phòng mới đã có hợp đồng hoạt động (trừ hợp đồng hiện tại)
@@ -405,6 +417,10 @@ class LeaseController extends Controller
                 'status' => $validated['status'],
                 'contract_no' => $validated['contract_no'],
                 'signed_at' => $validated['signed_at'],
+                'lease_payment_cycle' => $validated['lease_payment_cycle'],
+                'lease_payment_day' => $validated['lease_payment_day'],
+                'lease_payment_notes' => $validated['lease_payment_notes'],
+                'lease_custom_months' => $validated['lease_custom_months'],
             ]);
 
             // Update services
@@ -614,6 +630,44 @@ class LeaseController extends Controller
         if (!$hasOtherActiveLease) {
             // Không có hợp đồng active nào khác, phòng chuyển về available
             $unit->update(['status' => 'available']);
+        }
+    }
+
+    /**
+     * API method to get property payment cycle settings
+     */
+    public function getPropertyPaymentCycle($propertyId)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            // Get user's organization
+            $organization = $user->organizations()->first();
+            
+            if (!$organization) {
+                return response()->json(['error' => 'Bạn chưa được gán vào tổ chức nào.'], 403);
+            }
+
+            // Get property
+            $property = \App\Models\Property::where('organization_id', $organization->id)
+                ->where('id', $propertyId)
+                ->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'property' => [
+                    'id' => $property->id,
+                    'name' => $property->name,
+                    'prop_payment_cycle' => $property->prop_payment_cycle,
+                    'prop_payment_day' => $property->prop_payment_day,
+                    'prop_payment_notes' => $property->prop_payment_notes,
+                    'prop_custom_months' => $property->prop_custom_months,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getting property payment cycle: ' . $e->getMessage());
+            return response()->json(['error' => 'Có lỗi xảy ra khi tải cài đặt chu kỳ thanh toán: ' . $e->getMessage()], 500);
         }
     }
 }

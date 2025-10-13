@@ -87,6 +87,10 @@
                     <i class="fas fa-chevron-down submenu-arrow"></i>
                 </a>
                 <div class="submenu">
+                    <a href="{{ route('agent.viewings.create') }}" class="submenu-item">
+                        <i class="fas fa-plus"></i>
+                        <span>Tạo lịch hẹn</span>
+                    </a>
                     <a href="{{ route('agent.viewings.index') }}" class="submenu-item">
                         <i class="fas fa-list"></i>
                         <span>Tất cả lịch hẹn</span>

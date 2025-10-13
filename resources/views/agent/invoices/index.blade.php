@@ -279,8 +279,14 @@
                                     <td>
                                         @if($invoice->lease)
                                             <span class="badge badge-primary">Hợp đồng thuê</span>
+                                            @if($invoice->is_auto_created)
+                                                <br><small class="text-info"><i class="fas fa-robot"></i> Tự động</small>
+                                            @endif
                                         @elseif($invoice->bookingDeposit)
                                             <span class="badge badge-info">Đặt cọc</span>
+                                            @if($invoice->is_auto_created)
+                                                <br><small class="text-info"><i class="fas fa-robot"></i> Tự động</small>
+                                            @endif
                                         @else
                                             <span class="badge badge-secondary">Khác</span>
                                         @endif
@@ -360,7 +366,12 @@
                                             
                                             @if($invoice->status == 'draft')
                                                 <a href="{{ route('agent.invoices.edit', $invoice->id) }}" 
-                                                   class="btn btn-sm btn-warning" title="Chỉnh sửa">
+                                                   class="btn btn-sm btn-warning btn-edit-invoice" 
+                                                   title="Chỉnh sửa"
+                                                   data-invoice-id="{{ $invoice->id }}"
+                                                   data-is-auto-created="{{ $invoice->is_auto_created ? 'true' : 'false' }}"
+                                                   data-auto-source="{{ $invoice->is_auto_created ? ($invoice->booking_deposit_id ? 'booking_deposit' : 'lease') : 'manual' }}"
+                                                   data-invoice-no="{{ $invoice->invoice_no }}">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                                 <form method="POST" action="{{ route('agent.invoices.issue', $invoice->id) }}" 
@@ -438,6 +449,17 @@ $(document).ready(function() {
         Notify.info('{{ session('info') }}');
     @endif
 
+    // Show info about auto-created invoices in the list
+    @php
+        $autoCreatedCount = $invoices->where('is_auto_created', true)->count();
+    @endphp
+    
+    @if($autoCreatedCount > 0)
+        setTimeout(() => {
+            Notify.info(`Có ${autoCreatedCount} hóa đơn được tạo tự động trong danh sách. Những hóa đơn này có thể có hạn chế chỉnh sửa.`, 'Thông tin hóa đơn tự động');
+        }, 1500);
+    @endif
+
     // Enhanced delete confirmation
     $(document).on('click', '.btn-delete', function(e) {
         e.preventDefault();
@@ -488,6 +510,36 @@ $(document).ready(function() {
         });
     });
 
+    // Enhanced edit button with auto-created invoice notifications
+    $(document).on('click', '.btn-edit-invoice', function(e) {
+        const isAutoCreated = $(this).data('is-auto-created') === 'true';
+        const autoSource = $(this).data('auto-source');
+        const invoiceNo = $(this).data('invoice-no');
+        
+        if (isAutoCreated) {
+            e.preventDefault(); // Prevent immediate navigation
+            
+            let message = '';
+            let title = '';
+            
+            if (autoSource === 'booking_deposit') {
+                title = 'Chỉnh sửa hóa đơn đặt cọc tự động';
+                message = `Hóa đơn ${invoiceNo} được tạo tự động từ đặt cọc. Một số thông tin có thể bị hạn chế chỉnh sửa vì được liên kết với đặt cọc. Thay đổi đặt cọc sẽ tự động cập nhật hóa đơn.`;
+            } else if (autoSource === 'lease') {
+                title = 'Chỉnh sửa hóa đơn hợp đồng thuê tự động';
+                message = `Hóa đơn ${invoiceNo} được tạo tự động từ hợp đồng thuê. Một số thông tin có thể bị hạn chế chỉnh sửa vì được liên kết với hợp đồng. Thay đổi hợp đồng sẽ tự động cập nhật hóa đơn.`;
+            }
+            
+            Notify.warning(message, title);
+            
+            // Navigate after a short delay to allow user to read the notification
+            setTimeout(() => {
+                window.location.href = $(this).attr('href');
+            }, 2000);
+        }
+        // If not auto-created, allow normal navigation (no preventDefault)
+    });
+
     // Filter change notifications
     $('#status, #invoice_type, #lease_id').on('change', function() {
         const filterName = $(this).find('option:selected').text();
@@ -526,6 +578,17 @@ $(document).ready(function() {
                 sortTable(table, index);
             });
         });
+
+        // Mặc định sắp xếp theo ID giảm dần (dữ liệu đã được sắp xếp từ server)
+        // Chỉ cần cập nhật icon để hiển thị trạng thái sắp xếp hiện tại
+        setTimeout(() => {
+            // Cập nhật icon cho cột đầu tiên để hiển thị đang sắp xếp giảm dần
+            const firstHeader = headers[0];
+            const icon = firstHeader.querySelector('i');
+            if (icon) {
+                icon.className = 'fas fa-sort-down text-primary';
+            }
+        }, 100);
     }
 
     function sortTable(table, columnIndex) {

@@ -24,6 +24,10 @@ class Lease extends Model
         'rent_amount',
         'deposit_amount',
         'billing_day',
+        'lease_payment_cycle',
+        'lease_payment_day',
+        'lease_payment_notes',
+        'lease_custom_months',
         'status',
         'contract_no',
         'signed_at',
@@ -37,6 +41,19 @@ class Lease extends Model
         'end_date' => 'date',
         'signed_at' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            if ($model->lease_custom_months !== null) {
+                if ($model->lease_custom_months < 1 || $model->lease_custom_months > 60) {
+                    throw new \InvalidArgumentException('Số tháng tùy chỉnh phải từ 1 đến 60.');
+                }
+            }
+        });
+    }
 
     public function organization()
     {

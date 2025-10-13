@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
         unitSelect.innerHTML = '<option value="">Đang tải...</option>';
         
         if (propertyId) {
-            fetch(`/agent/units-test?property_id=${propertyId}`, {
+            fetch(`/agent/api/leases/units/${propertyId}`, {
                 method: 'GET',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -224,7 +224,20 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 unitSelect.innerHTML = '<option value="">Chọn phòng</option>';
                 
-                if (data.units && data.units.length > 0) {
+                // Check if data is an array (from leases API)
+                if (Array.isArray(data)) {
+                    data.forEach(unit => {
+                        const option = document.createElement('option');
+                        option.value = unit.id;
+                        option.textContent = `${unit.code} - ${unit.unit_type}`;
+                        unitSelect.appendChild(option);
+                    });
+                    
+                    if (data.length === 0) {
+                        unitSelect.innerHTML = '<option value="">Không có phòng nào</option>';
+                    }
+                } else if (data.units && data.units.length > 0) {
+                    // Fallback for meters API format
                     data.units.forEach(unit => {
                         const option = document.createElement('option');
                         option.value = unit.id;

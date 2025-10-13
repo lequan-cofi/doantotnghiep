@@ -73,7 +73,7 @@ class BookingDepositObserver
             }
 
             // Generate invoice number
-            $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            $invoiceNumber = Invoice::generateInvoiceNumber();
             
             // Get unit and property information
             $unit = $bookingDeposit->unit;
@@ -82,6 +82,7 @@ class BookingDepositObserver
             // Create invoice
             $invoice = Invoice::create([
                 'organization_id' => $bookingDeposit->organization_id,
+                'is_auto_created' => true,
                 'booking_deposit_id' => $bookingDeposit->id,
                 'invoice_no' => $invoiceNumber,
                 'issue_date' => now(),

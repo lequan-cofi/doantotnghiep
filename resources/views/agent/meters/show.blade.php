@@ -245,7 +245,13 @@
                                                 </div>
                                                 <small class="text-muted">{{ $meter->service->unit_label }}</small>
                                             </td>
-                                            <td>{{ number_format($billing->cost / $billing->usage, 0) }} đ/{{ $meter->service->unit_label }}</td>
+                                            <td>
+                                                @if($billing->usage > 0)
+                                                    {{ number_format($billing->cost / $billing->usage, 0) }} đ/{{ $meter->service->unit_label }}
+                                                @else
+                                                    <span class="text-muted">N/A</span>
+                                                @endif
+                                            </td>
                                             <td>
                                                 <div class="fw-bold text-success">
                                                     {{ number_format($billing->cost, 0) }} đ

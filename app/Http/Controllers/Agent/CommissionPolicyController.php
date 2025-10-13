@@ -7,6 +7,7 @@ use App\Models\CommissionPolicy;
 use App\Models\CommissionEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CommissionPolicyController extends Controller
@@ -17,7 +18,7 @@ class CommissionPolicyController extends Controller
             $user = Auth::user();
             
             // Get user's organization_id from organization_users table
-            $userOrganization = \DB::table('organization_users')
+            $userOrganization = DB::table('organization_users')
                 ->where('user_id', $user->id)
                 ->where('status', 'active')
                 ->first();
@@ -85,7 +86,7 @@ class CommissionPolicyController extends Controller
             $user = Auth::user();
             
             // Get user's organization_id from organization_users table
-            $userOrganization = \DB::table('organization_users')
+            $userOrganization = DB::table('organization_users')
                 ->where('user_id', $user->id)
                 ->where('status', 'active')
                 ->first();
@@ -139,49 +140,6 @@ class CommissionPolicyController extends Controller
         }
     }
     
-    public function test()
-    {
-        try {
-            $user = Auth::user();
-            
-            // Get user's organization_id from organization_users table
-            $userOrganization = \DB::table('organization_users')
-                ->where('user_id', $user->id)
-                ->where('status', 'active')
-                ->first();
-                
-            $organizationId = $userOrganization ? $userOrganization->organization_id : null;
-            
-            $allPolicies = CommissionPolicy::all();
-            $userPolicies = CommissionPolicy::where('organization_id', $organizationId)->get();
-            
-            return response()->json([
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'organization_id' => $organizationId
-                ],
-                'database' => [
-                    'total_policies' => $allPolicies->count(),
-                    'user_policies' => $userPolicies->count()
-                ],
-                'sample_policies' => $userPolicies->take(10)->map(function($policy) {
-                    return [
-                        'id' => $policy->id,
-                        'organization_id' => $policy->organization_id,
-                        'title' => $policy->title,
-                        'active' => $policy->active,
-                        'deleted_at' => $policy->deleted_at,
-                        'created_at' => $policy->created_at
-                    ];
-                })
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
-        }
-    }
+    // Test method removed - no longer needed
 
 }

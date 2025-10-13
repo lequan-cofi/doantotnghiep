@@ -119,8 +119,9 @@ class MeterBillingService
 
         return Invoice::create([
             'organization_id' => $lease->organization_id,
+            'is_auto_created' => true,
             'lease_id' => $lease->id,
-            'invoice_no' => $this->generateInvoiceNumber($lease, $invoiceDate),
+            'invoice_no' => Invoice::generateInvoiceNumber(),
             'issue_date' => $invoiceDate,
             'due_date' => $dueDate,
             'status' => 'pending',
@@ -182,19 +183,6 @@ class MeterBillingService
             'subtotal' => $subtotal,
             'total_amount' => $subtotal, // Assuming no tax or discount for now
         ]);
-    }
-
-    /**
-     * Generate invoice number
-     */
-    private function generateInvoiceNumber(Lease $lease, Carbon $date)
-    {
-        $prefix = 'INV';
-        $year = $date->format('Y');
-        $month = $date->format('m');
-        $leaseCode = str_pad($lease->id, 4, '0', STR_PAD_LEFT);
-        
-        return "{$prefix}-{$year}{$month}-{$leaseCode}";
     }
 
     /**

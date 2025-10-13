@@ -224,6 +224,85 @@
                     </div>
                 </div>
             @endif
+
+            <!-- Meters Section -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tachometer-alt me-2"></i>Công tơ và số liệu
+                    </h5>
+                    <a href="{{ route('agent.meters.index', ['unit_id' => $unit->id]) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list me-1"></i>Quản lý công tơ
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if($meters->count() > 0)
+                        @foreach($meters as $meter)
+                            <div class="meter-item mb-4 p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="fas fa-tachometer-alt me-1"></i>
+                                            {{ $meter->service->name ?? 'Dịch vụ không xác định' }}
+                                        </h6>
+                                        <small class="text-muted">
+                                            Số seri: {{ $meter->serial_no ?? 'N/A' }} | 
+                                            Lắp đặt: {{ $meter->installed_at ? $meter->installed_at->format('d/m/Y') : 'N/A' }}
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-{{ $meter->status ? 'success' : 'danger' }}">
+                                        {{ $meter->status ? 'Hoạt động' : 'Ngừng hoạt động' }}
+                                    </span>
+                                </div>
+                                
+                                @if($meter->readings->count() > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Ngày đọc</th>
+                                                    <th>Chỉ số</th>
+                                                    <th>Người đọc</th>
+                                                    <th>Ghi chú</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($meter->readings->take(5) as $reading)
+                                                    <tr>
+                                                        <td>{{ $reading->reading_date->format('d/m/Y') }}</td>
+                                                        <td class="fw-bold">{{ number_format($reading->value, 3) }}</td>
+                                                        <td>{{ $reading->takenBy->full_name ?? 'N/A' }}</td>
+                                                        <td>{{ $reading->note ?? 'N/A' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    @if($meter->readings->count() > 5)
+                                        <div class="text-center mt-2">
+                                            <small class="text-muted">
+                                                Hiển thị 5 chỉ số gần nhất. 
+                                                <a href="{{ route('agent.meters.show', $meter->id) }}">Xem tất cả</a>
+                                            </small>
+                                        </div>
+                                    @endif
+                                @else
+                                    <div class="text-center py-2">
+                                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                        <span class="text-muted">Chưa có số liệu đọc công tơ</span>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center py-3">
+                            <i class="fas fa-tachometer-alt fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Chưa có công tơ nào</p>
+                            <small class="text-muted">Công tơ cần được lắp đặt cho phòng này</small>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <!-- Sidebar -->

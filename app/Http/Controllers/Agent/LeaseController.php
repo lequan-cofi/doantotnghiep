@@ -104,10 +104,20 @@ class LeaseController extends Controller
                 ->with('error', 'Bạn chưa được gán quản lý bất động sản nào.');
         }
 
+        // Only get properties that have available units
         $properties = \App\Models\Property::whereIn('id', $assignedPropertyIds)
             ->where('status', 1)
+            ->whereHas('units', function($query) {
+                $query->where('status', 'available');
+            })
             ->orderBy('name')
             ->get();
+
+        // If no properties with available units found, show a message
+        if ($properties->isEmpty()) {
+            return redirect()->route('agent.leases.index')
+                ->with('warning', 'Hiện tại không có bất động sản nào có phòng trống. Vui lòng liên hệ quản lý để thêm phòng mới hoặc kiểm tra trạng thái phòng.');
+        }
 
         // Get tenants from default organizations and agent's organization
         $defaultOrgs = \App\Models\Organization::where('name', 'Default Organization')
@@ -170,6 +180,10 @@ class LeaseController extends Controller
             'rent_amount' => 'required|string|regex:/^[\d.,]+$/',
             'deposit_amount' => 'nullable|string|regex:/^[\d.,]+$/',
             'billing_day' => 'nullable|integer|min:1|max:28',
+            'lease_payment_cycle' => 'nullable|in:monthly,quarterly,yearly,custom',
+            'lease_payment_day' => 'nullable|integer|min:1|max:31',
+            'lease_payment_notes' => 'nullable|string|max:1000',
+            'lease_custom_months' => 'nullable|integer|min:1|max:60',
             'status' => 'required|in:draft,active,terminated,expired',
             'contract_no' => 'nullable|string|max:100|unique:leases,contract_no',
             'signed_at' => 'nullable|date',
@@ -249,6 +263,10 @@ class LeaseController extends Controller
                 'rent_amount' => $rentAmount,
                 'deposit_amount' => $depositAmount ?? 0,
                 'billing_day' => $request->billing_day ?? 1,
+                'lease_payment_cycle' => $request->lease_payment_cycle,
+                'lease_payment_day' => $request->lease_payment_day,
+                'lease_payment_notes' => $request->lease_payment_notes,
+                'lease_custom_months' => $request->lease_custom_months,
                 'status' => $request->status,
                 'contract_no' => $contractNo,
                 'signed_at' => $request->signed_at,
@@ -303,11 +321,29 @@ class LeaseController extends Controller
                 'tenant',
                 'organization',
                 'leaseServices.service',
-                'residents.user'
+                'residents.user',
+                'invoices' => function($query) {
+                    $query->orderBy('created_at', 'desc');
+                }
             ])
             ->findOrFail($id);
 
-        return view('agent.leases.show', compact('lease'));
+        // Get meters for this unit with their readings after lease signed date
+        $meters = \App\Models\Meter::where('unit_id', $lease->unit_id)
+            ->with([
+                'service',
+                'readings' => function($query) use ($lease) {
+                    if ($lease->signed_at) {
+                        $query->where('reading_date', '>=', $lease->signed_at->format('Y-m-d'))
+                              ->orderBy('reading_date', 'desc');
+                    } else {
+                        $query->orderBy('reading_date', 'desc');
+                    }
+                }
+            ])
+            ->get();
+
+        return view('agent.leases.show', compact('lease', 'meters'));
     }
 
     /**
@@ -325,8 +361,16 @@ class LeaseController extends Controller
 
         // Get assigned properties
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+        
+        // Only get properties that have available units (or the current property for editing)
         $properties = \App\Models\Property::whereIn('id', $assignedPropertyIds)
             ->where('status', 1)
+            ->where(function($query) use ($lease) {
+                $query->whereHas('units', function($unitQuery) {
+                    $unitQuery->where('status', 'available');
+                })
+                ->orWhere('id', $lease->unit->property_id); // Always include current property
+            })
             ->orderBy('name')
             ->get();
 
@@ -374,6 +418,10 @@ class LeaseController extends Controller
             'rent_amount' => 'required|string|regex:/^[\d.,]+$/',
             'deposit_amount' => 'nullable|string|regex:/^[\d.,]+$/',
             'billing_day' => 'nullable|integer|min:1|max:28',
+            'lease_payment_cycle' => 'nullable|in:monthly,quarterly,yearly,custom',
+            'lease_payment_day' => 'nullable|integer|min:1|max:31',
+            'lease_payment_notes' => 'nullable|string|max:1000',
+            'lease_custom_months' => 'nullable|integer|min:1|max:60',
             'status' => 'required|in:draft,active,terminated,expired',
             'contract_no' => 'nullable|string|max:100|unique:leases,contract_no,' . $id,
             'signed_at' => 'nullable|date',
@@ -461,6 +509,10 @@ class LeaseController extends Controller
                 'rent_amount' => $rentAmount,
                 'deposit_amount' => $depositAmount ?? 0,
                 'billing_day' => $request->billing_day ?? 1,
+                'lease_payment_cycle' => $request->lease_payment_cycle,
+                'lease_payment_day' => $request->lease_payment_day,
+                'lease_payment_notes' => $request->lease_payment_notes,
+                'lease_custom_months' => $request->lease_custom_months,
                 'status' => $request->status,
                 'contract_no' => $request->contract_no,
                 'signed_at' => $request->signed_at,
@@ -702,6 +754,133 @@ class LeaseController extends Controller
             Log::error('Error generating contract number: ' . $e->getMessage());
             return response()->json(['error' => 'Có lỗi xảy ra khi sinh mã hợp đồng'], 500);
         }
+    }
+
+    /**
+     * API method to get property payment cycle settings
+     */
+    public function getPropertyPaymentCycle($propertyId)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            // Check if property is assigned to agent
+            $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+            if (!$assignedPropertyIds->contains($propertyId)) {
+                Log::warning('User ' . $user->id . ' tried to access property ' . $propertyId . ' without permission');
+                return response()->json(['error' => 'Bạn không có quyền truy cập bất động sản này'], 403);
+            }
+
+            // Get property
+            $property = \App\Models\Property::findOrFail($propertyId);
+
+            return response()->json([
+                'success' => true,
+                'property' => [
+                    'id' => $property->id,
+                    'name' => $property->name,
+                    'prop_payment_cycle' => $property->prop_payment_cycle,
+                    'prop_payment_day' => $property->prop_payment_day,
+                    'prop_payment_notes' => $property->prop_payment_notes,
+                    'prop_custom_months' => $property->prop_custom_months,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error getting property payment cycle: ' . $e->getMessage());
+            return response()->json(['error' => 'Có lỗi xảy ra khi tải cài đặt chu kỳ thanh toán: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * API method to get existing deposits for a unit
+     */
+    public function getUnitDeposits($unitId)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            // Get the unit and check if it belongs to assigned properties
+            $unit = Unit::with('property')->findOrFail($unitId);
+            $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
+            
+            if (!$assignedPropertyIds->contains($unit->property_id)) {
+                Log::warning('User ' . $user->id . ' tried to access unit ' . $unitId . ' without permission');
+                return response()->json(['error' => 'Bạn không có quyền truy cập phòng này'], 403);
+            }
+
+            // Get existing deposits for this unit
+            $deposits = \App\Models\BookingDeposit::where('unit_id', $unitId)
+                ->whereNull('deleted_at')
+                ->whereIn('payment_status', ['pending', 'paid']) // Only active deposits
+                ->with(['tenantUser', 'lead', 'agent'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($deposit) {
+                    return [
+                        'id' => $deposit->id,
+                        'amount' => $deposit->amount,
+                        'amount_formatted' => number_format($deposit->amount, 0, ',', '.') . ' VNĐ',
+                        'payment_status' => $deposit->payment_status,
+                        'payment_status_text' => $this->getPaymentStatusText($deposit->payment_status),
+                        'deposit_type' => $deposit->deposit_type,
+                        'deposit_type_text' => $this->getDepositTypeText($deposit->deposit_type),
+                        'hold_until' => $deposit->hold_until ? $deposit->hold_until->format('d/m/Y H:i') : null,
+                        'paid_at' => $deposit->paid_at ? $deposit->paid_at->format('d/m/Y H:i') : null,
+                        'created_at' => $deposit->created_at->format('d/m/Y H:i'),
+                        'tenant_name' => $deposit->tenantUser ? $deposit->tenantUser->full_name : 
+                                       ($deposit->lead ? $deposit->lead->name : 'N/A'),
+                        'tenant_phone' => $deposit->tenantUser ? $deposit->tenantUser->phone : 
+                                        ($deposit->lead ? $deposit->lead->phone : 'N/A'),
+                        'agent_name' => $deposit->agent ? $deposit->agent->full_name : 'N/A',
+                        'notes' => $deposit->notes,
+                        'reference_number' => $deposit->reference_number,
+                    ];
+                });
+
+            Log::info('Found ' . $deposits->count() . ' deposits for unit ' . $unitId);
+            return response()->json([
+                'success' => true,
+                'deposits' => $deposits,
+                'total_amount' => $deposits->sum('amount'),
+                'total_amount_formatted' => number_format($deposits->sum('amount'), 0, ',', '.') . ' VNĐ'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in getUnitDeposits: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json(['error' => 'Có lỗi xảy ra khi tải thông tin cọc: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get payment status text in Vietnamese
+     */
+    private function getPaymentStatusText($status)
+    {
+        $statusTexts = [
+            'pending' => 'Chờ thanh toán',
+            'paid' => 'Đã thanh toán',
+            'refunded' => 'Đã hoàn tiền',
+            'expired' => 'Hết hạn',
+            'cancelled' => 'Đã hủy'
+        ];
+        
+        return $statusTexts[$status] ?? $status;
+    }
+
+    /**
+     * Get deposit type text in Vietnamese
+     */
+    private function getDepositTypeText($type)
+    {
+        $typeTexts = [
+            'booking' => 'Đặt cọc giữ chỗ',
+            'security' => 'Cọc an ninh',
+            'advance' => 'Cọc trước'
+        ];
+        
+        return $typeTexts[$type] ?? $type;
     }
 
     /**
@@ -1584,10 +1763,20 @@ class LeaseController extends Controller
                 ->with('error', 'Bạn chưa được gán quản lý bất động sản nào.');
         }
 
+        // Only get properties that have available units
         $properties = \App\Models\Property::whereIn('id', $assignedPropertyIds)
             ->where('status', 1)
+            ->whereHas('units', function($query) {
+                $query->where('status', 'available');
+            })
             ->orderBy('name')
             ->get();
+
+        // If no properties with available units found, show a message
+        if ($properties->isEmpty()) {
+            return redirect()->route('agent.leads.index')
+                ->with('warning', 'Hiện tại không có bất động sản nào có phòng trống. Vui lòng liên hệ quản lý để thêm phòng mới hoặc kiểm tra trạng thái phòng.');
+        }
 
         // Get tenants
         $tenants = User::whereHas('userRoles', function($q) {
@@ -1636,6 +1825,10 @@ class LeaseController extends Controller
             'rent_amount' => 'required|string|regex:/^[\d.,]+$/',
             'deposit_amount' => 'nullable|string|regex:/^[\d.,]+$/',
             'billing_day' => 'nullable|integer|min:1|max:28',
+            'lease_payment_cycle' => 'nullable|in:monthly,quarterly,yearly,custom',
+            'lease_payment_day' => 'nullable|integer|min:1|max:31',
+            'lease_payment_notes' => 'nullable|string|max:1000',
+            'lease_custom_months' => 'nullable|integer|min:1|max:60',
             'status' => 'required|in:draft,active,terminated,expired',
             'contract_no' => 'nullable|string|max:100|unique:leases,contract_no',
             'signed_at' => 'nullable|date',
@@ -1695,6 +1888,10 @@ class LeaseController extends Controller
                 'rent_amount' => $rentAmount,
                 'deposit_amount' => $depositAmount ?? 0,
                 'billing_day' => $request->billing_day ?? 1,
+                'lease_payment_cycle' => $request->lease_payment_cycle,
+                'lease_payment_day' => $request->lease_payment_day,
+                'lease_payment_notes' => $request->lease_payment_notes,
+                'lease_custom_months' => $request->lease_custom_months,
                 'status' => $request->status,
                 'contract_no' => $contractNo,
                 'signed_at' => $request->signed_at,

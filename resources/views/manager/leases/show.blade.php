@@ -96,7 +96,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="text-muted small">Ngày thanh toán</label>
+                                    <label class="text-muted small">Ngày tạo hóa đơn</label>
                                     <div>
                                         Ngày {{ $lease->billing_day }} hàng tháng
                                     </div>
@@ -107,6 +107,78 @@
                                     <label class="text-muted small">Ngày ký hợp đồng</label>
                                     <div>
                                         {{ \Carbon\Carbon::parse($lease->signed_at)->format('d/m/Y H:i') }}
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Cycle Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Chu kỳ thanh toán</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="text-muted small">Chu kỳ thanh toán</label>
+                                    <div>
+                                        @if($lease->lease_payment_cycle)
+                                            @switch($lease->lease_payment_cycle)
+                                                @case('monthly')
+                                                    <span class="badge bg-primary fs-6">Hàng tháng</span>
+                                                    @break
+                                                @case('quarterly')
+                                                    <span class="badge bg-info fs-6">Hàng quý</span>
+                                                    @break
+                                                @case('yearly')
+                                                    <span class="badge bg-success fs-6">Hàng năm</span>
+                                                    @break
+                                                @case('custom')
+                                                    <span class="badge bg-warning fs-6">
+                                                        {{ $lease->lease_custom_months ? $lease->lease_custom_months . ' tháng' : 'Tùy chỉnh' }}
+                                                    </span>
+                                                    @break
+                                                @default
+                                                    <span class="badge bg-secondary fs-6">{{ $lease->lease_payment_cycle }}</span>
+                                            @endswitch
+                                        @else
+                                            <span class="text-muted">Chưa thiết lập</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="text-muted small">Hạn thanh toán</label>
+                                    <div>
+                                        @if($lease->lease_payment_day)
+                                            <strong>Ngày {{ $lease->lease_payment_day }}</strong>
+                                        @else
+                                            <span class="text-muted">Chưa thiết lập</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="text-muted small">Ngày tạo hóa đơn (cũ)</label>
+                                    <div>
+                                        <span class="text-muted">Ngày {{ $lease->billing_day }} hàng tháng</span>
+                                        <br><small class="text-muted">Thông tin cũ, có thể được thay thế bởi chu kỳ thanh toán mới</small>
+                                    </div>
+                                </div>
+
+                                @if($lease->lease_payment_notes)
+                                <div class="mb-3">
+                                    <label class="text-muted small">Ghi chú chu kỳ thanh toán</label>
+                                    <div>
+                                        <div class="bg-light p-3 rounded">
+                                            {{ $lease->lease_payment_notes }}
+                                        </div>
                                     </div>
                                 </div>
                                 @endif

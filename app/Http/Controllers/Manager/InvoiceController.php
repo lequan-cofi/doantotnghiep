@@ -200,6 +200,7 @@ class InvoiceController extends Controller
             // Create invoice
             $invoice = Invoice::create([
                 'organization_id' => $organization?->id,
+                'is_auto_created' => false, // Manual invoice creation
                 'lease_id' => $validated['lease_id'],
                 'booking_deposit_id' => $validated['booking_deposit_id'],
                 'invoice_no' => $validated['invoice_no'],

@@ -20,12 +20,29 @@ class Organization extends Model
         'tax_code',
         'address',
         'status',
+        'org_payment_cycle',
+        'org_payment_day',
+        'org_payment_notes',
+        'org_custom_months',
         'deleted_by',
     ];
 
     protected $casts = [
         'status' => 'boolean',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            if ($model->org_custom_months !== null) {
+                if ($model->org_custom_months < 1 || $model->org_custom_months > 60) {
+                    throw new \InvalidArgumentException('Số tháng tùy chỉnh phải từ 1 đến 60.');
+                }
+            }
+        });
+    }
 
     /**
      * Get the users for the organization.

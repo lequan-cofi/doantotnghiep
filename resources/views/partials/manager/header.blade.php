@@ -153,6 +153,10 @@
                         <i class="fas fa-sliders-h"></i>
                         <span>Cài đặt chung</span>
                     </a>
+                    <a href="{{ route('manager.payment-cycle-settings.index') }}" class="submenu-item">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Chu kỳ thanh toán</span>
+                    </a>
                 </div>
             </div>
         </nav>

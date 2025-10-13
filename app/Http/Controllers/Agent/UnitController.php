@@ -586,7 +586,17 @@ class UnitController extends Controller
         $unit->is_rented = $unit->leases->count() > 0;
         $unit->current_lease = $unit->leases->first();
 
-        return view('agent.units.show', compact('unit'));
+        // Get meters for this unit with their readings
+        $meters = \App\Models\Meter::where('unit_id', $unit->id)
+            ->with([
+                'service',
+                'readings' => function($query) {
+                    $query->orderBy('reading_date', 'desc');
+                }
+            ])
+            ->get();
+
+        return view('agent.units.show', compact('unit', 'meters'));
     }
 
     /**

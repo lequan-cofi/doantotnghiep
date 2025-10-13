@@ -132,7 +132,7 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Ngày thanh toán hàng tháng</label>
+                                <label class="form-label">Ngày tạo hóa đơn</label>
                                 <select name="billing_day" class="form-select">
                                     @for ($i = 1; $i <= 28; $i++)
                                     <option value="{{ $i }}" {{ $i == old('billing_day', $lease->billing_day) ? 'selected' : '' }}>
@@ -140,6 +140,45 @@
                                     </option>
                                     @endfor
                                 </select>
+                                <div class="form-text">Ngày trong tháng để tạo hóa đơn</div>
+                            </div>
+
+                            <!-- Payment Cycle Settings -->
+                            <div class="mb-3">
+                                <label class="form-label">Chu kỳ thanh toán</label>
+                                <select name="lease_payment_cycle" id="lease_payment_cycle" class="form-select">
+                                    <option value="">-- Chọn chu kỳ --</option>
+                                    <option value="monthly" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'monthly' ? 'selected' : '' }}>Hàng tháng</option>
+                                    <option value="quarterly" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'quarterly' ? 'selected' : '' }}>Hàng quý</option>
+                                    <option value="yearly" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'yearly' ? 'selected' : '' }}>Hàng năm</option>
+                                    <option value="custom" {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'custom' ? 'selected' : '' }}>Tùy chỉnh (nhập số tháng)</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3" id="lease_custom_months_field" style="display: {{ old('lease_payment_cycle', $lease->lease_payment_cycle) == 'custom' ? 'block' : 'none' }};">
+                                <label class="form-label">Số tháng tùy chỉnh</label>
+                                <input type="number" name="lease_custom_months" id="lease_custom_months" class="form-control" 
+                                       value="{{ old('lease_custom_months', $lease->lease_custom_months) }}"
+                                       min="1" max="60" placeholder="Nhập số tháng (1-60)">
+                                <div class="form-text">Số tháng cho chu kỳ thanh toán tùy chỉnh (1-60)</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Hạn thanh toán</label>
+                                <select name="lease_payment_day" class="form-select">
+                                    @for ($i = 1; $i <= 31; $i++)
+                                    <option value="{{ $i }}" {{ $i == old('lease_payment_day', $lease->lease_payment_day) ? 'selected' : '' }}>
+                                        Ngày {{ $i }}
+                                    </option>
+                                    @endfor
+                                </select>
+                                <div class="form-text">Ngày hạn thanh toán trong chu kỳ</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Ghi chú chu kỳ thanh toán</label>
+                                <textarea name="lease_payment_notes" class="form-control" rows="2" 
+                                          placeholder="Ghi chú về chu kỳ thanh toán...">{{ old('lease_payment_notes', $lease->lease_payment_notes) }}</textarea>
                             </div>
 
                             <div class="mb-3">
@@ -339,6 +378,16 @@ document.addEventListener('DOMContentLoaded', function() {
     servicesContainer.addEventListener('click', function(e) {
         if (e.target.closest('.remove-service')) {
             e.target.closest('.service-item').remove();
+        }
+    });
+
+    // Payment cycle change handler
+    document.getElementById('lease_payment_cycle').addEventListener('change', function() {
+        const customMonthsField = document.getElementById('lease_custom_months_field');
+        if (this.value === 'custom') {
+            customMonthsField.style.display = 'block';
+        } else {
+            customMonthsField.style.display = 'none';
         }
     });
 
