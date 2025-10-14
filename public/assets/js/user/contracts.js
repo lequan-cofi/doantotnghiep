@@ -40,8 +40,20 @@ function setupFilters() {
             }
             this.classList.add('active');
             
-            // Filter contracts
-            filterContracts(status);
+            // Update hidden input and submit form
+            var statusInput = document.getElementById('statusInput');
+            if (statusInput) {
+                statusInput.value = status;
+            }
+            
+            // Submit form to reload with new filter
+            var filterForm = document.getElementById('filterForm');
+            if (filterForm) {
+                filterForm.submit();
+            } else {
+                // Fallback to client-side filtering
+                filterContracts(status);
+            }
         });
     }
 }
@@ -78,9 +90,27 @@ function setupSearch() {
     var searchInput = document.getElementById('searchInput');
     
     if (searchInput) {
+        var searchTimeout;
+        
         searchInput.addEventListener('input', function() {
-            var searchTerm = this.value.toLowerCase();
-            searchContracts(searchTerm);
+            var searchTerm = this.value;
+            
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+            
+            // Set new timeout for debounced search
+            searchTimeout = setTimeout(function() {
+                if (searchTerm.length >= 2 || searchTerm.length === 0) {
+                    // Submit form with search term
+                    var filterForm = document.getElementById('filterForm');
+                    if (filterForm) {
+                        filterForm.submit();
+                    } else {
+                        // Fallback to client-side search
+                        searchContracts(searchTerm.toLowerCase());
+                    }
+                }
+            }, 500); // 500ms delay
         });
     }
 }
@@ -194,24 +224,8 @@ function animateStatCards() {
 
 // View contract details
 function viewContract(contractId) {
-    currentContractId = contractId;
-    var contractData = contractsData[contractId];
-    
-    if (!contractData) {
-        showToast('Không tìm thấy thông tin hợp đồng', 'error');
-        return;
-    }
-    
-    // Show modal
-    if (typeof bootstrap !== 'undefined') {
-        var modal = new bootstrap.Modal(document.getElementById('contractDetailModal'));
-        modal.show();
-        
-        // Load contract details
-        loadContractDetails(contractData);
-    } else {
-        alert('Chi tiết hợp đồng: ' + contractData.title);
-    }
+    // Redirect to contract detail page
+    window.location.href = '/tenant/contracts/' + contractId;
 }
 
 // Load contract details into modal

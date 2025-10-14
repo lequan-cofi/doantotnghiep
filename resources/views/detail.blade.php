@@ -163,7 +163,7 @@
                                     <button class="btn btn-primary">
                                         <i class="fab fa-facebook-messenger me-2"></i>Chat Messenger
                                     </button>
-                                    <a href="{{ route('booking', $id ?? 1) }}" class="btn btn-info">
+                                    <a href="{{ route('tenant.booking', $id ?? 1) }}" class="btn btn-info">
                                         <i class="fa fa-calendar me-2"></i>Hẹn lịch
                                     </a>
                                    

@@ -3,6 +3,8 @@
 @section('title', $property->name . ' - Chi tiết bất động sản')
 
 @section('content')
+<!-- Success Notification will be shown via JavaScript -->
+
 <!-- Hero Section -->
 <section class="property-hero">
     <div class="hero-slider">
@@ -30,8 +32,34 @@
                 </div>
                 <h1 class="property-title">{{ $property->name }}</h1>
                 <div class="property-location">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>{{ $property->location2025 ? $property->location2025->street . ', ' . $property->location2025->ward . ', ' . $property->location2025->city : 'Chưa cập nhật địa chỉ' }}</span>
+                    <!-- New Address (2025) - Primary -->
+                    @if($property->location2025)
+                        <div class="address-item primary-address">
+                            <i class="fas fa-map-marker-alt text-success"></i>
+                            <div class="address-content">
+                                <span class="address-label">Địa chỉ mới (2025):</span>
+                                <span class="address-text">{{ $property->new_address }}</span>
+                            </div>
+                        </div>
+                    @endif
+                    
+                    <!-- Old Address - Secondary -->
+                    @if($property->location)
+                        <div class="address-item secondary-address">
+                            <i class="fas fa-map-marker-alt text-warning"></i>
+                            <div class="address-content">
+                                <span class="address-label">Địa chỉ cũ:</span>
+                                <span class="address-text">{{ $property->old_address }}</span>
+                            </div>
+                        </div>
+                    @endif
+                    
+                    @if(!$property->location2025 && !$property->location)
+                        <div class="address-item no-address">
+                            <i class="fas fa-exclamation-triangle text-muted"></i>
+                            <span>Chưa có thông tin địa chỉ</span>
+                        </div>
+                    @endif
                 </div>
                 @if($stats['min_price'] && $stats['max_price'])
                     <div class="property-price">
@@ -52,7 +80,7 @@
     <div class="container">
         <div class="row">
             <!-- Main Content -->
-            <div class="col-lg-8">
+            <div class="col-lg-9">
                 <!-- Property Info -->
                 <div class="property-info-card">
                     <h3><i class="fas fa-info-circle"></i> Thông tin chi tiết</h3>
@@ -87,6 +115,38 @@
                             </div>
                         </div>
                         @endif
+                        
+                        <!-- New Address (2025) -->
+                        @if($property->location2025)
+                        <div class="info-item address-item-new">
+                            <i class="fas fa-map-marker-alt text-success"></i>
+                            <div>
+                                <strong>Địa chỉ mới (2025)</strong>
+                                <span class="address-text">{{ $property->new_address }}</span>
+                            </div>
+                        </div>
+                        @endif
+                        
+                        <!-- Old Address -->
+                        @if($property->location)
+                        <div class="info-item address-item-old">
+                            <i class="fas fa-map-marker-alt text-warning"></i>
+                            <div>
+                                <strong>Địa chỉ cũ</strong>
+                                <span class="address-text">{{ $property->old_address }}</span>
+                            </div>
+                        </div>
+                        @endif
+                        
+                        @if(!$property->location2025 && !$property->location)
+                        <div class="info-item address-item-none">
+                            <i class="fas fa-exclamation-triangle text-muted"></i>
+                            <div>
+                                <strong>Địa chỉ</strong>
+                                <span class="text-muted">Chưa có thông tin địa chỉ</span>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
 
@@ -114,8 +174,13 @@
                 @endif
 
                 <!-- Available Units -->
+                @php
+                    // Fallback: if no available units, show all units
+                    $unitsToShow = $availableUnits->count() > 0 ? $availableUnits : $allUnits;
+                @endphp
+                
                 <div class="units-section">
-                    <h3><i class="fas fa-home"></i> Phòng trống ({{ $stats['available_units'] }})</h3>
+                    <h3><i class="fas fa-home"></i> Phòng trống ({{ $unitsToShow->count() }})</h3>
                     
                     <!-- Viewing Instructions -->
                     <div class="viewing-instructions">
@@ -156,9 +221,9 @@
                         </div>
                     </div>
 
-                    @if($availableUnits->count() > 0)
+                    @if($unitsToShow->count() > 0)
                         <div class="units-grid">
-                            @foreach($availableUnits as $unit)
+                            @foreach($unitsToShow as $unit)
                             <div class="unit-card" onclick="showUnitDetail({{ $unit->id }})">
                                 <div class="unit-image">
                                     @if($unit->images && count($unit->images) > 0)
@@ -171,7 +236,7 @@
                                     </div>
                                     <div class="unit-overlay">
                                         @auth
-                                            <a href="{{ route('booking', [$property->id, $unit->id]) }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
+                                            <a href="{{ route('tenant.booking', [$property->id, $unit->id]) }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
                                                 <i class="fas fa-calendar-plus"></i>
                                                 Đặt lịch xem
                                             </a>
@@ -204,7 +269,7 @@
                                     </div>
                                     <div class="unit-actions">
                                         @auth
-                                            <a href="{{ route('booking', [$property->id, $unit->id]) }}" class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation();">
+                                            <a href="{{ route('tenant.booking', [$property->id, $unit->id]) }}" class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation();">
                                                 <i class="fas fa-calendar-alt"></i>
                                                 Đặt lịch xem
                                             </a>
@@ -224,13 +289,19 @@
                             <i class="fas fa-door-closed"></i>
                             <h4>Hiện tại không có phòng trống</h4>
                             <p>Vui lòng liên hệ để được thông báo khi có phòng mới.</p>
+                            @if($allUnits->count() > 0)
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Thông tin:</strong> Tòa nhà có {{ $allUnits->count() }} phòng nhưng tất cả đều đã được thuê hoặc đang bảo trì.
+                                </div>
+                            @endif
                         </div>
                     @endif
                 </div>
             </div>
 
             <!-- Sidebar -->
-            <div class="col-lg-4">
+            <div class="col-lg-3">
                 <!-- Contact Card -->
                 <div class="contact-card">
                     <h4><i class="fas fa-user-tie"></i> Thông tin liên hệ</h4>
@@ -276,14 +347,16 @@
                             Zalo
                         </button>
                         @auth
-                            <a href="{{ route('booking', $property->id) }}" class="btn-contact btn-schedule">
-                                <i class="fas fa-calendar-alt"></i>
-                                Đặt lịch xem
+                            <a href="{{ route('tenant.booking', $property->id) }}" class="btn btn-success btn-lg btn-schedule-main">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Đặt lịch xem phòng</span>
+                                <small>Miễn phí & nhanh chóng</small>
                             </a>
                         @else
-                            <button class="btn-contact btn-schedule" onclick="scheduleViewing()">
-                                <i class="fas fa-calendar-alt"></i>
-                                Đặt lịch xem
+                            <button class="btn btn-success btn-lg btn-schedule-main" onclick="scheduleViewing()">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Đặt lịch xem phòng</span>
+                                <small>Miễn phí & nhanh chóng</small>
                             </button>
                         @endauth
                     </div>
@@ -366,8 +439,16 @@
                 <div class="property-content">
                     <h4>{{ $similarProperty->name }}</h4>
                     <div class="property-location">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>{{ $similarProperty->location2025 ? $similarProperty->location2025->city : 'Chưa cập nhật' }}</span>
+                        @if($similarProperty->location2025)
+                            <i class="fas fa-map-marker-alt text-success"></i>
+                            <span>{{ $similarProperty->new_address }}</span>
+                        @elseif($similarProperty->location)
+                            <i class="fas fa-map-marker-alt text-warning"></i>
+                            <span>{{ $similarProperty->old_address }}</span>
+                        @else
+                            <i class="fas fa-exclamation-triangle text-muted"></i>
+                            <span>Chưa có địa chỉ</span>
+                        @endif
                     </div>
                     <div class="property-info">
                         <span>{{ $similarProperty->units->count() }} phòng trống</span>
@@ -416,6 +497,31 @@
                 </button>
                 <button type="button" class="btn btn-primary" onclick="contactAboutUnit()">
                     <i class="fas fa-comments"></i> Liên hệ về phòng này
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Gallery Modal -->
+<div class="modal fade" id="imageGalleryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-images"></i>
+                    <span id="galleryModalTitle">Hình ảnh phòng</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="imageGalleryContent">
+                    <!-- Gallery content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Đóng
                 </button>
             </div>
         </div>
@@ -601,12 +707,71 @@
 }
 
 .property-location {
-    display: flex;
-    align-items: center;
-    gap: 10px;
     margin-bottom: 20px;
     font-size: 1.1rem;
     opacity: 0.9;
+}
+
+.address-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.address-item:last-child {
+    margin-bottom: 0;
+}
+
+.address-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.address-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.address-text {
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.primary-address .address-label {
+    color: #28a745;
+}
+
+.secondary-address .address-label {
+    color: #ffc107;
+}
+
+.no-address {
+    opacity: 0.7;
+}
+
+/* Address items in property info */
+.address-item-new {
+    border-left: 4px solid #28a745;
+    background: rgba(40, 167, 69, 0.05);
+}
+
+.address-item-old {
+    border-left: 4px solid #ffc107;
+    background: rgba(255, 193, 7, 0.05);
+}
+
+.address-item-none {
+    border-left: 4px solid #6c757d;
+    background: rgba(108, 117, 125, 0.05);
+}
+
+.address-text {
+    font-size: 0.9rem;
+    line-height: 1.4;
+    word-break: break-word;
 }
 
 .property-price {
@@ -787,7 +952,7 @@
 /* Units */
 .units-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 25px;
 }
 
@@ -1029,6 +1194,86 @@
 .btn-contact:hover {
     color: inherit;
     text-decoration: none;
+}
+
+/* Main Schedule Button */
+.btn-schedule-main {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 30px !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3) !important;
+    border: none !important;
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+    color: white !important;
+    min-height: 80px;
+}
+
+.btn-schedule-main:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4) !important;
+    color: white !important;
+    text-decoration: none !important;
+}
+
+.btn-schedule-main i {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.btn-schedule-main span {
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+}
+
+.btn-schedule-main small {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* Sticky Schedule Button */
+.btn-schedule-sticky {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+    color: white !important;
+    border: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 15px 20px !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3) !important;
+    min-height: 70px;
+}
+
+.btn-schedule-sticky:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4) !important;
+    color: white !important;
+}
+
+.btn-schedule-sticky i {
+    font-size: 1.2rem;
+    margin-bottom: 3px;
+}
+
+.btn-schedule-sticky span {
+    font-size: 0.9rem;
+    margin-bottom: 1px;
+}
+
+.btn-schedule-sticky small {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    font-weight: 500;
 }
 
 .price-details {
@@ -1320,6 +1565,7 @@
     overflow: hidden;
     cursor: pointer;
     transition: transform 0.3s ease;
+    position: relative;
 }
 
 .unit-image-item:hover {
@@ -1332,6 +1578,29 @@
     object-fit: cover;
 }
 
+.unit-image-item .image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.unit-image-item:hover .image-overlay {
+    opacity: 1;
+}
+
+.unit-image-item .image-overlay i {
+    color: white;
+    font-size: 1.5rem;
+}
+
 .no-images {
     text-align: center;
     padding: 40px 20px;
@@ -1342,6 +1611,95 @@
     font-size: 3rem;
     margin-bottom: 15px;
     opacity: 0.5;
+}
+
+/* Image Gallery Modal Styles */
+.image-gallery-container {
+    position: relative;
+}
+
+.gallery-main-image {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.gallery-thumbnails {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.gallery-thumbnail {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.gallery-thumbnail:hover {
+    transform: scale(1.05);
+    border-color: #007bff;
+}
+
+.gallery-thumbnail.active {
+    border-color: #007bff;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+.gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.gallery-nav:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.gallery-nav.prev {
+    left: 15px;
+}
+
+.gallery-nav.next {
+    right: 15px;
+}
+
+.gallery-nav:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gallery-counter {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    z-index: 10;
 }
 
 .amenities-list {
@@ -1431,6 +1789,12 @@
 }
 
 /* Responsive */
+@media (max-width: 992px) {
+    .units-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
     .property-title {
         font-size: 2rem;
@@ -1485,11 +1849,31 @@
 <script>
 // Unit detail functions
 function showUnitDetail(unitId) {
+    // Debug: Check if availableUnitsData exists and is an array
+    console.log('availableUnitsData:', window.availableUnitsData);
+    console.log('Type:', typeof window.availableUnitsData);
+    console.log('Is Array:', Array.isArray(window.availableUnitsData));
+    
+    // Ensure availableUnitsData is an array
+    if (!window.availableUnitsData || !Array.isArray(window.availableUnitsData)) {
+        console.error('availableUnitsData is not an array:', window.availableUnitsData);
+        alert('Lỗi: Không thể tải dữ liệu phòng');
+        return;
+    }
+    
     // Find unit data from the available units
     const unit = window.availableUnitsData.find(u => u.id === unitId);
     
     if (!unit) {
-        alert('Không tìm thấy thông tin phòng');
+        if (window.Notify) {
+            window.Notify.toast({
+                title: 'Không tìm thấy phòng',
+                message: 'Không tìm thấy thông tin phòng. Vui lòng thử lại.',
+                type: 'error',
+                duration: 5000,
+                showProgress: true
+            });
+        }
         return;
     }
     
@@ -1521,13 +1905,21 @@ function showUnitDetail(unitId) {
     if (unit.images && unit.images.length > 0) {
         imagesHtml = `
             <div class="unit-images-section">
-                <h6><i class="fas fa-images"></i> Hình ảnh phòng</h6>
+                <h6><i class="fas fa-images"></i> Hình ảnh phòng (${unit.images.length})</h6>
                 <div class="unit-images-grid">
                     ${unit.images.map((image, index) => `
-                        <div class="unit-image-item">
-                            <img src="${image}" alt="Hình ${index + 1}" onclick="openImageModal('${image}')">
+                        <div class="unit-image-item" onclick="openImageGallery(${unitId}, ${index})">
+                            <img src="${image}" alt="Hình ${index + 1}">
+                            <div class="image-overlay">
+                                <i class="fas fa-search-plus"></i>
+                            </div>
                         </div>
                     `).join('')}
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-outline-primary btn-sm" onclick="openImageGallery(${unitId}, 0)">
+                        <i class="fas fa-images"></i> Xem tất cả ảnh
+                    </button>
                 </div>
             </div>
         `;
@@ -1622,9 +2014,10 @@ function showUnitDetail(unitId) {
                         <i class="fab fa-facebook-messenger"></i>
                         Zalo
                     </button>
-                    <button class="btn-action btn-schedule" onclick="scheduleViewing()">
-                        <i class="fas fa-calendar-alt"></i>
-                        Đặt lịch xem
+                    <button class="btn-action btn-schedule-sticky" onclick="scheduleViewing()">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Đặt lịch xem</span>
+                        <small>Miễn phí</small>
                     </button>
                     <button class="btn-action btn-share" onclick="shareUnit()">
                         <i class="fas fa-share-alt"></i>
@@ -1645,23 +2038,134 @@ function formatPrice(price) {
 
 // Share unit function
 function shareUnit() {
-    const unit = window.availableUnitsData.find(u => u.id === window.currentUnitId);
-    if (unit) {
-        const shareText = `Phòng ${unit.code} - ${formatPrice(unit.base_rent)} VNĐ/tháng - ${unit.area_m2}m²`;
-        if (navigator.share) {
-            navigator.share({
-                title: `Phòng ${unit.code}`,
-                text: shareText,
-                url: window.location.href
-            });
-        } else {
-            navigator.clipboard.writeText(`${shareText}\n${window.location.href}`);
-            alert('Thông tin phòng đã được sao chép!');
+    if (window.availableUnitsData && Array.isArray(window.availableUnitsData)) {
+        const unit = window.availableUnitsData.find(u => u.id === window.currentUnitId);
+        if (unit) {
+            const shareText = `Phòng ${unit.code} - ${formatPrice(unit.base_rent)} VNĐ/tháng - ${unit.area_m2}m²`;
+            if (navigator.share) {
+                navigator.share({
+                    title: `Phòng ${unit.code}`,
+                    text: shareText,
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(`${shareText}\n${window.location.href}`);
+                alert('Thông tin phòng đã được sao chép!');
+            }
         }
     }
 }
 
-// Open image modal
+// Open image gallery modal
+function openImageGallery(unitId, startIndex = 0) {
+    // Ensure availableUnitsData is an array
+    if (!window.availableUnitsData || !Array.isArray(window.availableUnitsData)) {
+        console.error('availableUnitsData is not an array:', window.availableUnitsData);
+        if (window.Notify) {
+            window.Notify.toast({
+                title: 'Lỗi tải dữ liệu',
+                message: 'Không thể tải dữ liệu phòng. Vui lòng tải lại trang.',
+                type: 'error',
+                duration: 5000,
+                showProgress: true
+            });
+        }
+        return;
+    }
+    
+    const unit = window.availableUnitsData.find(u => u.id === unitId);
+    
+    if (!unit || !unit.images || unit.images.length === 0) {
+        if (window.Notify) {
+            window.Notify.toast({
+                title: 'Không có hình ảnh',
+                message: 'Phòng này chưa có hình ảnh để hiển thị.',
+                type: 'warning',
+                duration: 4000,
+                showProgress: true
+            });
+        }
+        return;
+    }
+    
+    const images = unit.images;
+    let currentIndex = startIndex;
+    
+    // Set modal title
+    document.getElementById('galleryModalTitle').textContent = `Hình ảnh phòng ${unit.code}`;
+    
+    // Build gallery content
+    function buildGalleryContent() {
+        const mainImage = images[currentIndex];
+        const totalImages = images.length;
+        
+        const thumbnailsHtml = images.map((image, index) => `
+            <img src="${image}" 
+                 class="gallery-thumbnail ${index === currentIndex ? 'active' : ''}" 
+                 alt="Hình ${index + 1}"
+                 onclick="changeGalleryImage(${index})">
+        `).join('');
+        
+        document.getElementById('imageGalleryContent').innerHTML = `
+            <div class="image-gallery-container">
+                <div class="gallery-counter">${currentIndex + 1} / ${totalImages}</div>
+                <button class="gallery-nav prev" onclick="previousImage()" ${currentIndex === 0 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <img src="${mainImage}" class="gallery-main-image" alt="Hình ${currentIndex + 1}" id="mainGalleryImage">
+                <button class="gallery-nav next" onclick="nextImage()" ${currentIndex === totalImages - 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <div class="gallery-thumbnails">
+                    ${thumbnailsHtml}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Global functions for gallery navigation
+    window.changeGalleryImage = function(index) {
+        currentIndex = index;
+        buildGalleryContent();
+    };
+    
+    window.previousImage = function() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            buildGalleryContent();
+        }
+    };
+    
+    window.nextImage = function() {
+        if (currentIndex < images.length - 1) {
+            currentIndex++;
+            buildGalleryContent();
+        }
+    };
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (document.getElementById('imageGalleryModal').classList.contains('show')) {
+            if (e.key === 'ArrowLeft') {
+                window.previousImage();
+            } else if (e.key === 'ArrowRight') {
+                window.nextImage();
+            } else if (e.key === 'Escape') {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('imageGalleryModal'));
+                modal.hide();
+            }
+        }
+    });
+    
+    // Build initial content
+    buildGalleryContent();
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('imageGalleryModal'));
+    modal.show();
+}
+
+// Open single image modal (fallback)
 function openImageModal(imageSrc) {
     // Create image modal
     const imageModal = document.createElement('div');
@@ -1693,147 +2197,102 @@ function openImageModal(imageSrc) {
 // Contact functions
 function makeCall() {
     const phone = '{{ $agent ? $agent->phone : "0123456789" }}';
-    window.location.href = `tel:${phone}`;
+    
+    // Show confirmation dialog
+    if (window.Notify && typeof window.Notify.confirm === 'function') {
+        window.Notify.confirm({
+            title: 'Gọi điện thoại',
+            message: `Bạn có muốn gọi đến số ${phone}?`,
+            type: 'info',
+            confirmText: 'Gọi ngay',
+            cancelText: 'Hủy',
+            onConfirm: () => {
+                // Make call
+                window.location.href = `tel:${phone}`;
+            },
+            onCancel: () => {
+                console.log('User cancelled call');
+            }
+        });
+    } else {
+        // Fallback
+        window.location.href = `tel:${phone}`;
+    }
 }
 
 function openZalo() {
-    // Open Zalo chat
-    alert('Chức năng Zalo sẽ được tích hợp sau');
+    // Show confirmation dialog
+    if (window.Notify && typeof window.Notify.confirm === 'function') {
+        window.Notify.confirm({
+            title: 'Liên hệ qua Zalo',
+            message: 'Chức năng Zalo sẽ được tích hợp sau. Bạn có muốn gọi điện thay thế?',
+            type: 'warning',
+            confirmText: 'Gọi điện',
+            cancelText: 'Hủy',
+            onConfirm: () => {
+                makeCall();
+            },
+            onCancel: () => {
+                console.log('User cancelled Zalo contact');
+            }
+        });
+    } else {
+        alert('Chức năng Zalo sẽ được tích hợp sau. Vui lòng sử dụng số điện thoại để liên hệ.');
+    }
 }
 
 // Global variables
 let selectedUnitId = null;
 
 function scheduleViewing() {
-    selectedUnitId = null;
-    document.getElementById('selected_unit_id').value = '';
-    document.getElementById('selectedUnitInfo').style.display = 'none';
-    
-    const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));
-    modal.show();
-    
-    // Set minimum date to tomorrow
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    document.getElementById('schedule_date').min = tomorrow.toISOString().split('T')[0];
+    // Show confirmation dialog
+    if (window.Notify && typeof window.Notify.confirm === 'function') {
+        window.Notify.confirm({
+            title: 'Đặt lịch xem phòng',
+            message: 'Bạn có muốn chuyển đến trang đặt lịch xem phòng?',
+            type: 'info',
+            confirmText: 'Đặt lịch',
+            cancelText: 'Hủy',
+            onConfirm: () => {
+                // Redirect to booking page
+                window.location.href = '{{ route("tenant.booking", $property->id) }}';
+            },
+            onCancel: () => {
+                console.log('User cancelled scheduling');
+            }
+        });
+    } else {
+        // Fallback
+        window.location.href = '{{ route("tenant.booking", $property->id) }}';
+    }
 }
 
 function scheduleViewingForUnit(unitId) {
-    selectedUnitId = unitId;
-    document.getElementById('selected_unit_id').value = unitId;
-    
-    // Find unit data
-    const unit = window.availableUnitsData.find(u => u.id === unitId);
-    if (unit) {
-        document.getElementById('selectedUnitBadge').textContent = `Phòng ${unit.code}`;
-        document.getElementById('selectedUnitInfo').style.display = 'block';
-    }
-    
-    const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));
-    modal.show();
-    
-    // Set minimum date to tomorrow
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    document.getElementById('schedule_date').min = tomorrow.toISOString().split('T')[0];
-}
-
-function submitSchedule() {
-    const form = document.getElementById('scheduleForm');
-    const formData = new FormData(form);
-    
-    // Validate form
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-    
-    // Show loading
-    const submitBtn = document.querySelector('#scheduleModal .btn-primary');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
-    submitBtn.disabled = true;
-    
-    // Submit to backend
-    fetch('{{ route("viewings.store") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message
-            showNotification('success', data.message);
-            
-            // Close modal and reset form
-            const modal = bootstrap.Modal.getInstance(document.getElementById('scheduleModal'));
-            modal.hide();
-            form.reset();
-            document.getElementById('selectedUnitInfo').style.display = 'none';
-            selectedUnitId = null;
-        } else {
-            showNotification('error', data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('error', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    })
-    .finally(() => {
-        // Reset button
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-}
-
-// Load available time slots when date changes
-document.getElementById('schedule_date').addEventListener('change', function() {
-    const date = this.value;
-    const timeSelect = document.getElementById('schedule_time');
-    
-    if (!date) {
-        timeSelect.innerHTML = '<option value="">Chọn giờ</option>';
-        return;
-    }
-    
-    // Show loading
-    timeSelect.innerHTML = '<option value="">Đang tải...</option>';
-    timeSelect.disabled = true;
-    
-    // Fetch available slots
-    fetch(`{{ route("viewings.available-slots") }}?property_id={{ $property->id }}&date=${date}`)
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            timeSelect.innerHTML = '<option value="">Chọn giờ</option>';
-            
-            if (data.available_slots.length > 0) {
-                data.available_slots.forEach(slot => {
-                    const option = document.createElement('option');
-                    option.value = slot;
-                    option.textContent = `${slot} - ${getNextHour(slot)}`;
-                    timeSelect.appendChild(option);
-                });
-                document.getElementById('timeSlotsInfo').style.display = 'block';
-            } else {
-                timeSelect.innerHTML = '<option value="">Không có khung giờ trống</option>';
-                document.getElementById('timeSlotsInfo').style.display = 'none';
+    // Show confirmation dialog
+    if (window.Notify && typeof window.Notify.confirm === 'function') {
+        window.Notify.confirm({
+            title: 'Đặt lịch xem phòng cụ thể',
+            message: 'Bạn có muốn đặt lịch xem phòng đã chọn?',
+            type: 'info',
+            confirmText: 'Đặt lịch',
+            cancelText: 'Hủy',
+            onConfirm: () => {
+                // Redirect to booking page with unit ID
+                window.location.href = '{{ route("tenant.booking", $property->id) }}?unit_id=' + unitId;
+            },
+            onCancel: () => {
+                console.log('User cancelled unit scheduling');
             }
-        } else {
-            timeSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        timeSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
-    })
-    .finally(() => {
-        timeSelect.disabled = false;
-    });
-});
+        });
+    } else {
+        // Fallback
+        window.location.href = '{{ route("tenant.booking", $property->id) }}?unit_id=' + unitId;
+    }
+}
+
+// Old form functions removed - now using dedicated booking page
+
+// Old form event listeners removed - now using dedicated booking page
 
 function getNextHour(time) {
     const [hour, minute] = time.split(':');
@@ -1863,15 +2322,17 @@ function showNotification(type, message) {
 }
 
 function contactAboutUnit() {
-    const unit = window.availableUnitsData.find(u => u.id === window.currentUnitId);
-    if (unit) {
-        const message = `Tôi quan tâm đến phòng ${unit.code} - ${formatPrice(unit.base_rent)} VNĐ/tháng - ${unit.area_m2}m². Vui lòng liên hệ lại với tôi.`;
-        
-        // Open Zalo or show contact info
-        if (confirm('Bạn muốn liên hệ qua Zalo hay gọi điện?')) {
-            openZalo();
-        } else {
-            makeCall();
+    if (window.availableUnitsData && Array.isArray(window.availableUnitsData)) {
+        const unit = window.availableUnitsData.find(u => u.id === window.currentUnitId);
+        if (unit) {
+            const message = `Tôi quan tâm đến phòng ${unit.code} - ${formatPrice(unit.base_rent)} VNĐ/tháng - ${unit.area_m2}m². Vui lòng liên hệ lại với tôi.`;
+            
+            // Open Zalo or show contact info
+            if (confirm('Bạn muốn liên hệ qua Zalo hay gọi điện?')) {
+                openZalo();
+            } else {
+                makeCall();
+            }
         }
     }
 }
@@ -1899,24 +2360,96 @@ function printProperty() {
     window.print();
 }
 
-// Load units data for JavaScript
-window.availableUnitsData = {!! json_encode($availableUnits->map(function($unit) {
-    return [
-        'id' => $unit->id,
-        'code' => $unit->code,
-        'area_m2' => $unit->area_m2,
-        'max_occupancy' => $unit->max_occupancy,
-        'floor' => $unit->floor,
-        'unit_type' => $unit->unit_type,
-        'base_rent' => $unit->base_rent,
-        'deposit_amount' => $unit->deposit_amount,
-        'note' => $unit->note,
-        'images' => $unit->images ? array_map(function($image) { return \Storage::url($image); }, $unit->images) : [],
-        'amenities' => $unit->amenities->map(function($amenity) {
-            return ['id' => $amenity->id, 'name' => $amenity->name];
-        })->toArray()
-    ];
-})) !!};
+// Load units data for JavaScript (use same fallback logic as view)
+@php
+    $unitsForJS = $availableUnits->count() > 0 ? $availableUnits : $allUnits;
+@endphp
+
+// Debug: Check available units data
+console.log('=== PROPERTY DEBUG INFO ===');
+console.log('Property ID:', {{ $property->id }});
+console.log('Property Name:', '{{ $property->name }}');
+console.log('Property Status:', {{ $property->status }});
+console.log('Property Deleted At:', '{{ $property->deleted_at }}');
+console.log('PHP availableUnits count:', {{ $availableUnits->count() }});
+console.log('PHP allUnits count:', {{ $allUnits->count() }});
+console.log('PHP unitsForJS count:', {{ $unitsForJS->count() }});
+@if($allUnits->count() > 0)
+    console.log('All units statuses:', {!! json_encode($allUnits->pluck('status', 'id')) !!});
+    console.log('All units details:', {!! json_encode($allUnits->map(function($unit) {
+        return [
+            'id' => $unit->id,
+            'code' => $unit->code,
+            'status' => $unit->status,
+            'deleted_at' => $unit->deleted_at
+        ];
+    })) !!});
+@endif
+console.log('=== END DEBUG INFO ===');
+
+@php
+    // Debug: Try to create the data step by step
+    $jsData = [];
+    $processedCount = 0;
+    foreach($unitsForJS as $unit) {
+        try {
+            $processedCount++;
+            $unitData = [
+                'id' => $unit->id,
+                'code' => $unit->code,
+                'area_m2' => $unit->area_m2,
+                'max_occupancy' => $unit->max_occupancy,
+                'floor' => $unit->floor,
+                'unit_type' => $unit->unit_type,
+                'base_rent' => $unit->base_rent,
+                'deposit_amount' => $unit->deposit_amount,
+                'note' => $unit->note,
+                'status' => $unit->status,
+                'images' => [],
+                'amenities' => []
+            ];
+            
+            // Handle images safely
+            if($unit->images && is_array($unit->images)) {
+                $unitData['images'] = array_map(function($image) { 
+                    return \Storage::url($image); 
+                }, $unit->images);
+            }
+            
+            // Handle amenities safely
+            if($unit->amenities) {
+                $unitData['amenities'] = $unit->amenities->map(function($amenity) {
+                    return ['id' => $amenity->id, 'name' => $amenity->name];
+                })->toArray();
+            }
+            
+            $jsData[] = $unitData;
+        } catch(\Exception $e) {
+            \Log::error('Error processing unit ' . $unit->id . ': ' . $e->getMessage());
+        }
+    }
+@endphp
+
+// Debug: Log processing info
+console.log('Units to process:', {{ $unitsForJS->count() }});
+console.log('Units processed:', {{ $processedCount }});
+console.log('JS data created:', {{ count($jsData) }});
+
+window.availableUnitsData = {!! json_encode($jsData) !!};
+
+// Debug: Log the processed data
+console.log('Processed JS data count:', {{ count($jsData) }});
+console.log('Processed JS data:', {!! json_encode($jsData) !!});
+
+// Ensure it's always an array
+if (!Array.isArray(window.availableUnitsData)) {
+    console.error('Failed to load units data, initializing empty array');
+    window.availableUnitsData = [];
+}
+
+// Debug: Log the loaded data
+console.log('Loaded availableUnitsData:', window.availableUnitsData);
+console.log('Number of units:', window.availableUnitsData.length);
 
 // Image slider (if multiple images)
 document.addEventListener('DOMContentLoaded', function() {
@@ -1929,6 +2462,35 @@ document.addEventListener('DOMContentLoaded', function() {
             slides[currentSlide].classList.add('active');
         }, 5000);
     }
+
+    // Show success notification if booking was successful
+    @if(request('booking_success'))
+        // Wait for notification system to load
+        setTimeout(() => {
+            if (window.Notify) {
+                window.Notify.toast({
+                    title: 'Đặt lịch xem phòng thành công!',
+                    message: 'Chúng tôi sẽ liên hệ lại để xác nhận lịch hẹn của bạn.' + 
+                        @if(request('viewing_id'))
+                            ' Mã lịch hẹn: #{{ request("viewing_id") }}'
+                        @endif,
+                    type: 'success',
+                    duration: 8000,
+                    showProgress: true,
+                    actions: [
+                        {
+                            text: 'Xem chi tiết',
+                            type: 'success',
+                            icon: 'fas fa-eye',
+                            handler: function(toastId) {
+                                window.location.href = '{{ route("viewings.show", request("viewing_id")) }}';
+                            }
+                        }
+                    ]
+                });
+            }
+        }, 500);
+    @endif
 });
 </script>
 @endpush

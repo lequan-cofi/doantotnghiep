@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments Test Page</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        pre { 
+            background-color: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto; 
+            border: 1px solid #e9ecef;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .step { 
+            margin: 10px 0; 
+            padding: 15px; 
+            background: #f8f9fa; 
+            border-left: 4px solid #007bff; 
+            border-radius: 4px;
+        }
+        .filter-test { 
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap; 
+            margin: 10px 0; 
+        }
+        .filter-tab { 
+            padding: 8px 16px; 
+            border: 1px solid #d1d5db; 
+            background: white; 
+            color: #6b7280; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+        }
+        .filter-tab:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .filter-tab.active { 
+            background: #3b82f6; 
+            color: white; 
+            border-color: #3b82f6; 
+        }
+        .appointment-card { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            background: white; 
+            transition: all 0.3s ease;
+        }
+        .appointment-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .appointment-card[data-status="requested"] { border-left: 4px solid #f59e0b; }
+        .appointment-card[data-status="confirmed"] { border-left: 4px solid #10b981; }
+        .appointment-card[data-status="done"] { border-left: 4px solid #3b82f6; }
+        .appointment-card[data-status="cancelled"] { border-left: 4px solid #6b7280; }
+        .hidden { display: none !important; }
+        .debug-log { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            font-family: 'Courier New', monospace; 
+            font-size: 12px; 
+            max-height: 300px; 
+            overflow-y: auto; 
+            border: 1px solid #e9ecef;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-info:hover { background: #138496; }
+        .test-button {
+            background: #6c757d;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .test-button:hover {
+            background: #5a6268;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status-requested { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #d4edda; color: #155724; }
+        .status-done { background: #d1ecf1; color: #0c5460; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Appointments Test Page</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Test Instructions:</h3>
+            <ol>
+                <li>Open browser and go to <code>/tenant/appointments</code></li>
+                <li>Open Developer Tools (F12) → Console tab</li>
+                <li>Copy and paste the JavaScript test code below</li>
+                <li>Press Enter to run the tests</li>
+                <li>Check the console output for test results</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔧 JavaScript Test Code:</h3>
+            <pre id="testCode">// Copy this code and paste in browser console on /tenant/appointments page
+
+// JavaScript Test Code for Appointments Page
+console.log("=== APPOINTMENTS AUTOMATION TEST ===");
+
+// Test results storage
+const testResults = {
+    total: 0,
+    passed: 0,
+    failed: 0,
+    errors: []
+};
+
+function logTest(testName, passed, message = '') {
+    testResults.total++;
+    if (passed) {
+        testResults.passed++;
+        console.log(`✅ PASS: ${testName}`);
+    } else {
+        testResults.failed++;
+        testResults.errors.push(`${testName}: ${message}`);
+        console.log(`❌ FAIL: ${testName} - ${message}`);
+    }
+    
+    if (message) {
+        console.log(`   📝 ${message}`);
+    }
+    console.log('');
+}
+
+// Test 1: Check if elements exist
+function testElementsExist() {
+    console.log("🔍 Testing elements exist...");
+    
+    const filterTabs = document.querySelectorAll(".filter-tab");
+    const appointmentCards = document.querySelectorAll(".appointment-card");
+    const markCompletedButtons = document.querySelectorAll("[onclick*='markCompleted']");
+    const cancelButtons = document.querySelectorAll("[onclick*='cancelAppointment']");
+    
+    console.log(`Filter tabs found: ${filterTabs.length}`);
+    console.log(`Appointment cards found: ${appointmentCards.length}`);
+    console.log(`Mark completed buttons found: ${markCompletedButtons.length}`);
+    console.log(`Cancel buttons found: ${cancelButtons.length}`);
+    
+    logTest("Filter tabs exist", filterTabs.length > 0, `Found ${filterTabs.length} filter tabs`);
+    logTest("Appointment cards exist", appointmentCards.length > 0, `Found ${appointmentCards.length} appointment cards`);
+    logTest("Mark completed buttons exist", markCompletedButtons.length > 0, `Found ${markCompletedButtons.length} mark completed buttons`);
+    logTest("Cancel buttons exist", cancelButtons.length > 0, `Found ${cancelButtons.length} cancel buttons`);
+    
+    return {
+        filterTabs: filterTabs.length > 0,
+        appointmentCards: appointmentCards.length > 0,
+        markCompletedButtons: markCompletedButtons.length > 0,
+        cancelButtons: cancelButtons.length > 0
+    };
+}
+
+// Test 2: Test filter functionality
+function testFilterFunctionality() {
+    console.log("🔍 Testing filter functionality...");
+    
+    const filterTabs = document.querySelectorAll(".filter-tab");
+    const appointmentCards = document.querySelectorAll(".appointment-card");
+    
+    if (filterTabs.length === 0) {
+        logTest("Filter tabs available", false, "No filter tabs found");
+        return false;
+    }
+    
+    if (appointmentCards.length === 0) {
+        logTest("Appointment cards available", false, "No appointment cards found");
+        return false;
+    }
+    
+    // Test each filter tab
+    const filterStatuses = ['all', 'requested', 'confirmed', 'done', 'cancelled'];
+    let filterTestsPassed = 0;
+    
+    filterStatuses.forEach(status => {
+        const tab = document.querySelector(`[data-status="${status}"]`);
+        if (tab) {
+            logTest(`Filter tab '${status}' exists`, true, `Filter tab for status '${status}' found`);
+            filterTestsPassed++;
+        } else {
+            logTest(`Filter tab '${status}' exists`, false, `Filter tab for status '${status}' not found`);
+        }
+    });
+    
+    // Test filterCards function
+    if (typeof window.filterCards === "function") {
+        logTest("filterCards function exists", true, "Global filterCards function is available");
+    } else {
+        logTest("filterCards function exists", false, "Global filterCards function not found");
+    }
+    
+    return filterTestsPassed === filterStatuses.length;
+}
+
+// Test 3: Test button functionality
+function testButtonFunctionality() {
+    console.log("🔘 Testing button functionality...");
+    
+    // Test markCompleted function
+    if (typeof markCompleted === "function") {
+        logTest("markCompleted function exists", true, "markCompleted function is available");
+    } else {
+        logTest("markCompleted function exists", false, "markCompleted function not found");
+    }
+    
+    // Test cancelAppointment function
+    if (typeof cancelAppointment === "function") {
+        logTest("cancelAppointment function exists", true, "cancelAppointment function is available");
+    } else {
+        logTest("cancelAppointment function exists", false, "cancelAppointment function not found");
+    }
+    
+    // Test updateAppointmentStatus function
+    if (typeof updateAppointmentStatus === "function") {
+        logTest("updateAppointmentStatus function exists", true, "updateAppointmentStatus function is available");
+    } else {
+        logTest("updateAppointmentStatus function exists", false, "updateAppointmentStatus function not found");
+    }
+    
+    // Test showNotification function
+    if (typeof showNotification === "function") {
+        logTest("showNotification function exists", true, "showNotification function is available");
+    } else {
+        logTest("showNotification function exists", false, "showNotification function not found");
+    }
+    
+    return true;
+}
+
+// Test 4: Test notification system
+function testNotificationSystem() {
+    console.log("💬 Testing notification system...");
+    
+    // Check if Notify is available
+    if (typeof window.Notify !== "undefined") {
+        logTest("window.Notify is available", true, "Notification system is loaded");
+        
+        // Test toast method
+        if (typeof window.Notify.toast === "function") {
+            logTest("window.Notify.toast method exists", true, "Toast method is available");
+        } else {
+            logTest("window.Notify.toast method exists", false, "Toast method not found");
+        }
+        
+        // Test confirm method
+        if (typeof window.Notify.confirm === "function") {
+            logTest("window.Notify.confirm method exists", true, "Confirm method is available");
+        } else {
+            logTest("window.Notify.confirm method exists", false, "Confirm method not found");
+        }
+        
+        // Test confirmMarkCompleted method
+        if (typeof window.Notify.confirmMarkCompleted === "function") {
+            logTest("window.Notify.confirmMarkCompleted method exists", true, "confirmMarkCompleted method is available");
+        } else {
+            logTest("window.Notify.confirmMarkCompleted method exists", false, "confirmMarkCompleted method not found");
+        }
+        
+    } else {
+        logTest("window.Notify is available", false, "Notification system not loaded");
+    }
+    
+    return true;
+}
+
+// Test 5: Test popup interactions
+function testPopupInteractions() {
+    console.log("💬 Testing popup interactions...");
+    
+    // Test mark completed popup
+    const markCompletedButtons = document.querySelectorAll("[onclick*='markCompleted']");
+    if (markCompletedButtons.length > 0) {
+        console.log(`Found ${markCompletedButtons.length} mark completed buttons`);
+        
+        // Test first button (don't actually click it)
+        const firstButton = markCompletedButtons[0];
+        const onclick = firstButton.getAttribute("onclick");
+        if (onclick && onclick.includes("markCompleted")) {
+            logTest("Mark completed button onclick", true, "Button has correct onclick attribute");
+        } else {
+            logTest("Mark completed button onclick", false, "Button onclick attribute is incorrect");
+        }
+    } else {
+        logTest("Mark completed buttons found", false, "No mark completed buttons found");
+    }
+    
+    // Test cancel popup
+    const cancelButtons = document.querySelectorAll("[onclick*='cancelAppointment']");
+    if (cancelButtons.length > 0) {
+        console.log(`Found ${cancelButtons.length} cancel buttons`);
+        
+        // Test first button (don't actually click it)
+        const firstButton = cancelButtons[0];
+        const onclick = firstButton.getAttribute("onclick");
+        if (onclick && onclick.includes("cancelAppointment")) {
+            logTest("Cancel button onclick", true, "Button has correct onclick attribute");
+        } else {
+            logTest("Cancel button onclick", false, "Button onclick attribute is incorrect");
+        }
+    } else {
+        logTest("Cancel buttons found", false, "No cancel buttons found");
+    }
+    
+    return true;
+}
+
+// Test 6: Test specific functionality
+function testSpecificFunctionality() {
+    console.log("🎯 Testing specific functionality...");
+    
+    // Test filter for 'done' status
+    if (typeof window.filterCards === "function") {
+        console.log("Testing filter for 'done' status...");
+        try {
+            window.filterCards('done');
+            logTest("Filter 'done' status works", true, "Successfully filtered for done status");
+        } catch (error) {
+            logTest("Filter 'done' status works", false, `Error: ${error.message}`);
+        }
+    }
+    
+    // Test filter for 'cancelled' status
+    if (typeof window.filterCards === "function") {
+        console.log("Testing filter for 'cancelled' status...");
+        try {
+            window.filterCards('cancelled');
+            logTest("Filter 'cancelled' status works", true, "Successfully filtered for cancelled status");
+        } catch (error) {
+            logTest("Filter 'cancelled' status works", false, `Error: ${error.message}`);
+        }
+    }
+    
+    // Test notification system
+    if (typeof window.Notify !== "undefined" && typeof window.Notify.toast === "function") {
+        console.log("Testing notification system...");
+        try {
+            window.Notify.toast({
+                title: "Test",
+                message: "This is a test notification",
+                type: "info",
+                duration: 2000
+            });
+            logTest("Notification system works", true, "Successfully showed test notification");
+        } catch (error) {
+            logTest("Notification system works", false, `Error: ${error.message}`);
+        }
+    }
+}
+
+// Run all tests
+function runAllTests() {
+    console.log("🚀 Running all tests...");
+    
+    const results = {
+        elementsExist: testElementsExist(),
+        filterFunctionality: testFilterFunctionality(),
+        buttonFunctionality: testButtonFunctionality(),
+        notificationSystem: testNotificationSystem(),
+        popupInteractions: testPopupInteractions()
+    };
+    
+    console.log("📊 Test Results:", results);
+    
+    // Generate final report
+    console.log("\n📊 Final Test Report");
+    console.log("===================");
+    console.log(`Total Tests: ${testResults.total}`);
+    console.log(`Passed: ${testResults.passed}`);
+    console.log(`Failed: ${testResults.failed}`);
+    console.log(`Success Rate: ${((testResults.passed / testResults.total) * 100).toFixed(2)}%`);
+    
+    if (testResults.errors.length > 0) {
+        console.log("\n❌ Failed Tests:");
+        testResults.errors.forEach(error => {
+            console.log(`   - ${error}`);
+        });
+    }
+    
+    return results;
+}
+
+// Auto-run tests
+console.log("Starting automated tests...");
+runAllTests();
+testSpecificFunctionality();
+
+console.log("\n✅ All tests completed!");
+console.log("📋 Manual Test Steps:");
+console.log("1. Click 'Hoàn thành' filter tab");
+console.log("2. Click 'Đã hủy' filter tab");
+console.log("3. Click 'Đã xem' button on a confirmed appointment");
+console.log("4. Click 'Hủy lịch' button on a requested appointment");
+console.log("5. Check if popups and notifications work correctly");</pre>
+            <button class="btn btn-primary" onclick="copyTestCode()">📋 Copy Test Code</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 Manual Test Steps:</h3>
+            <div class="step">
+                <strong>1. Test Filter Functionality:</strong>
+                <ul>
+                    <li>Click "Hoàn thành" tab → should show only done appointments</li>
+                    <li>Click "Đã hủy" tab → should show only cancelled appointments</li>
+                    <li>Click "Tất cả" tab → should show all appointments</li>
+                </ul>
+            </div>
+            <div class="step">
+                <strong>2. Test Mark Completed Button:</strong>
+                <ul>
+                    <li>Find a confirmed appointment</li>
+                    <li>Click "Đã xem" button</li>
+                    <li>Should show confirmation popup</li>
+                    <li>Click "Đã xem" in popup</li>
+                    <li>Should show success notification</li>
+                </ul>
+            </div>
+            <div class="step">
+                <strong>3. Test Cancel Button:</strong>
+                <ul>
+                    <li>Find a requested or confirmed appointment</li>
+                    <li>Click "Hủy lịch" button</li>
+                    <li>Should show cancel modal</li>
+                    <li>Enter reason and click "Xác nhận hủy"</li>
+                    <li>Should show success notification</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section warning">
+            <h3>⚠️ Common Issues to Check:</h3>
+            <ul>
+                <li><strong>Filter not working:</strong> Check if filterCards function is global</li>
+                <li><strong>Popup not showing:</strong> Check if window.Notify is loaded</li>
+                <li><strong>Button not working:</strong> Check if onclick functions exist</li>
+                <li><strong>API errors:</strong> Check network tab for failed requests</li>
+                <li><strong>CSS issues:</strong> Check if styles are loaded correctly</li>
+            </ul>
+        </div>
+        
+        <div class="test-section info">
+            <h3>📊 Expected Test Results:</h3>
+            <ul>
+                <li><strong>Filter tabs exist:</strong> Should find 5 filter tabs (all, requested, confirmed, done, cancelled)</li>
+                <li><strong>Appointment cards exist:</strong> Should find at least 1 appointment card</li>
+                <li><strong>Mark completed buttons exist:</strong> Should find buttons for confirmed appointments</li>
+                <li><strong>Cancel buttons exist:</strong> Should find buttons for requested/confirmed appointments</li>
+                <li><strong>filterCards function exists:</strong> Should be available as window.filterCards</li>
+                <li><strong>markCompleted function exists:</strong> Should be available globally</li>
+                <li><strong>cancelAppointment function exists:</strong> Should be available globally</li>
+                <li><strong>window.Notify is available:</strong> Should be loaded from notifications.js</li>
+                <li><strong>Filter 'done' status works:</strong> Should filter appointments correctly</li>
+                <li><strong>Filter 'cancelled' status works:</strong> Should filter appointments correctly</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function copyTestCode() {
+            const testCode = document.getElementById("testCode").textContent;
+            navigator.clipboard.writeText(testCode).then(() => {
+                alert("✅ Test code copied to clipboard!\n\nNow go to /tenant/appointments page and paste in console.");
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert("❌ Failed to copy. Please manually select and copy the code.");
+            });
+        }
+    </script>
+</body>
+</html>

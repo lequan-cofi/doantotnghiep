@@ -158,7 +158,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('tenant.contracts') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.contracts.index') }}" class="quick-access-card">
                                 <div class="card-icon contracts">
                                     <i class="fas fa-file-signature"></i>
                                 </div>
@@ -173,7 +173,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('tenant.invoices') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.invoices.index') }}" class="quick-access-card">
                                 <div class="card-icon invoices">
                                     <i class="fas fa-receipt"></i>
                                 </div>
@@ -323,7 +323,7 @@
                                 </div>
                             </div>
                             <div class="rental-actions">
-                                <a href="{{ route('tenant.contracts') }}" class="btn btn-outline-primary btn-sm">
+                                <a href="{{ route('tenant.contracts.index') }}" class="btn btn-outline-primary btn-sm">
                                     <i class="fas fa-file-contract me-1"></i>Xem hợp đồng
                                 </a>
                                 <button class="btn btn-outline-success btn-sm" onclick="showComingSoon('Gia hạn')">

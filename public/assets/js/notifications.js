@@ -374,6 +374,36 @@ if (typeof NotificationSystem === 'undefined') {
     }
 
     /**
+     * Quick cancel confirmation for appointments
+     */
+    confirmCancelAppointment(onConfirm) {
+        return this.confirm({
+            title: 'Xác nhận hủy lịch hẹn',
+            message: 'Bạn có chắc chắn muốn hủy lịch hẹn này?',
+            details: 'Lịch hẹn sẽ được hủy và không thể khôi phục.',
+            type: 'warning',
+            confirmText: 'Hủy lịch',
+            cancelText: 'Không',
+            onConfirm
+        });
+    }
+
+    /**
+     * Quick mark completed confirmation
+     */
+    confirmMarkCompleted(onConfirm) {
+        return this.confirm({
+            title: 'Xác nhận hoàn thành',
+            message: 'Bạn có chắc chắn đã xem phòng này chưa?',
+            details: 'Lịch hẹn sẽ được đánh dấu là hoàn thành.',
+            type: 'info',
+            confirmText: 'Đã xem',
+            cancelText: 'Chưa',
+            onConfirm
+        });
+    }
+
+    /**
      * Quick save confirmation
      */
     confirmSave(onConfirm) {

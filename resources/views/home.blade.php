@@ -160,7 +160,7 @@
 
         <div class="properties-grid">
             @forelse($featuredProperties as $property)
-            <div class="property-card" onclick="window.location.href='{{ route('property.detail', $property['id']) }}'">
+            <div class="property-card" onclick="window.location.href='{{ route('property.show', $property['id']) }}'">
                 <div class="property-image">
                     <img src="{{ $property['image'] }}" alt="{{ $property['title'] }}" loading="lazy">
                     <div class="property-badges">
@@ -178,8 +178,22 @@
                     <h3 class="property-title">{{ $property['title'] }}</h3>
                     
                     <div class="property-location">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>{{ $property['location'] }}</span>
+                        @if(isset($property['location2025']) && $property['location2025'])
+                            <i class="fas fa-map-marker-alt text-success"></i>
+                            <div class="address-content">
+                                <span class="address-text">{{ $property['location2025'] }}</span>
+                                <small class="address-label">Địa chỉ mới (2025)</small>
+                            </div>
+                        @elseif(isset($property['location']) && $property['location'])
+                            <i class="fas fa-map-marker-alt text-warning"></i>
+                            <div class="address-content">
+                                <span class="address-text">{{ $property['location'] }}</span>
+                                <small class="address-label">Địa chỉ cũ</small>
+                            </div>
+                        @else
+                            <i class="fas fa-exclamation-triangle text-muted"></i>
+                            <span>Chưa có địa chỉ</span>
+                        @endif
                     </div>
                     
                     <div class="property-details">
@@ -711,11 +725,36 @@
 
 .property-location {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     margin-bottom: 15px;
     color: #666;
     font-size: 14px;
+}
+
+.address-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.address-text {
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.address-label {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.text-success + .address-content .address-label {
+    color: #28a745;
+}
+
+.text-warning + .address-content .address-label {
+    color: #ffc107;
 }
 
 .property-details {

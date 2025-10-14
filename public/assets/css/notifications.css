@@ -217,6 +217,55 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
+/* Unified Modal Styles for Appointments */
+.modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 20px 24px 16px;
+    background: #f8f9fa;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-title {
+    font-weight: 600;
+    font-size: 18px;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-body {
+    padding: 20px 24px;
+    color: #374151;
+}
+
+.modal-footer {
+    border-top: 1px solid #e5e7eb;
+    padding: 16px 24px 20px;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+    gap: 8px;
+}
+
+.modal-footer .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    min-width: 80px;
+    transition: all 0.2s ease;
+}
+
+.modal-footer .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 #confirmation-modal .modal-header {
     border-bottom: 1px solid #f0f0f0;
     padding: 20px 24px 16px;

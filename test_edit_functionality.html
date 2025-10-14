@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Edit Functionality</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test Edit Functionality</h1>
+    
+    <div class="test-section info">
+        <h3>Test Steps:</h3>
+        <ol>
+            <li>Open your Laravel app in browser</li>
+            <li>Login as a tenant user</li>
+            <li>Go to /tenant/appointments</li>
+            <li>Open Developer Tools (F12)</li>
+            <li>Click "Sửa lịch" button on any appointment</li>
+            <li>Check console for logs</li>
+            <li>Verify form is filled correctly</li>
+            <li>Modify data and save</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected Console Logs:</h3>
+        <pre>
+Edit appointment called with ID: [ID]
+API response: {success: true, data: {...}}
+Form filled with data: {schedule_date: "...", schedule_time: "...", note: "..."}
+Save edit data: {date: "...", startTime: "...", note: "..."}
+Sending update request to: /tenant/appointments/[ID]/update
+        </pre>
+    </div>
+
+    <div class="test-section">
+        <h3>API Endpoints:</h3>
+        <ul>
+            <li><strong>GET</strong> /tenant/appointments/{id}/edit-data - Get viewing data for editing</li>
+            <li><strong>PUT</strong> /tenant/appointments/{id}/update - Update viewing data</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected API Response (GET):</h3>
+        <pre>
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "schedule_date": "2024-01-15",
+        "schedule_time": "14:30",
+        "note": "Test note",
+        "status": "requested"
+    }
+}
+        </pre>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected API Response (PUT):</h3>
+        <pre>
+{
+    "success": true,
+    "message": "Đã cập nhật lịch hẹn thành công."
+}
+        </pre>
+    </div>
+
+    <div class="test-section">
+        <h3>Troubleshooting:</h3>
+        <ul>
+            <li>Check if user is authenticated</li>
+            <li>Check if user has tenant role</li>
+            <li>Check CSRF token in requests</li>
+            <li>Check Network tab for API calls</li>
+            <li>Check Console for JavaScript errors</li>
+        </ul>
+    </div>
+
+    <script>
+        // Test function to simulate the edit functionality
+        function testEditFunctionality() {
+            console.log('=== TESTING EDIT FUNCTIONALITY ===');
+            
+            // Simulate API call
+            const testData = {
+                success: true,
+                data: {
+                    id: 1,
+                    schedule_date: '2024-01-15',
+                    schedule_time: '14:30',
+                    note: 'Test note',
+                    status: 'requested'
+                }
+            };
+            
+            console.log('Simulated API response:', testData);
+            
+            // Simulate form filling
+            console.log('Form would be filled with:');
+            console.log('- Date:', testData.data.schedule_date);
+            console.log('- Time:', testData.data.schedule_time);
+            console.log('- Note:', testData.data.note);
+            
+            console.log('=== TEST COMPLETED ===');
+        }
+        
+        // Run test when page loads
+        window.onload = function() {
+            console.log('Test page loaded. Run testEditFunctionality() to test.');
+        };
+    </script>
+</body>
+</html>

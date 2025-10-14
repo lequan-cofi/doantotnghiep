@@ -170,7 +170,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('tenant.invoices') }}" class="btn btn-danger btn-sm">
+                        <a href="{{ route('tenant.invoices.index') }}" class="btn btn-danger btn-sm">
                             <i class="fas fa-credit-card me-1"></i>Thanh toán ngay
                         </a>
                         <button class="btn btn-outline-primary btn-sm" onclick="viewInvoiceDetail('HD2023001')">
@@ -210,7 +210,7 @@
                         </span>
                     </div>
                     <div class="notification-actions">
-                        <a href="{{ route('tenant.contracts') }}" class="btn btn-warning btn-sm">
+                        <a href="{{ route('tenant.contracts.index') }}" class="btn btn-warning btn-sm">
                             <i class="fas fa-refresh me-1"></i>Gia hạn ngay
                         </a>
                         <a href="tel:0912345678" class="btn btn-outline-success btn-sm">

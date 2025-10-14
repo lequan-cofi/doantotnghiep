@@ -85,7 +85,8 @@ class Property extends Model
     {
         return $this->belongsToMany(User::class, 'properties_user', 'property_id', 'user_id')
             ->withPivot('role_key', 'assigned_at', 'updated_by', 'deleted_by')
-            ->withTimestamps();
+            ->withTimestamps()
+            ->whereNull('properties_user.deleted_at');
     }
 
     // Scopes
@@ -156,6 +157,40 @@ class Property extends Model
         
         $occupiedUnits = $this->getOccupiedUnitsCount();
         return round(($occupiedUnits / $this->total_rooms) * 100, 2);
+    }
+
+    /**
+     * Get full address string from location (backward compatible)
+     */
+    public function getFullAddressAttribute()
+    {
+        if (!$this->location) {
+            return 'Địa chỉ chưa cập nhật';
+        }
+
+        $addressParts = [];
+        
+        if ($this->location->street) {
+            $addressParts[] = $this->location->street;
+        }
+        
+        if ($this->location->ward) {
+            $addressParts[] = $this->location->ward;
+        }
+        
+        if ($this->location->district) {
+            $addressParts[] = $this->location->district;
+        }
+        
+        if ($this->location->city) {
+            $addressParts[] = $this->location->city;
+        }
+        
+        if ($this->location->country && $this->location->country !== 'Vietnam') {
+            $addressParts[] = $this->location->country;
+        }
+
+        return !empty($addressParts) ? implode(', ', $addressParts) : 'Địa chỉ chưa cập nhật';
     }
 
     // Accessor for formatted occupancy rate

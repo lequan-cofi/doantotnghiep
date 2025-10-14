@@ -66,6 +66,26 @@
 <!-- Results Section -->
 <section class="results-section">
     <div class="container">
+        @if(session('booking_success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle"></i>
+                <strong>Đặt lịch thành công!</strong> 
+                {{ session('message') }}
+                @if(session('viewing_id'))
+                    <br><small>Mã lịch hẹn: #{{ session('viewing_id') }}</small>
+                @endif
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+        
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Lỗi!</strong> {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+        
         <div class="section-header">
             <h2>Danh Sách Bất Động Sản</h2>
             <p>Tìm thấy {{ $properties->total() }} bất động sản phù hợp với yêu cầu của bạn</p>
@@ -87,7 +107,7 @@
                             @endif
                             <span class="badge type">{{ $property->propertyType->name ?? 'N/A' }}</span>
                         </div>
-                        <button class="favorite-btn" onclick="event.stopPropagation()">
+                        <button class="favorite-btn" onclick="event.stopPropagation(); toggleFavorite({{ $property->id }})">
                             <i class="fas fa-heart"></i>
                         </button>
                         <div class="image-indicators">
@@ -99,14 +119,22 @@
                     <div class="property-content">
                         <h3>{{ $property->name }}</h3>
                         <div class="property-location">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>
-                                @if($property->location2025)
-                                    {{ $property->location2025->street }}, {{ $property->location2025->ward }}, {{ $property->location2025->city }}
-                                @else
-                                    Địa chỉ chưa cập nhật
-                                @endif
-                            </span>
+                            @if($property->location2025)
+                                <i class="fas fa-map-marker-alt text-success"></i>
+                                <div class="address-content">
+                                    <span class="address-text">{{ $property->new_address }}</span>
+                                    <small class="address-label">Địa chỉ mới (2025)</small>
+                                </div>
+                            @elseif($property->location)
+                                <i class="fas fa-map-marker-alt text-warning"></i>
+                                <div class="address-content">
+                                    <span class="address-text">{{ $property->old_address }}</span>
+                                    <small class="address-label">Địa chỉ cũ</small>
+                                </div>
+                            @else
+                                <i class="fas fa-exclamation-triangle text-muted"></i>
+                                <span>Chưa có địa chỉ</span>
+                            @endif
                         </div>
                         <div class="property-details">
                             <div class="detail">
@@ -384,11 +412,36 @@
 
 .property-location {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     margin-bottom: 15px;
     color: #666;
     font-size: 14px;
+}
+
+.address-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.address-text {
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.address-label {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.text-success + .address-content .address-label {
+    color: #28a745;
+}
+
+.text-warning + .address-content .address-label {
+    color: #ffc107;
 }
 
 .property-details {
@@ -476,6 +529,51 @@
     margin-bottom: 30px;
 }
 
+/* Success Alert */
+.alert-success {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.1);
+}
+
+.alert-success i {
+    color: #28a745;
+    margin-right: 10px;
+}
+
+.alert-success strong {
+    font-weight: 700;
+}
+
+.alert-success small {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Error Alert */
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+}
+
+.alert-danger i {
+    color: #dc3545;
+    margin-right: 10px;
+}
+
+.alert-danger strong {
+    font-weight: 700;
+}
+
 @media (max-width: 768px) {
     .form-row {
         grid-template-columns: 1fr;
@@ -492,4 +590,75 @@
     }
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+// Property index functions with notification system
+function toggleFavorite(propertyId) {
+    if (window.Notify && typeof window.Notify.confirm === 'function') {
+        window.Notify.confirm({
+            title: 'Thêm vào yêu thích',
+            message: 'Bạn có muốn thêm bất động sản này vào danh sách yêu thích?',
+            type: 'info',
+            confirmText: 'Thêm',
+            cancelText: 'Hủy',
+            onConfirm: () => {
+                // Simulate adding to favorites
+                console.log('Added property', propertyId, 'to favorites');
+                alert('Đã thêm vào danh sách yêu thích!');
+            },
+            onCancel: () => {
+                console.log('User cancelled adding to favorites');
+            }
+        });
+    } else {
+        // Fallback
+        alert('Chức năng yêu thích sẽ được tích hợp sau');
+    }
+}
+
+// Show success notification if redirected from booking
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we have success message from booking
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('booking_success') === '1') {
+        const viewingId = urlParams.get('viewing_id');
+        if (window.Notify && typeof window.Notify.toast === 'function') {
+            window.Notify.toast({
+                title: 'Đặt lịch thành công!',
+                message: 'Chúng tôi sẽ liên hệ lại để xác nhận lịch hẹn của bạn.' + (viewingId ? ` Mã lịch hẹn: #${viewingId}` : ''),
+                type: 'success',
+                duration: 8000,
+                showProgress: true
+            });
+        } else {
+            // Fallback
+            alert('Đặt lịch thành công! Chúng tôi sẽ liên hệ lại để xác nhận lịch hẹn của bạn.' + (viewingId ? ` Mã lịch hẹn: #${viewingId}` : ''));
+        }
+    }
+});
+
+// Property card click handler with confirmation
+function viewProperty(propertyId) {
+    if (window.Notify && typeof window.Notify.confirm === 'function') {
+        window.Notify.confirm({
+            title: 'Xem chi tiết bất động sản',
+            message: 'Bạn có muốn xem chi tiết bất động sản này?',
+            type: 'info',
+            confirmText: 'Xem',
+            cancelText: 'Hủy',
+            onConfirm: () => {
+                window.location.href = `/properties/${propertyId}`;
+            },
+            onCancel: () => {
+                console.log('User cancelled viewing property');
+            }
+        });
+    } else {
+        // Fallback
+        window.location.href = `/properties/${propertyId}`;
+    }
+}
+</script>
 @endpush

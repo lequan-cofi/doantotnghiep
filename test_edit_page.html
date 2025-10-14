@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Edit Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .step { margin: 10px 0; padding: 10px; background: #f8f9fa; border-left: 4px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>Test Edit Page Functionality</h1>
+    
+    <div class="test-section info">
+        <h3>✅ Đã hoàn thành:</h3>
+        <ul>
+            <li>✅ Tạo method edit() trong ViewingController</li>
+            <li>✅ Tạo route /tenant/appointments/{id}/edit</li>
+            <li>✅ Tạo view edit.blade.php riêng biệt</li>
+            <li>✅ Cập nhật link từ appointments sang edit page</li>
+            <li>✅ Xóa modal edit cũ</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Cấu trúc mới:</h3>
+        <div class="step">
+            <strong>1. Route:</strong> GET /tenant/appointments/{id}/edit
+        </div>
+        <div class="step">
+            <strong>2. Controller:</strong> ViewingController@edit
+        </div>
+        <div class="step">
+            <strong>3. View:</strong> tenant.appointments.edit
+        </div>
+        <div class="step">
+            <strong>4. Link:</strong> Từ appointments page → edit page
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>📋 Test Steps:</h3>
+        <ol>
+            <li>Mở browser và vào <code>/tenant/appointments</code></li>
+            <li>Đăng nhập với tài khoản tenant</li>
+            <li>Tìm một lịch hẹn có status "requested"</li>
+            <li>Click nút "Sửa lịch" (màu vàng)</li>
+            <li>Kiểm tra xem có chuyển đến trang edit không</li>
+            <li>Kiểm tra form đã được điền đúng thông tin chưa</li>
+            <li>Thay đổi thông tin và click "Lưu thay đổi"</li>
+            <li>Kiểm tra xem có chuyển về trang appointments không</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>🔍 Kiểm tra:</h3>
+        <ul>
+            <li><strong>URL:</strong> /tenant/appointments/{id}/edit</li>
+            <li><strong>Form fields:</strong> schedule_date, schedule_time, note</li>
+            <li><strong>Validation:</strong> Ngày và giờ phải trong tương lai</li>
+            <li><strong>API call:</strong> PUT /tenant/appointments/{id}/update</li>
+            <li><strong>Redirect:</strong> Về /tenant/appointments sau khi lưu</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🐛 Troubleshooting:</h3>
+        <ul>
+            <li>Kiểm tra user có quyền tenant không</li>
+            <li>Kiểm tra viewing có status "requested" không</li>
+            <li>Kiểm tra CSRF token</li>
+            <li>Kiểm tra console logs</li>
+            <li>Kiểm tra network requests</li>
+        </ul>
+    </div>
+
+    <div class="test-section success">
+        <h3>✨ Ưu điểm của cách tiếp cận mới:</h3>
+        <ul>
+            <li>🎯 <strong>Đơn giản hơn:</strong> Không cần modal phức tạp</li>
+            <li>🔒 <strong>Bảo mật hơn:</strong> Kiểm tra quyền truy cập rõ ràng</li>
+            <li>📱 <strong>Responsive:</strong> Trang riêng dễ responsive</li>
+            <li>🧪 <strong>Dễ test:</strong> Có thể test riêng từng phần</li>
+            <li>🔧 <strong>Dễ maintain:</strong> Code tách biệt rõ ràng</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>📝 Expected Behavior:</h3>
+        <pre>
+1. Click "Sửa lịch" → Redirect to /tenant/appointments/{id}/edit
+2. Form loads with current data
+3. User modifies data
+4. Click "Lưu thay đổi" → AJAX call to update
+5. Success → Redirect to /tenant/appointments
+6. Error → Show error message
+        </pre>
+    </div>
+
+    <script>
+        console.log('=== EDIT PAGE TEST ===');
+        console.log('Test page loaded successfully');
+        console.log('Ready to test edit functionality');
+        
+        // Simulate test
+        function simulateTest() {
+            console.log('1. User clicks "Sửa lịch" button');
+            console.log('2. Redirects to /tenant/appointments/{id}/edit');
+            console.log('3. Form loads with current viewing data');
+            console.log('4. User modifies schedule_date, schedule_time, note');
+            console.log('5. User clicks "Lưu thay đổi"');
+            console.log('6. AJAX call to PUT /tenant/appointments/{id}/update');
+            console.log('7. Success response → Redirect to /tenant/appointments');
+            console.log('=== TEST COMPLETED ===');
+        }
+        
+        window.onload = function() {
+            console.log('Run simulateTest() to see expected flow');
+        };
+    </script>
+</body>
+</html>

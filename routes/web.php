@@ -49,6 +49,16 @@ Route::get('/property/{id}', [\App\Http\Controllers\HomeController::class, 'prop
 
 /*
 |--------------------------------------------------------------------------
+| Booking Routes (Public - No authentication required)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('tenant')->name('tenant.')->group(function () {
+    Route::get('/booking/{id?}/{unit_id?}', [\App\Http\Controllers\ViewingController::class, 'booking'])->name('booking');
+    Route::post('/booking/{id?}', [\App\Http\Controllers\ViewingController::class, 'store'])->name('booking.store');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Authentication Routes
 |--------------------------------------------------------------------------
 */
@@ -488,6 +498,7 @@ Route::middleware('auth')->group(function () {
     | TENANT Routes (ensure.tenant)
     |--------------------------------------------------------------------------
     */
+
     Route::prefix('tenant')->name('tenant.')->middleware('ensure.tenant')->group(function () {
         // Dashboard
         Route::get('/dashboard', function () {
@@ -498,20 +509,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/profile', [\App\Http\Controllers\Tenant\ProfileController::class, 'index'])->name('profile');
         Route::get('/profile/edit', [\App\Http\Controllers\Tenant\ProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [\App\Http\Controllers\Tenant\ProfileController::class, 'update'])->name('profile.update');
-        
-        // Booking
-        Route::get('/booking/{id?}', function ($id = 1) {
-            return view('tenant.booking', compact('id'));
-        })->name('booking');
-
-        Route::post('/booking/{id?}', function ($id = 1) {
-            return response()->json(['success' => true, 'message' => 'Đặt lịch thành công!']);
-        })->name('booking.store');
-
-        // Appointments
-        Route::get('/appointments', function () {
-            return view('tenant.appointments');
-        })->name('appointments');
+        // Appointments - moved from public viewings to tenant-specific
+        Route::get('/appointments', [\App\Http\Controllers\ViewingController::class, 'appointments'])->name('appointments');
+        Route::get('/appointments/{id}', [\App\Http\Controllers\ViewingController::class, 'show'])->name('appointments.show');
+        Route::get('/appointments/{id}/edit', [\App\Http\Controllers\ViewingController::class, 'edit'])->name('appointments.edit');
+        Route::get('/appointments/{id}/edit-data', [\App\Http\Controllers\ViewingController::class, 'getForEdit'])->name('appointments.edit-data');
+        Route::post('/appointments/{id}/cancel', [\App\Http\Controllers\ViewingController::class, 'cancel'])->name('appointments.cancel');
+        Route::put('/appointments/{id}/update', [\App\Http\Controllers\ViewingController::class, 'update'])->name('appointments.update');
+        Route::put('/appointments/{id}/status', [\App\Http\Controllers\ViewingController::class, 'updateStatus'])->name('appointments.update-status');
 
         // Deposit
         Route::get('/deposit/{id?}', function ($id = 1) {
@@ -523,14 +528,15 @@ Route::middleware('auth')->group(function () {
         })->name('deposit.store');
 
         // Contracts
-        Route::get('/contracts', function () {
-            return view('tenant.contracts');
-        })->name('contracts');
+        Route::get('/contracts', [\App\Http\Controllers\Tenant\ContractController::class, 'index'])->name('contracts.index');
+        Route::get('/contracts/{id}', [\App\Http\Controllers\Tenant\ContractController::class, 'show'])->name('contracts.show');
 
         // Invoices
-        Route::get('/invoices', function () {
-            return view('tenant.invoices');
-        })->name('invoices');
+        Route::get('/invoices', [\App\Http\Controllers\Tenant\InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('/invoices/{id}', [\App\Http\Controllers\Tenant\InvoiceController::class, 'show'])->name('invoices.show');
+        Route::post('/invoices/{id}/pay', [\App\Http\Controllers\Tenant\InvoiceController::class, 'pay'])->name('invoices.pay');
+        Route::get('/invoices/{id}/download', [\App\Http\Controllers\Tenant\InvoiceController::class, 'download'])->name('invoices.download');
+        Route::get('/invoices/export', [\App\Http\Controllers\Tenant\InvoiceController::class, 'export'])->name('invoices.export');
 
         // Maintenance
         Route::get('/maintenance', function () {
@@ -582,20 +588,15 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('tenant.profile');
     });
 
-    Route::get('/booking/{id?}', function ($id = 1) {
-        return redirect()->route('tenant.booking', $id);
-    });
 
-    Route::get('/appointments', function () {
-        return redirect()->route('tenant.appointments');
-    });
+    
 
     Route::get('/contracts', function () {
-        return redirect()->route('tenant.contracts');
+        return redirect()->route('tenant.contracts.index');
     });
 
     Route::get('/invoices', function () {
-        return redirect()->route('tenant.invoices');
+        return redirect()->route('tenant.invoices.index');
     });
 
     Route::get('/maintenance', function () {
@@ -625,14 +626,15 @@ Route::prefix('viewings')->name('viewings.')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated Viewing Routes
+| Authenticated Viewing Routes (Legacy - kept for backward compatibility)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->prefix('viewings')->name('viewings.')->group(function () {
     Route::get('/my-viewings', [\App\Http\Controllers\ViewingController::class, 'myViewings'])->name('my-viewings');
-    Route::get('/appointments', [\App\Http\Controllers\ViewingController::class, 'appointments'])->name('appointments');
+    // Note: appointments routes moved to tenant.appointments for better organization
     Route::get('/{id}', [\App\Http\Controllers\ViewingController::class, 'show'])->name('show');
     Route::post('/{id}/cancel', [\App\Http\Controllers\ViewingController::class, 'cancel'])->name('cancel');
+    Route::put('/{id}/update', [\App\Http\Controllers\ViewingController::class, 'update'])->name('update');
 });
 
 /*
@@ -640,9 +642,10 @@ Route::middleware('auth')->prefix('viewings')->name('viewings.')->group(function
 | Booking Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
-    Route::get('/booking/{property_id?}/{unit_id?}', [\App\Http\Controllers\ViewingController::class, 'booking'])->name('booking');
-});
+// Redirect old booking routes to tenant booking routes
+Route::get('/booking/{id?}', function ($id = 1) {
+    return redirect()->route('tenant.booking', $id);
+})->name('booking.redirect');
 
 
 

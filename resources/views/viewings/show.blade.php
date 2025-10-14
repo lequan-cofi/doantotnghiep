@@ -2,20 +2,30 @@
 
 @section('title', 'Chi tiết lịch đặt')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/user/viewings-show.css') }}?v={{ time() }}">
+@endpush
+
 @section('content')
+<div class="show-container">
 <div class="container">
-    <div class="row">
-        <div class="col-12">
-            <div class="page-header">
-                <div class="page-header-content">
-                    <h1 class="page-title">
+        <!-- Header -->
+        <div class="show-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="header-content">
+                        <div class="header-icon">
                         <i class="fas fa-calendar-check"></i>
-                        Chi tiết lịch đặt
-                    </h1>
-                    <div class="page-actions">
-                        <a href="{{ route('viewings.my-viewings') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left"></i>
-                            Quay lại
+                        </div>
+                        <div>
+                            <h1 class="page-title">Chi tiết lịch đặt</h1>
+                            <p class="page-subtitle">Xem thông tin chi tiết về lịch hẹn xem phòng của bạn</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                        <a href="{{ route('tenant.appointments') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Quay lại
                         </a>
                     </div>
                 </div>
@@ -25,9 +35,9 @@
                 <!-- Main Content -->
                 <div class="col-lg-8">
                     <!-- Viewing Details -->
-                    <div class="card mb-4">
+                <div class="modern-card">
                         <div class="card-header">
-                            <h5 class="card-title mb-0">
+                        <h5 class="card-title">
                                 <i class="fas fa-info-circle"></i>
                                 Thông tin lịch đặt
                             </h5>
@@ -40,8 +50,12 @@
                                         <span class="info-value">#{{ $viewing->id }}</span>
                                     </div>
                                     <div class="info-item">
-                                        <label class="info-label">Trạng thái:</label>
-                                        <span class="badge {{ $viewing->getStatusBadgeClass() }} fs-6">
+                                    <label class="info-label">
+                                        <i class="fas fa-info-circle text-primary"></i>
+                                        Trạng thái:
+                                    </label>
+                                    <span class="status-badge-prominent" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);">
+                                        <i class="fas fa-clock me-1"></i>
                                             {{ $viewing->getStatusText() }}
                                         </span>
                                     </div>
@@ -60,12 +74,17 @@
                                         <span class="info-value">{{ $viewing->schedule_at->format('H:i') }}</span>
                                     </div>
                                     <div class="info-item">
-                                        <label class="info-label">Thời gian còn lại:</label>
-                                        <span class="info-value" id="timeRemaining">
+                                    <label class="info-label">
+                                        <i class="fas fa-hourglass-half text-success"></i>
+                                        Thời gian còn lại:
+                                    </label>
+                                    <span class="time-remaining-prominent" id="timeRemaining" style="display: inline-block; padding: 6px 12px; border-radius: 15px; font-size: 0.9rem; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);">
                                             @if($viewing->schedule_at > now())
+                                            <i class="fas fa-clock me-1"></i>
                                                 {{ $viewing->schedule_at->diffForHumans() }}
                                             @else
-                                                <span class="text-muted">Đã qua</span>
+                                            <i class="fas fa-times me-1"></i>
+                                            <span>Đã qua</span>
                                             @endif
                                         </span>
                                     </div>
@@ -75,74 +94,116 @@
                     </div>
 
                     <!-- Property Information -->
-                    <div class="card mb-4">
+                <div class="modern-card">
                         <div class="card-header">
-                            <h5 class="card-title mb-0">
+                        <h5 class="card-title">
                                 <i class="fas fa-building"></i>
                                 Thông tin bất động sản
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <h6 class="fw-semibold">{{ $viewing->property->name }}</h6>
-                                    <p class="text-muted mb-2">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        {{ $viewing->property->location2025 ? $viewing->property->location2025->street . ', ' . $viewing->property->location2025->ward . ', ' . $viewing->property->location2025->city : 'Chưa cập nhật địa chỉ' }}
+                        <div class="property-info-card">
+                            <h6 class="fw-semibold" style="color: #1e40af; font-size: 1.2rem; margin-bottom: 15px;">{{ $viewing->property->name }}</h6>
+                            
+                            <div class="property-addresses" style="margin-bottom: 15px;">
+                                @if($viewing->property->new_address && $viewing->property->new_address !== 'Chưa có địa chỉ mới')
+                                    <p class="mb-1" style="color: #1e40af; font-size: 0.95rem;">
+                                        <i class="fas fa-map-marker-alt text-success"></i>
+                                        <strong>Địa chỉ mới (2025):</strong> {{ $viewing->property->new_address }}
                                     </p>
+                                @endif
+                                
+                                @if($viewing->property->old_address && $viewing->property->old_address !== 'Chưa có địa chỉ cũ')
+                                    <p class="mb-0" style="color: #1e40af; font-size: 0.95rem;">
+                                        <i class="fas fa-map-marker-alt text-warning"></i>
+                                        <strong>Địa chỉ cũ:</strong> {{ $viewing->property->old_address }}
+                                    </p>
+                                @endif
+                                
+                                @if((!$viewing->property->new_address || $viewing->property->new_address === 'Chưa có địa chỉ mới') && (!$viewing->property->old_address || $viewing->property->old_address === 'Chưa có địa chỉ cũ'))
+                                    <p class="mb-0" style="color: #1e40af; font-size: 0.95rem;">
+                                        <i class="fas fa-map-marker-alt text-muted"></i>
+                                        Không có địa chỉ
+                                    </p>
+                                @endif
+                            </div>
+                            
                                     @if($viewing->property->description)
-                                        <p class="text-muted">{{ Str::limit($viewing->property->description, 200) }}</p>
+                                <p style="color: #1e40af;">{{ Str::limit($viewing->property->description, 200) }}</p>
                                     @endif
                                 </div>
-                                <div class="col-md-4 text-end">
+                        <div class="text-end">
                                     <a href="{{ route('property.show', $viewing->property->id) }}" class="btn btn-outline-primary" target="_blank">
                                         <i class="fas fa-external-link-alt"></i>
                                         Xem chi tiết
                                     </a>
-                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Unit Information -->
                     @if($viewing->unit)
-                    <div class="card mb-4">
+                <div class="modern-card">
                         <div class="card-header">
-                            <h5 class="card-title mb-0">
+                        <h5 class="card-title">
                                 <i class="fas fa-home"></i>
                                 Thông tin phòng
                             </h5>
                         </div>
                         <div class="card-body">
+                        <div class="unit-info-card">
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="info-item">
-                                        <label class="info-label">Mã phòng:</label>
-                                        <span class="info-value">{{ $viewing->unit->code }}</span>
+                                        <label class="info-label" style="color: #065f46;">Mã phòng:</label>
+                                        <span class="info-value" style="color: #065f46; font-weight: 600;">{{ $viewing->unit->code }}</span>
                                     </div>
                                     <div class="info-item">
-                                        <label class="info-label">Diện tích:</label>
-                                        <span class="info-value">{{ $viewing->unit->area_m2 ?? 'N/A' }}m²</span>
+                                        <label class="info-label" style="color: #065f46;">Diện tích:</label>
+                                        <span class="info-value" style="color: #065f46; font-weight: 600;">{{ $viewing->unit->area_m2 ?? 'N/A' }}m²</span>
                                     </div>
                                     <div class="info-item">
-                                        <label class="info-label">Sức chứa:</label>
-                                        <span class="info-value">{{ $viewing->unit->max_occupancy }} người</span>
+                                        <label class="info-label" style="color: #065f46;">Sức chứa:</label>
+                                        <span class="info-value" style="color: #065f46; font-weight: 600;">{{ $viewing->unit->max_occupancy }} người</span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="info-item">
-                                        <label class="info-label">Tầng:</label>
-                                        <span class="info-value">Tầng {{ $viewing->unit->floor ?? 'N/A' }}</span>
+                                        <label class="info-label" style="color: #065f46;">Tầng:</label>
+                                        <span class="info-value" style="color: #065f46; font-weight: 600;">Tầng {{ $viewing->unit->floor ?? 'N/A' }}</span>
                                     </div>
                                     <div class="info-item">
-                                        <label class="info-label">Giá thuê:</label>
-                                        <span class="info-value text-success fw-semibold">
+                                        <label class="info-label" style="color: #065f46;">Giá thuê:</label>
+                                        <span class="info-value" style="color: #065f46; font-weight: 700; font-size: 1.1rem;">
                                             {{ number_format($viewing->unit->base_rent, 0, ',', '.') }} VNĐ/tháng
                                         </span>
                                     </div>
                                     <div class="info-item">
-                                        <label class="info-label">Trạng thái:</label>
-                                        <span class="badge bg-success">Trống</span>
+                                        <label class="info-label" style="color: #065f46;">Tiền cọc:</label>
+                                        <span class="info-value" style="color: #065f46; font-weight: 700; font-size: 1.1rem;">
+                                            {{ number_format($viewing->unit->deposit_amount ?? $viewing->unit->base_rent, 0, ',', '.') }} VNĐ
+                                        </span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label class="info-label" style="color: #065f46;">Trạng thái:</label>
+                                        <span style="display: inline-block; padding: 6px 12px; border-radius: 15px; font-size: 0.8rem; font-weight: 600; color: #28a745; border: 2px solid #28a745;">Trống</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Total Cost Summary -->
+                            <div class="mt-3 pt-3" style="border-top: 1px solid rgba(16, 185, 129, 0.2);">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="info-item">
+                                            <label class="info-label" style="color: #065f46; font-size: 1rem;">
+                                                <i class="fas fa-calculator"></i> Tổng cần chuẩn bị:
+                                            </label>
+                                            <span class="info-value" style="color: #065f46; font-weight: 700; font-size: 1.2rem;">
+                                                {{ number_format(($viewing->unit->base_rent ?? 0) + ($viewing->unit->deposit_amount ?? $viewing->unit->base_rent ?? 0), 0, ',', '.') }} VNĐ
+                                            </span>
+                                        </div>
+                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -152,9 +213,9 @@
 
                     <!-- Notes -->
                     @if($viewing->note || $viewing->result_note)
-                    <div class="card mb-4">
+                <div class="modern-card">
                         <div class="card-header">
-                            <h5 class="card-title mb-0">
+                        <h5 class="card-title">
                                 <i class="fas fa-sticky-note"></i>
                                 Ghi chú
                             </h5>
@@ -164,6 +225,7 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Ghi chú của bạn:</label>
                                     <div class="alert alert-light">
+                                    <i class="fas fa-user"></i>
                                         {{ $viewing->note }}
                                     </div>
                                 </div>
@@ -173,6 +235,7 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Ghi chú từ agent:</label>
                                     <div class="alert alert-info">
+                                    <i class="fas fa-user-tie"></i>
                                         {{ $viewing->result_note }}
                                     </div>
                                 </div>
@@ -185,46 +248,111 @@
                 <!-- Sidebar -->
                 <div class="col-lg-4">
                     <!-- Agent Information -->
-                    <div class="card mb-4">
+                <div class="modern-card">
                         <div class="card-header">
-                            <h5 class="card-title mb-0">
+                        <h5 class="card-title">
                                 <i class="fas fa-user-tie"></i>
                                 Thông tin agent
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div class="agent-info">
+                        @if($viewing->agent)
+                            <div class="agent-info-card">
                                 <div class="d-flex align-items-center mb-3">
-                                    <div class="avatar-lg bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                    <div class="avatar-lg text-white rounded-circle d-flex align-items-center justify-content-center me-3">
                                         {{ substr($viewing->agent->name ?? 'A', 0, 1) }}
                                     </div>
                                     <div>
-                                        <h6 class="mb-1">{{ $viewing->agent->name ?? 'Agent' }}</h6>
-                                        <small class="text-muted">Agent bất động sản</small>
+                                        <h6 class="mb-1" style="color: #92400e; font-weight: 700;">{{ $viewing->agent->name ?? 'Agent' }}</h6>
+                                        <small style="color: #92400e;">Agent bất động sản</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- Complete Agent Information -->
+                                <div class="agent-details mt-3">
+                                    @if($viewing->agent->phone)
+                                        <div class="info-item mb-2">
+                                            <label class="info-label" style="color: #92400e; font-size: 0.9rem;">
+                                                <i class="fas fa-phone text-success"></i> Số điện thoại:
+                                            </label>
+                                            <span class="info-value" style="color: #92400e; font-weight: 600;">{{ $viewing->agent->phone }}</span>
+                                        </div>
+                                    @endif
+                                    
+                                    @if($viewing->agent->email)
+                                        <div class="info-item mb-2">
+                                            <label class="info-label" style="color: #92400e; font-size: 0.9rem;">
+                                                <i class="fas fa-envelope text-primary"></i> Email:
+                                            </label>
+                                            <span class="info-value" style="color: #92400e; font-weight: 600;">{{ $viewing->agent->email }}</span>
+                                        </div>
+                                    @endif
+                                    
+                                    @if($viewing->agent->address)
+                                        <div class="info-item mb-2">
+                                            <label class="info-label" style="color: #92400e; font-size: 0.9rem;">
+                                                <i class="fas fa-map-marker-alt text-danger"></i> Địa chỉ:
+                                            </label>
+                                            <span class="info-value" style="color: #92400e; font-weight: 600;">{{ $viewing->agent->address }}</span>
+                                        </div>
+                                    @endif
+                                    
+                                    @if($viewing->agent->organization)
+                                        <div class="info-item mb-2">
+                                            <label class="info-label" style="color: #92400e; font-size: 0.9rem;">
+                                                <i class="fas fa-building text-info"></i> Công ty:
+                                            </label>
+                                            <span class="info-value" style="color: #92400e; font-weight: 600;">{{ $viewing->agent->organization->name ?? 'N/A' }}</span>
+                                        </div>
+                                    @endif
+                                    
+                                    {{-- @if($viewing->agent->created_at)
+                                        <div class="info-item mb-2">
+                                            <label class="info-label" style="color: #92400e; font-size: 0.9rem;">
+                                                <i class="fas fa-calendar text-warning"></i> Tham gia:
+                                            </label>
+                                            <span class="info-value" style="color: #92400e; font-weight: 600;">{{ $viewing->agent->created_at->format('m/Y') }}</span>
+                                        </div>
+                                    @endif --}}
                                     </div>
                                 </div>
                                 
                                 <div class="d-grid gap-2">
-                                    <a href="tel:{{ $viewing->agent->phone ?? '0123456789' }}" class="btn btn-success">
+                                @if($viewing->agent->phone)
+                                    <a href="tel:{{ $viewing->agent->phone }}" class="btn btn-success">
                                         <i class="fas fa-phone"></i>
                                         Gọi agent
                                     </a>
+                                @endif
+                                
                                     @if($viewing->agent->email)
                                         <a href="mailto:{{ $viewing->agent->email }}" class="btn btn-outline-primary">
                                             <i class="fas fa-envelope"></i>
                                             Gửi email
                                         </a>
                                     @endif
+                                
+                                @if($viewing->agent->phone)
+                                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $viewing->agent->phone) }}" class="btn btn-outline-success" target="_blank">
+                                        <i class="fab fa-whatsapp"></i>
+                                        WhatsApp
+                                    </a>
+                                @endif
                                 </div>
+                        @else
+                            <div class="text-center py-4">
+                                <i class="fas fa-user-slash text-muted" style="font-size: 3rem;"></i>
+                                <p class="text-muted mt-2">Chưa có thông tin agent</p>
                             </div>
+                        @endif
                         </div>
                     </div>
 
                     <!-- Quick Actions -->
                     @if($viewing->status === 'requested' || $viewing->status === 'confirmed')
-                    <div class="card mb-4">
+                <div class="modern-card">
                         <div class="card-header">
-                            <h5 class="card-title mb-0">
+                        <h5 class="card-title">
                                 <i class="fas fa-bolt"></i>
                                 Thao tác nhanh
                             </h5>
@@ -241,9 +369,9 @@
                     @endif
 
                     <!-- Status History -->
-                    <div class="card">
+                <div class="modern-card">
                         <div class="card-header">
-                            <h5 class="card-title mb-0">
+                        <h5 class="card-title">
                                 <i class="fas fa-history"></i>
                                 Lịch sử trạng thái
                             </h5>
@@ -251,19 +379,19 @@
                         <div class="card-body">
                             <div class="timeline">
                                 <div class="timeline-item">
-                                    <div class="timeline-marker bg-primary"></div>
+                                <div class="timeline-marker"></div>
                                     <div class="timeline-content">
                                         <h6 class="timeline-title">Tạo lịch đặt</h6>
-                                        <p class="timeline-text text-muted">{{ $viewing->created_at->format('d/m/Y H:i') }}</p>
+                                    <p class="timeline-text">{{ $viewing->created_at->format('d/m/Y H:i') }}</p>
                                     </div>
                                 </div>
                                 
                                 @if($viewing->status !== 'requested')
                                     <div class="timeline-item">
-                                        <div class="timeline-marker bg-success"></div>
+                                    <div class="timeline-marker"></div>
                                         <div class="timeline-content">
                                             <h6 class="timeline-title">{{ $viewing->getStatusText() }}</h6>
-                                            <p class="timeline-text text-muted">{{ $viewing->updated_at->format('d/m/Y H:i') }}</p>
+                                        <p class="timeline-text">{{ $viewing->updated_at->format('d/m/Y H:i') }}</p>
                                         </div>
                                     </div>
                                 @endif
@@ -277,12 +405,15 @@
 </div>
 
 <!-- Cancel Confirmation Modal -->
-<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Xác nhận hủy lịch</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title" id="cancelModalLabel">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            Xác nhận hủy lịch
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
                 <p>Bạn có chắc chắn muốn hủy lịch đặt này không?</p>
@@ -292,208 +423,26 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Không</button>
-                <button type="button" class="btn btn-danger" onclick="confirmCancel()">Có, hủy lịch</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Không
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="confirmCancel()">
+                            <i class="fas fa-check"></i> Có, hủy lịch
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
 
-@push('styles')
-<style>
-.page-header {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.page-header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.page-title {
-    margin: 0;
-    color: #2c3e50;
-    font-size: 1.5rem;
-    font-weight: 600;
-}
-
-.page-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f8f9fa;
-}
-
-.info-item:last-child {
-    border-bottom: none;
-}
-
-.info-label {
-    font-weight: 600;
-    color: #495057;
-    margin: 0;
-}
-
-.info-value {
-    color: #212529;
-}
-
-.avatar-lg {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-}
-
-.timeline {
-    position: relative;
-    padding-left: 30px;
-}
-
-.timeline::before {
-    content: '';
-    position: absolute;
-    left: 15px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: #dee2e6;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -22px;
-    top: 5px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #dee2e6;
-}
-
-.timeline-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: #495057;
-}
-
-.timeline-text {
-    font-size: 0.8rem;
-    margin: 0;
-}
-
-@media (max-width: 768px) {
-    .page-header-content {
-        flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
-    }
-    
-    .page-actions {
-        width: 100%;
-        justify-content: flex-start;
-    }
-}
-</style>
-@endpush
-
 @push('scripts')
 <script>
-function cancelViewing(viewingId) {
-    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
-    modal.show();
-    
-    // Store viewing ID for confirmation
-    document.getElementById('cancelModal').setAttribute('data-viewing-id', viewingId);
-}
-
-function confirmCancel() {
-    const modal = document.getElementById('cancelModal');
-    const viewingId = modal.getAttribute('data-viewing-id');
-    
-    fetch(`/viewings/${viewingId}/cancel`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('success', data.message);
-            setTimeout(() => {
-                window.location.href = '{{ route("viewings.my-viewings") }}';
-            }, 1500);
-        } else {
-            showNotification('error', data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('error', 'Có lỗi xảy ra. Vui lòng thử lại.');
-    });
-    
-    const modalInstance = bootstrap.Modal.getInstance(modal);
-    modalInstance.hide();
-}
-
-function showNotification(type, message) {
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
-}
-
-// Update time remaining every minute
-setInterval(function() {
-    const scheduleTime = new Date('{{ $viewing->schedule_at->toISOString() }}');
-    const now = new Date();
-    
-    if (scheduleTime > now) {
-        const diff = scheduleTime - now;
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        
-        let timeText = '';
-        if (days > 0) timeText += `${days} ngày `;
-        if (hours > 0) timeText += `${hours} giờ `;
-        if (minutes > 0) timeText += `${minutes} phút`;
-        
-        document.getElementById('timeRemaining').textContent = timeText.trim();
-    } else {
-        document.getElementById('timeRemaining').innerHTML = '<span class="text-muted">Đã qua</span>';
-    }
-}, 60000);
+    // Pass data to external JS
+    window.viewingId = {{ $viewing->id }};
+    window.scheduleTime = '{{ $viewing->schedule_at->toISOString() }}';
+    window.appointmentsRoute = '{{ route("tenant.appointments") }}';
 </script>
+<script src="{{ asset('assets/js/user/viewings-show.js') }}?v={{ time() }}"></script>
 @endpush

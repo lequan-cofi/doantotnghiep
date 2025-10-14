@@ -142,7 +142,7 @@
 									<i class="fas fa-tachometer-alt"></i>
 									<span>Dashboard</span>
 								</a></li>
-								<li><a class="dropdown-item action-item" href="{{ route('viewings.appointments') }}">
+								<li><a class="dropdown-item action-item" href="{{ route('tenant.appointments') }}">
 									<i class="fas fa-calendar-alt"></i>
 									<span>Lịch đặt của tôi</span>
 								</a></li>
@@ -164,9 +164,9 @@
 						</a>
 					@endauth
 				
-				<button class="btn btn-primary text-white fw-600">
+				{{-- <button class="btn btn-primary text-white fw-600">
 					<i class="fas fa-plus me-1"></i>Đăng tin
-				</button>
+				</button> --}}
 			</div>
 		</div>
 		
