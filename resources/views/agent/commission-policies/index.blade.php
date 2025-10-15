@@ -374,7 +374,7 @@
                     </thead>
                     <tbody>
                         @php
-                            $recentEvents = \App\Models\CommissionEvent::where('organization_id', auth()->user()->organization_id)
+                            $recentEvents = \App\Models\CommissionEvent::where('organization_id', session('auth_organization_id'))
                                 ->where('agent_id', auth()->user()->id)
                                 ->with('policy')
                                 ->orderBy('occurred_at', 'desc')

@@ -71,6 +71,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's name (alias for full_name)
+     */
+    public function getNameAttribute()
+    {
+        return $this->full_name;
+    }
+
+    /**
      * Get the roles that belong to the user through organization_users.
      */
     public function organizationRoles($organizationId = null)
@@ -234,5 +242,80 @@ class User extends Authenticatable
     public function getOrCreateProfile()
     {
         return $this->userProfile ?: $this->userProfile()->create([]);
+    }
+
+    /**
+     * Get the chat conversations this user participates in.
+     */
+    public function chatConversations()
+    {
+        return $this->belongsToMany(ChatConversation::class, 'chat_participants', 'user_id', 'conversation_id')
+            ->withPivot('role', 'joined_at', 'last_read_at', 'is_muted', 'left_at')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the chat participants records for this user.
+     */
+    public function chatParticipants()
+    {
+        return $this->hasMany(ChatParticipant::class);
+    }
+
+    /**
+     * Get the messages sent by this user.
+     */
+    public function sentChatMessages()
+    {
+        return $this->hasMany(ChatMessage::class, 'sender_id');
+    }
+
+    /**
+     * Get the message reactions made by this user.
+     */
+    public function chatMessageReactions()
+    {
+        return $this->hasMany(ChatMessageReaction::class);
+    }
+
+    /**
+     * Get the message read receipts for this user.
+     */
+    public function chatMessageReads()
+    {
+        return $this->hasMany(ChatMessageRead::class);
+    }
+
+    /**
+     * Get the typing indicators for this user.
+     */
+    public function chatTypingIndicators()
+    {
+        return $this->hasMany(ChatTypingIndicator::class);
+    }
+
+    /**
+     * Get the chat attachments uploaded by this user.
+     */
+    public function chatAttachments()
+    {
+        return $this->hasMany(ChatAttachment::class, 'uploaded_by');
+    }
+
+    /**
+     * Get unread chat message count for this user.
+     */
+    public function getUnreadChatCount()
+    {
+        $conversations = $this->chatConversations()
+            ->wherePivotNull('left_at')
+            ->get();
+
+        $totalUnread = 0;
+        foreach ($conversations as $conversation) {
+            $totalUnread += $conversation->getUnreadCountForUser($this->id);
+        }
+
+        return $totalUnread;
     }
 }

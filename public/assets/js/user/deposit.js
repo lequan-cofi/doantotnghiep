@@ -490,57 +490,22 @@ function hideSuccessModal() {
     }
 }
 
-// Toast notification function
+// Toast notification function - using unified notification system
 function showToast(message, type) {
-    // Remove existing toasts
-    var existingToasts = document.querySelectorAll('.custom-toast');
-    for (var i = 0; i < existingToasts.length; i++) {
-        existingToasts[i].remove();
+    if (typeof window.Notify !== 'undefined') {
+        const notificationType = type === 'error' ? 'error' : (type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'info'));
+        const title = type === 'error' ? 'Lỗi' : (type === 'success' ? 'Thành công' : (type === 'warning' ? 'Cảnh báo' : 'Thông báo'));
+        
+        window.Notify.toast({
+            title: title,
+            message: message,
+            type: notificationType,
+            duration: type === 'error' ? 8000 : (type === 'success' ? 5000 : 6000)
+        });
+    } else {
+        // Fallback to simple alert if Notify is not available
+        alert(message);
     }
-    
-    var toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container';
-        toastContainer.style.cssText = 'position:fixed;top:20px;right:20px;z-index:1050;';
-        document.body.appendChild(toastContainer);
-    }
-    
-    var toast = document.createElement('div');
-    toast.className = 'custom-toast toast-' + type;
-    toast.style.cssText = 'background:white;padding:16px 20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-bottom:10px;display:flex;align-items:center;gap:12px;min-width:300px;animation:slideInRight 0.3s ease;border-left:4px solid;';
-    
-    var icon = 'info-circle';
-    var color = '#3b82f6';
-    
-    if (type === 'success') {
-        icon = 'check-circle';
-        color = '#10b981';
-    } else if (type === 'error') {
-        icon = 'times-circle';
-        color = '#ef4444';
-    } else if (type === 'warning') {
-        icon = 'exclamation-triangle';
-        color = '#f59e0b';
-    }
-    
-    toast.style.borderLeftColor = color;
-    toast.innerHTML = '<i class="fas fa-' + icon + '" style="color:' + color + ';font-size:1.2rem;"></i><span>' + message + '</span>';
-    
-    toastContainer.appendChild(toast);
-    
-    // Auto remove after 4 seconds
-    setTimeout(function() {
-        if (toast.parentElement) {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            setTimeout(function() {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 300);
-        }
-    }, 4000);
 }
 
 // Add CSS for animations if not already present

@@ -52,7 +52,10 @@
                 <i class="fas fa-door-open"></i>
                 <span>Quản lý phòng</span>
             </a>
-            
+            <a href="{{ route('agent.chat.index') }}" class="nav-item">
+                <i class="fas fa-comments"></i>
+                <span>Chat</span>
+            </a>
             <a href="{{ route('agent.rented.index') }}" class="nav-item">
                 <i class="fas fa-home"></i>
                 <span>Đã cho thuê</span>

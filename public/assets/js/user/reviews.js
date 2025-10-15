@@ -891,43 +891,20 @@ function showSuccessModal(title, message) {
     }
 }
 
-// Show toast notification
+// Show toast notification - using unified notification system
 function showToast(message, type) {
-    // Remove existing toasts
-    var existingToasts = document.querySelectorAll('.custom-toast');
-    for (var i = 0; i < existingToasts.length; i++) {
-        existingToasts[i].remove();
+    if (typeof window.Notify !== 'undefined') {
+        const notificationType = type === 'error' ? 'error' : (type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'info'));
+        const title = type === 'error' ? 'Lỗi' : (type === 'success' ? 'Thành công' : (type === 'warning' ? 'Cảnh báo' : 'Thông báo'));
+        
+        window.Notify.toast({
+            title: title,
+            message: message,
+            type: notificationType,
+            duration: type === 'error' ? 8000 : (type === 'success' ? 5000 : 6000)
+        });
+    } else {
+        // Fallback to simple alert if Notify is not available
+        alert(message);
     }
-    
-    var toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container';
-        document.body.appendChild(toastContainer);
-    }
-    
-    var toast = document.createElement('div');
-    toast.className = 'custom-toast ' + type;
-    
-    var icon = 'info-circle';
-    if (type === 'success') icon = 'check-circle';
-    else if (type === 'error') icon = 'times-circle';
-    else if (type === 'warning') icon = 'exclamation-triangle';
-    
-    toast.innerHTML = '<i class="fas fa-' + icon + '"></i><span>' + message + '</span>';
-    
-    toastContainer.appendChild(toast);
-    
-    // Auto remove after 4 seconds
-    setTimeout(function() {
-        if (toast.parentElement) {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            setTimeout(function() {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 300);
-        }
-    }, 4000);
 }

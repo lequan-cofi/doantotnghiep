@@ -19,6 +19,7 @@ use App\Http\Controllers\Agent\InvoiceController;
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
 Route::post('/search', [\App\Http\Controllers\HomeController::class, 'search'])->name('search');
 
+
 // Public property routes - accessible without authentication
 Route::get('/properties', [\App\Http\Controllers\PropertyController::class, 'index'])->name('property.index');
 Route::get('/properties/{id}', [\App\Http\Controllers\PropertyController::class, 'show'])->name('property.show');
@@ -499,7 +500,7 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::prefix('tenant')->name('tenant.')->middleware('ensure.tenant')->group(function () {
+    Route::prefix('tenant')->name('tenant.')->middleware(['ensure.tenant'])->group(function () {
         // Dashboard
         Route::get('/dashboard', function () {
             return view('tenant.dashboard');
@@ -537,6 +538,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/invoices/{id}/pay', [\App\Http\Controllers\Tenant\InvoiceController::class, 'pay'])->name('invoices.pay');
         Route::get('/invoices/{id}/download', [\App\Http\Controllers\Tenant\InvoiceController::class, 'download'])->name('invoices.download');
         Route::get('/invoices/export', [\App\Http\Controllers\Tenant\InvoiceController::class, 'export'])->name('invoices.export');
+
+        // Tickets
+        Route::get('/tickets', [\App\Http\Controllers\Tenant\TicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/create', [\App\Http\Controllers\Tenant\TicketController::class, 'create'])->name('tickets.create');
+        Route::post('/tickets', [\App\Http\Controllers\Tenant\TicketController::class, 'store'])->name('tickets.store');
+        Route::get('/tickets/{id}', [\App\Http\Controllers\Tenant\TicketController::class, 'show'])->name('tickets.show');
+        Route::get('/tickets/{id}/edit', [\App\Http\Controllers\Tenant\TicketController::class, 'edit'])->name('tickets.edit');
+        Route::put('/tickets/{id}', [\App\Http\Controllers\Tenant\TicketController::class, 'update'])->name('tickets.update');
+        Route::delete('/tickets/{id}', [\App\Http\Controllers\Tenant\TicketController::class, 'destroy'])->name('tickets.destroy');
+        
+        // API endpoints for tickets
+        Route::prefix('api/tickets')->group(function () {
+            Route::get('/leases/{leaseId}/units', [\App\Http\Controllers\Tenant\TicketController::class, 'getUnitsByLease']);
+        });
 
         // Maintenance
         Route::get('/maintenance', function () {
@@ -664,3 +679,4 @@ Route::prefix('api/images')->name('api.images.')->middleware('auth')->group(func
     Route::get('/stats', [\App\Http\Controllers\Api\ImageController::class, 'stats'])->name('stats');
     Route::post('/validate', [\App\Http\Controllers\Api\ImageController::class, 'validate'])->name('validate');
 });
+

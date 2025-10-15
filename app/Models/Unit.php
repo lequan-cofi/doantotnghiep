@@ -52,6 +52,14 @@ class Unit extends Model
         return $this->hasMany(BookingDeposit::class);
     }
 
+    /**
+     * Get the unit's name (alias for code)
+     */
+    public function getNameAttribute()
+    {
+        return $this->code;
+    }
+
     public function meters()
     {
         return $this->hasMany(Meter::class);

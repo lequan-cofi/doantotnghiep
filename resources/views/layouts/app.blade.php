@@ -40,6 +40,11 @@
         <!-- Scripts -->
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <!-- Laravel Echo for real-time features -->
+        <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+        <script src="{{ asset('assets/js/echo.js') }}?v={{ time() }}"></script>
+        
         <script src="{{ asset('assets/js/home.js') }}?v={{ time() }}"></script>
         <script src="{{ asset('assets/js/notifications.js') }}?v={{ time() }}"></script>
         

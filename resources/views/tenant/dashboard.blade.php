@@ -35,6 +35,7 @@
                         <a href="{{ route('tenant.profile') }}" class="btn btn-outline-secondary ms-2">
                             <i class="fas fa-user me-2"></i>Hồ sơ cá nhân
                         </a>
+                        
                         <div class="dropdown d-inline-block ms-2">
                             <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-plus me-2"></i>Thao tác
@@ -42,7 +43,7 @@
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="{{ route('tenant.booking', 1) }}"><i class="fas fa-calendar me-2"></i>Đặt lịch xem phòng</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-file-contract me-2"></i>Gia hạn hợp đồng</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-tools me-2"></i>Yêu cầu sửa chữa</a></li>
+                                <li><a class="dropdown-item" href="{{ route('tenant.tickets.create') }}"><i class="fas fa-tools me-2"></i>Yêu cầu sửa chữa</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-star me-2"></i>Đánh giá phòng</a></li>
                             </ul>
                         </div>
@@ -203,13 +204,13 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('tenant.maintenance') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.tickets.index') }}" class="quick-access-card">
                                 <div class="card-icon maintenance">
-                                    <i class="fas fa-wrench"></i>
+                                    <i class="fas fa-ticket-alt"></i>
                                 </div>
                                 <div class="card-content">
-                                    <h4>Sửa chữa</h4>
-                                    <p>Yêu cầu bảo trì phòng</p>
+                                    <h4>Tickets</h4>
+                                    <p>Yêu cầu sửa chữa & bảo trì</p>
                                     <div class="card-badge">1 đang xử lý</div>
                                 </div>
                                 <div class="card-arrow">

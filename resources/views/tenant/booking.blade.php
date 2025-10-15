@@ -65,7 +65,7 @@
 
             @if($unit)
                 {{-- Debug info --}}
-                @if(config('app.debug'))
+                {{-- @if(config('app.debug'))
                     <div class="alert alert-info">
                         <small>
                             <strong>Debug Unit Data:</strong><br>
@@ -76,7 +76,7 @@
                             Status: {{ $unit->status ?? 'N/A' }}
                         </small>
                     </div>
-                @endif
+                @endif --}}
                 
                 <div class="unit-info-card">
                     <h6><i class="fas fa-home"></i> Thông tin phòng</h6>

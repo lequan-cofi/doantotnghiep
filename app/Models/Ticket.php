@@ -20,11 +20,14 @@ class Ticket extends Model
         'description',
         'priority',
         'status',
+        'cancelled_at',
+        'cancelled_by',
     ];
 
     protected $casts = [
         'priority' => 'string',
         'status' => 'string',
+        'cancelled_at' => 'datetime',
     ];
 
     public function organization()
@@ -55,5 +58,34 @@ class Ticket extends Model
     public function logs()
     {
         return $this->hasMany(TicketLog::class);
+    }
+
+    /**
+     * Get Vietnamese status label
+     */
+    public function getStatusLabelAttribute()
+    {
+        return match($this->status) {
+            'open' => 'Đang mở',
+            'in_progress' => 'Đang xử lý',
+            'resolved' => 'Đã giải quyết',
+            'closed' => 'Đã đóng',
+            'cancelled' => 'Đã hủy',
+            default => ucfirst(str_replace('_', ' ', $this->status))
+        };
+    }
+
+    /**
+     * Get Vietnamese priority label
+     */
+    public function getPriorityLabelAttribute()
+    {
+        return match($this->priority) {
+            'low' => 'Thấp',
+            'medium' => 'Trung bình',
+            'high' => 'Cao',
+            'urgent' => 'Khẩn cấp',
+            default => ucfirst($this->priority)
+        };
     }
 }

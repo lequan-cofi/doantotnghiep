@@ -89,6 +89,26 @@ class Property extends Model
             ->whereNull('properties_user.deleted_at');
     }
 
+    /**
+     * Get the primary manager assigned to this property
+     */
+    public function getPrimaryManager()
+    {
+        return $this->assignedUsers()
+            ->wherePivot('role_key', 'manager')
+            ->first();
+    }
+
+    /**
+     * Get all managers assigned to this property
+     */
+    public function getManagers()
+    {
+        return $this->assignedUsers()
+            ->wherePivot('role_key', 'manager')
+            ->get();
+    }
+
     // Scopes
     public function scopeActive($query)
     {
