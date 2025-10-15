@@ -19,7 +19,7 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $userProfile = $user->userProfile;
-        return view('tenant.profile', compact('user', 'userProfile'));
+        return view('tenant.profile.index', compact('user', 'userProfile'));
     }
 
     /**
@@ -145,6 +145,6 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $userProfile = $user->userProfile;
-        return view('tenant.profile-edit', compact('user', 'userProfile'));
+        return view('tenant.profile.edit', compact('user', 'userProfile'));
     }
 }

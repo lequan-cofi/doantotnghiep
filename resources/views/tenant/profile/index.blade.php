@@ -178,8 +178,8 @@
                 </div>
                 <div class="card-body-modern">
                     <div class="security-actions">
-                        <a href="{{ route('home') }}" class="btn btn-outline-secondary btn-modern">
-                            <i class="fas fa-key me-2"></i>Đổi mật khẩu (sắp ra mắt)
+                        <a href="{{ route('tenant.profile.edit') }}" class="btn btn-outline-secondary btn-modern">
+                            <i class="fas fa-key me-2"></i>Đổi mật khẩu (Trong trang chỉnh sửa)
                         </a>
                     </div>
                 </div>

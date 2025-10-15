@@ -4,7 +4,7 @@
 			<div class="me-2 p-2 rounded" style="background: linear-gradient(135deg, #ff6b35, #ff8563);">
 				<i class="fas fa-home text-white"></i>
 			</div>
-			<span class="fw-bold" style="color: #ff6b35;">PhòngTrọ24</span>
+			<span class="fw-bold" style="color: #ff6b35;">StayConnect</span>
 		</a>
 		
 		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -138,14 +138,47 @@
 										</div>
 									</div>
 								</li>
-								<li><a class="dropdown-item action-item" href="{{ route('dashboard') }}">
+								<li>
+									
+									<a class="dropdown-item action-item" href="{{ route('dashboard') }}">
 									<i class="fas fa-tachometer-alt"></i>
 									<span>Dashboard</span>
-								</a></li>
+									</a>
+								</li>
 								<li><a class="dropdown-item action-item" href="{{ route('tenant.appointments') }}">
 									<i class="fas fa-calendar-alt"></i>
 									<span>Lịch đặt của tôi</span>
-								</a></li>
+									</a>
+								</li>
+								<li>
+									
+									<a class="dropdown-item action-item" href="{{ route('tenant.contracts.index') }}">
+									<i class="fas fa-file-contract"></i>
+									<span>Hợp đồng</span>
+									</a>
+								</li>
+								<li>
+									
+									<a class="dropdown-item action-item" href="{{ route('tenant.invoices.index') }}">
+									<i class="fas fa-file-invoice"></i>
+									<span>Hóa đơn</span>
+									</a>
+								</li>
+								<li>
+									
+									<a class="dropdown-item action-item" href="{{ route('tenant.tickets.index') }}">
+									<i class="fas fa-tools"></i>
+									<span>Sửa chữa</span>
+									</a>
+								</li>
+								<li>
+									
+									<a class="dropdown-item action-item" href="{{ route('tenant.profile') }}">
+									<i class="fas fa-user-circle"></i>
+									<span>Hồ sơ cá nhân</span>
+									</a>
+								</li>
+								
 							
 								<li><hr class="dropdown-divider"></li>
 								<li>

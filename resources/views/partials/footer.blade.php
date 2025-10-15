@@ -8,7 +8,7 @@
                     <div class="logo-icon">
                         <i class="fas fa-map-marker-alt"></i>
                     </div>
-                    <span class="logo-text">PhòngTrọ24</span>
+                    <span class="logo-text">StayConnect</span>
                 </div>
                 <p>Nền tảng tìm kiếm phòng trọ hàng đầu Việt Nam, kết nối chủ nhà và người thuê một cách nhanh chóng, an toàn.</p>
                 <div class="social-links">
@@ -23,11 +23,11 @@
             <div class="footer-section">
                 <h3>Liên kết nhanh</h3>
                 <ul>
-                    <li><a href="#">Trang chủ</a></li>
-                    <li><a href="#">Tìm kiếm phòng</a></li>
+                    <li><a href="{{ route('home') }}">Trang chủ</a></li>
+                    <li><a href="{{ route('property.index') }}">Tìm kiếm phòng</a></li>
                     <li><a href="#">Đăng tin cho thuê</a></li>
-                    <li><a href="#">Tin tức</a></li>
-                    <li><a href="#">Hướng dẫn</a></li>
+                    <li><a href="{{ route('news.index') }}">Tin tức</a></li>
+                    <li><a href="{{ route('contact') }}">Hướng dẫn</a></li>
                 </ul>
             </div>
 
@@ -35,7 +35,7 @@
             <div class="footer-section">
                 <h3>Hỗ trợ</h3>
                 <ul>
-                    <li><a href="#">Câu hỏi thường gặp</a></li>
+                    <li><a href="{{ route('contact') }}">Câu hỏi thường gặp</a></li>
                     <li><a href="#">Chính sách bảo mật</a></li>
                     <li><a href="#">Điều khoản sử dụng</a></li>
                     <li><a href="#">Liên hệ</a></li>
