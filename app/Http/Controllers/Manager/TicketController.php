@@ -61,8 +61,11 @@ class TicketController extends Controller
         $tickets = $query->orderBy('created_at', 'desc')->paginate(20);
 
         // Get filter options
-        $units = Unit::with('property')->get();
-        $leases = Lease::with(['unit.property', 'tenant'])->get();
+        $units = Unit::with('property')->whereHas('property')->get();
+        $leases = Lease::with(['unit.property', 'tenant'])
+            ->whereHas('unit.property')
+            ->whereHas('tenant')
+            ->get();
         $users = User::where('status', 1)->get();
 
         return view('manager.tickets.index', compact(
@@ -75,8 +78,11 @@ class TicketController extends Controller
 
     public function create()
     {
-        $units = Unit::with('property')->get();
-        $leases = Lease::with(['unit.property', 'tenant'])->get();
+        $units = Unit::with('property')->whereHas('property')->get();
+        $leases = Lease::with(['unit.property', 'tenant'])
+            ->whereHas('unit.property')
+            ->whereHas('tenant')
+            ->get();
         $users = User::where('status', 1)->get();
 
         return view('manager.tickets.create', compact(
@@ -167,8 +173,11 @@ class TicketController extends Controller
     public function edit($id)
     {
         $ticket = Ticket::findOrFail($id);
-        $units = Unit::with('property')->get();
-        $leases = Lease::with(['unit.property', 'tenant'])->get();
+        $units = Unit::with('property')->whereHas('property')->get();
+        $leases = Lease::with(['unit.property', 'tenant'])
+            ->whereHas('unit.property')
+            ->whereHas('tenant')
+            ->get();
         $users = User::where('status', 1)->get();
 
         return view('manager.tickets.edit', compact(

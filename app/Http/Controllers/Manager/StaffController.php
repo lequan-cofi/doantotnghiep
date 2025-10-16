@@ -8,10 +8,12 @@ use App\Models\Role;
 use App\Models\Property;
 use App\Models\CommissionPolicy;
 use App\Models\Organization;
+use App\Models\SalaryContract;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @method \Illuminate\Database\Eloquent\Relations\BelongsToMany organizations()
@@ -357,28 +359,34 @@ class StaffController extends Controller
 
             // Update role through organization_users (handled below)
 
-            // Update organization (tự động gắn tổ chức của manager)
+            // Update organization role (chỉ cập nhật role, không xóa tất cả)
             DB::table('organization_users')
                 ->where('user_id', $id)
-                ->delete();
-
-            DB::table('organization_users')->insert([
-                'organization_id' => $managerOrganization->id,
-                'user_id' => $staff->id,
-                'role_id' => $request->role_id,
-                'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                ->where('organization_id', $managerOrganization->id)
+                ->update([
+                    'role_id' => $request->role_id,
+                    'updated_at' => now(),
+                ]);
 
 
             // Update properties assignment
-            DB::table('properties_user')
-                ->where('user_id', $id)
-                ->delete();
+            // Xóa các properties cũ không còn được chọn
+            $currentPropertyIds = $staff->assignedProperties->pluck('id')->toArray();
+            $newPropertyIds = $request->properties ?? [];
+            $propertiesToDelete = array_diff($currentPropertyIds, $newPropertyIds);
+            $propertiesToAdd = array_diff($newPropertyIds, $currentPropertyIds);
 
-            if ($request->filled('properties')) {
-                foreach ($request->properties as $propertyId) {
+            // Xóa properties không còn được chọn
+            if (!empty($propertiesToDelete)) {
+                DB::table('properties_user')
+                    ->where('user_id', $id)
+                    ->whereIn('property_id', $propertiesToDelete)
+                    ->delete();
+            }
+
+            // Thêm properties mới
+            if (!empty($propertiesToAdd)) {
+                foreach ($propertiesToAdd as $propertyId) {
                     DB::table('properties_user')->insert([
                         'property_id' => $propertyId,
                         'user_id' => $staff->id,
@@ -393,7 +401,8 @@ class StaffController extends Controller
 
             DB::commit();
 
-            if ($request->expectsJson()) {
+            // Check if it's an AJAX request
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Thông tin nhân viên đã được cập nhật!',
@@ -401,13 +410,21 @@ class StaffController extends Controller
                 ]);
             }
 
-            return redirect()->route('manager.staff.index')
+            return redirect()->route('manager.staff.show', $staff->id)
                 ->with('success', 'Thông tin nhân viên đã được cập nhật!');
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            if ($request->expectsJson()) {
+            // Log error for debugging
+            Log::error('Staff update error: ' . $e->getMessage(), [
+                'user_id' => $id,
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Check if it's an AJAX request
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Không thể cập nhật nhân viên: ' . $e->getMessage()

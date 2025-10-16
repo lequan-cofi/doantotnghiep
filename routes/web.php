@@ -206,6 +206,11 @@ Route::middleware('auth')->group(function () {
         Route::resource('tickets', \App\Http\Controllers\Manager\TicketController::class);
         Route::post('tickets/{ticket}/logs', [\App\Http\Controllers\Manager\TicketController::class, 'addLog'])->name('tickets.addLog');
         
+        // Review management
+        Route::resource('reviews', \App\Http\Controllers\Manager\ReviewController::class)->except(['create', 'store']);
+        Route::post('reviews/{review}/reply', [\App\Http\Controllers\Manager\ReviewController::class, 'addReply'])->name('reviews.reply');
+        Route::get('reviews/statistics', [\App\Http\Controllers\Manager\ReviewController::class, 'getStatistics'])->name('reviews.statistics');
+        
         // Commission Policies
         Route::resource('commission-policies', \App\Http\Controllers\Manager\CommissionPolicyController::class);
         

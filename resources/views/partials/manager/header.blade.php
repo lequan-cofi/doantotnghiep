@@ -75,6 +75,10 @@
                 <i class="fas fa-tools"></i>
                 <span>Tickets</span>
             </a>
+            <a href="{{ route('manager.reviews.index') }}" class="nav-item">
+                <i class="fas fa-star"></i>
+                <span>Đánh giá</span>
+            </a>
             <div class="nav-group" data-group="commission">
                 <a href="#" class="nav-item has-submenu nav-parent">
                     <i class="fas fa-percentage"></i>

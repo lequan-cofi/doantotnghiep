@@ -217,15 +217,31 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json().catch(() => ({ success: false, message: 'Lỗi phản hồi từ server' })))
-        .then(data => {
+        .then(response => {
             if (window.Preloader) {
                 window.Preloader.hide();
             }
-
+            
+            // Check if response is successful
+            if (response.ok) {
+                // Try to parse as JSON, fallback to redirect if not JSON
+                return response.json().catch(() => {
+                    // If not JSON, assume it's a redirect response
+                    return { success: true, redirect: '{{ route("manager.staff.show", $staff->id) }}' };
+                });
+            } else {
+                // Handle error responses
+                return response.json().catch(() => {
+                    return { success: false, message: 'Lỗi phản hồi từ server' };
+                });
+            }
+        })
+        .then(data => {
             if (data.success || data.redirect) {
                 Notify.success('Cập nhật nhân viên thành công!');
                 setTimeout(() => {

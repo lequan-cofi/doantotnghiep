@@ -71,7 +71,7 @@
                         <option value="">Tất cả</option>
                         @foreach($units as $unit)
                             <option value="{{ $unit->id }}" {{ request('unit_id') == $unit->id ? 'selected' : '' }}>
-                                {{ $unit->property->name }} - {{ $unit->code }}
+                                {{ $unit->property ? $unit->property->name : 'N/A' }} - {{ $unit->code }}
                             </option>
                         @endforeach
                     </select>
@@ -82,7 +82,7 @@
                         <option value="">Tất cả</option>
                         @foreach($leases as $lease)
                             <option value="{{ $lease->id }}" {{ request('lease_id') == $lease->id ? 'selected' : '' }}>
-                                {{ $lease->contract_no ?: 'HD#' . $lease->id }} - {{ $lease->tenant->full_name }}
+                                {{ $lease->contract_no ?: 'HD#' . $lease->id }} - {{ $lease->tenant ? $lease->tenant->full_name : 'N/A' }}
                             </option>
                         @endforeach
                     </select>
@@ -184,7 +184,7 @@
                                 <td>
                                     @if($ticket->unit)
                                         <div class="small">
-                                            <strong>{{ $ticket->unit->property->name }}</strong><br>
+                                            <strong>{{ $ticket->unit->property ? $ticket->unit->property->name : 'N/A' }}</strong><br>
                                             Phòng: {{ $ticket->unit->code }}
                                         </div>
                                     @endif
