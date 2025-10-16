@@ -9,6 +9,8 @@ use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class TicketController extends Controller
@@ -26,8 +28,8 @@ class TicketController extends Controller
             'users_assigned.full_name as assigned_to_name',
             'units.code as unit_name',
             'properties.name as property_name',
-            \DB::raw("CONCAT_WS(', ', locations.street, locations.ward, locations.district, locations.city) as location_address"),
-            \DB::raw("CONCAT_WS(', ', locations2025.street, locations2025.ward, locations2025.city) as location2025_address")
+            DB::raw("CONCAT_WS(', ', locations.street, locations.ward, locations.district, locations.city) as location_address"),
+            DB::raw("CONCAT_WS(', ', locations2025.street, locations2025.ward, locations2025.city) as location2025_address")
         ])
         ->leftJoin('users as users_assigned', 'tickets.assigned_to', '=', 'users_assigned.id')
         ->leftJoin('units', 'tickets.unit_id', '=', 'units.id')
@@ -100,6 +102,7 @@ class TicketController extends Controller
             $validated = $request->validate([
                 'title' => 'required|string|min:5|max:255',
                 'description' => 'required|string|min:10',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'priority' => 'required|in:low,medium,high,urgent',
                 'unit_id' => 'required|exists:units,id',
                 'lease_id' => 'required|exists:leases,id'
@@ -108,6 +111,9 @@ class TicketController extends Controller
                 'title.min' => 'Tiêu đề phải có ít nhất 5 ký tự',
                 'description.required' => 'Vui lòng nhập mô tả',
                 'description.min' => 'Mô tả phải có ít nhất 10 ký tự',
+                'image.image' => 'File phải là hình ảnh',
+                'image.mimes' => 'Hình ảnh phải có định dạng: jpeg, png, jpg, gif',
+                'image.max' => 'Kích thước hình ảnh không được vượt quá 2MB',
                 'priority.required' => 'Vui lòng chọn độ ưu tiên',
                 'unit_id.required' => 'Vui lòng chọn hợp đồng (unit_id)',
                 'lease_id.required' => 'Vui lòng chọn hợp đồng',
@@ -129,6 +135,12 @@ class TicketController extends Controller
                 ? $property->organization_id 
                 : $user->organization_id;
 
+            // Handle image upload
+            $imagePath = null;
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('tickets', 'public');
+            }
+
             // Create ticket
             $ticket = Ticket::create([
                 'organization_id' => $organizationId,
@@ -138,6 +150,7 @@ class TicketController extends Controller
                 'assigned_to' => $manager ? $manager->id : null,
                 'title' => $validated['title'],
                 'description' => $validated['description'],
+                'image' => $imagePath,
                 'priority' => $validated['priority'],
                 'status' => 'open'
             ]);
@@ -181,8 +194,8 @@ class TicketController extends Controller
             'users_assigned.full_name as assigned_to_name',
             'units.code as unit_name',
             'properties.name as property_name',
-            \DB::raw("CONCAT_WS(', ', locations.street, locations.ward, locations.district, locations.city) as location_address"),
-            \DB::raw("CONCAT_WS(', ', locations2025.street, locations2025.ward, locations2025.city) as location2025_address"),
+            DB::raw("CONCAT_WS(', ', locations.street, locations.ward, locations.district, locations.city) as location_address"),
+            DB::raw("CONCAT_WS(', ', locations2025.street, locations2025.ward, locations2025.city) as location2025_address"),
             'leases.contract_no as lease_contract_number'
         ])
         ->leftJoin('users as users_created', 'tickets.created_by', '=', 'users_created.id')
@@ -263,19 +276,34 @@ class TicketController extends Controller
             $validated = $request->validate([
                 'title' => 'required|string|min:5|max:255',
                 'description' => 'required|string|min:10',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'priority' => 'required|in:low,medium,high,urgent'
             ], [
                 'title.required' => 'Vui lòng nhập tiêu đề ticket',
                 'title.min' => 'Tiêu đề phải có ít nhất 5 ký tự',
                 'description.required' => 'Vui lòng nhập mô tả',
                 'description.min' => 'Mô tả phải có ít nhất 10 ký tự',
+                'image.image' => 'File phải là hình ảnh',
+                'image.mimes' => 'Hình ảnh phải có định dạng: jpeg, png, jpg, gif',
+                'image.max' => 'Kích thước hình ảnh không được vượt quá 2MB',
                 'priority.required' => 'Vui lòng chọn độ ưu tiên',
             ]);
+
+            // Handle image upload
+            $imagePath = $ticket->image; // Keep existing image
+            if ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($ticket->image && Storage::disk('public')->exists($ticket->image)) {
+                    Storage::disk('public')->delete($ticket->image);
+                }
+                $imagePath = $request->file('image')->store('tickets', 'public');
+            }
 
             // Update ticket (lease and unit cannot be changed)
             $ticket->update([
                 'title' => $validated['title'],
                 'description' => $validated['description'],
+                'image' => $imagePath,
                 'priority' => $validated['priority']
             ]);
 

@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Main Form Card -->
                 <div class="form-card">
                     <div class="card-body">
-                        <form method="POST" action="{{ route('tenant.tickets.update', $ticket->id) }}" id="ticketForm">
+                        <form method="POST" action="{{ route('tenant.tickets.update', $ticket->id) }}" id="ticketForm" enctype="multipart/form-data">
                             @csrf
                             @method('PUT')
 
@@ -186,6 +186,35 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <small class="form-text text-muted">
                                     <i class="fas fa-lightbulb me-1"></i>
                                     Mô tả càng chi tiết càng giúp chúng tôi xử lý nhanh hơn
+                                </small>
+                            </div>
+
+                            <!-- Image Upload Section -->
+                            <div class="section-title">
+                                <i class="fas fa-image"></i>
+                                Hình ảnh đính kèm
+                            </div>
+
+                            <div class="form-group">
+                                <label for="image" class="form-label">
+                                    Hình ảnh minh họa
+                                </label>
+                                
+                                @if($ticket->image)
+                                    <div class="mb-3">
+                                        <img src="{{ $ticket->image_url }}" alt="Current image" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                                        <div class="form-text">Ảnh hiện tại</div>
+                                    </div>
+                                @endif
+                                
+                                <input type="file" class="form-control @error('image') is-invalid @enderror" 
+                                       id="image" name="image" accept="image/*" {{ $ticket->status !== 'open' ? 'disabled' : '' }}>
+                                @error('image')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Định dạng: JPEG, PNG, JPG, GIF. Kích thước tối đa: 2MB. Để trống nếu không muốn thay đổi ảnh.
                                 </small>
                             </div>
 

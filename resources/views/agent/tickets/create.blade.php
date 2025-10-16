@@ -15,7 +15,7 @@
         </a>
     </div>
 
-    <form id="ticketForm" method="POST" action="{{ route('agent.tickets.store') }}">
+    <form id="ticketForm" method="POST" action="{{ route('agent.tickets.store') }}" enctype="multipart/form-data">
         @csrf
         
         <div class="row">
@@ -73,6 +73,16 @@
                                           id="description" name="description" rows="4" 
                                           placeholder="Mô tả chi tiết về vấn đề cần xử lý...">{{ old('description') }}</textarea>
                                 @error('description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-12 mb-3">
+                                <label for="image" class="form-label">Hình ảnh đính kèm</label>
+                                <input type="file" class="form-control @error('image') is-invalid @enderror" 
+                                       id="image" name="image" accept="image/*">
+                                <div class="form-text">Định dạng: JPEG, PNG, JPG, GIF. Kích thước tối đa: 2MB</div>
+                                @error('image')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

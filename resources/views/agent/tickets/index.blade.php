@@ -155,6 +155,11 @@
                                     @if($ticket->description)
                                         <small class="text-muted">{{ Str::limit($ticket->description, 50) }}</small>
                                     @endif
+                                    @if($ticket->image)
+                                        <div class="mt-1">
+                                            <i class="fas fa-image text-info" title="Có hình ảnh đính kèm"></i>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td>
                                     @php

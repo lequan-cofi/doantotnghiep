@@ -23,7 +23,7 @@ class RentedController extends Controller
         
         // If no properties assigned, return empty result
         if (empty($propertyIds)) {
-            $rentedUnits = collect()->paginate(15);
+            $rentedUnits = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
             $properties = collect();
             return view('agent.rented.index', compact('rentedUnits', 'properties', 'request'));
         }

@@ -482,6 +482,18 @@ Route::middleware('auth')->group(function () {
             Route::get('/properties/{propertyId}/units', [\App\Http\Controllers\Agent\TicketController::class, 'getUnits']);
             Route::get('/units/{unitId}/leases', [\App\Http\Controllers\Agent\TicketController::class, 'getLeases']);
         });
+
+        // Reviews management (CRUD for viewing and replying)
+        Route::get('/reviews', [\App\Http\Controllers\Agent\ReviewController::class, 'index'])->name('reviews.index');
+        Route::get('/reviews/{id}', [\App\Http\Controllers\Agent\ReviewController::class, 'show'])->name('reviews.show');
+        Route::post('/reviews/{id}/reply', [\App\Http\Controllers\Agent\ReviewController::class, 'storeReply'])->name('reviews.reply');
+        Route::put('/reviews/{reviewId}/replies/{replyId}', [\App\Http\Controllers\Agent\ReviewController::class, 'updateReply'])->name('reviews.reply.update');
+        Route::delete('/reviews/{reviewId}/replies/{replyId}', [\App\Http\Controllers\Agent\ReviewController::class, 'deleteReply'])->name('reviews.reply.delete');
+        
+        // API endpoints for reviews
+        Route::prefix('api/reviews')->group(function () {
+            Route::get('/data', [\App\Http\Controllers\Agent\ReviewController::class, 'getReviewsData']);
+        });
     });
 
     /*
@@ -562,14 +574,15 @@ Route::middleware('auth')->group(function () {
             return response()->json(['success' => true, 'message' => 'Yêu cầu sửa chữa đã được tạo thành công!', 'request_id' => 'YC' . rand(100, 999)]);
         })->name('maintenance.store');
 
-        // Reviews
-        Route::get('/reviews', function () {
-            return view('tenant.reviews');
-        })->name('reviews');
-
-        Route::post('/reviews', function () {
-            return response()->json(['success' => true, 'message' => 'Đánh giá đã được đăng thành công!', 'review_id' => 'RV' . rand(100, 999)]);
-        })->name('reviews.store');
+        // Reviews (without edit functionality)
+        Route::get('/reviews', [\App\Http\Controllers\Tenant\ReviewController::class, 'index'])->name('reviews.index');
+        Route::get('/reviews/create', [\App\Http\Controllers\Tenant\ReviewController::class, 'create'])->name('reviews.create');
+        Route::post('/reviews', [\App\Http\Controllers\Tenant\ReviewController::class, 'store'])->name('reviews.store');
+        Route::get('/reviews/{id}', [\App\Http\Controllers\Tenant\ReviewController::class, 'show'])->name('reviews.show');
+        Route::delete('/reviews/{id}', [\App\Http\Controllers\Tenant\ReviewController::class, 'destroy'])->name('reviews.destroy');
+        Route::post('/reviews/{id}/reply', [\App\Http\Controllers\Tenant\ReviewController::class, 'storeReply'])->name('reviews.reply');
+        Route::get('/api/reviews/reviewable-leases', [\App\Http\Controllers\Tenant\ReviewController::class, 'getReviewableLeases']);
+        
 
         // Notifications
         Route::get('/notifications', function () {

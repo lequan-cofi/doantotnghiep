@@ -193,6 +193,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="ticket-body">
                                     <div class="ticket-description">
                                         <p class="mb-2">{{ Str::limit($ticket->description, 150) }}</p>
+                                        @if($ticket->image)
+                                            <div class="mt-2">
+                                                <i class="fas fa-image text-info" title="Có hình ảnh đính kèm"></i>
+                                                <small class="text-muted ms-1">Có hình ảnh</small>
+                                            </div>
+                                        @endif
                                     </div>
                                     
                                     <div class="ticket-details">

@@ -110,6 +110,11 @@ class Lease extends Model
         return $this->hasMany(CommissionEvent::class);
     }
 
+    public function review()
+    {
+        return $this->hasOne(Review::class);
+    }
+
     /**
      * Get tenant information - either from User or Lead
      */

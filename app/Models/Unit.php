@@ -70,6 +70,11 @@ class Unit extends Model
         return $this->belongsToMany(Amenity::class, 'unit_amenities');
     }
 
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
     // Helper methods
     public function getCurrentLeaseAttribute()
     {

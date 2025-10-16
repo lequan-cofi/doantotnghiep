@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <form id="ticketForm" method="POST" action="{{ route('agent.tickets.update', $ticket->id) }}">
+    <form id="ticketForm" method="POST" action="{{ route('agent.tickets.update', $ticket->id) }}" enctype="multipart/form-data">
         @csrf
         @method('PUT')
         
@@ -94,6 +94,24 @@
                                           id="description" name="description" rows="4" 
                                           placeholder="Mô tả chi tiết về vấn đề cần xử lý...">{{ old('description', $ticket->description) }}</textarea>
                                 @error('description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-12 mb-3">
+                                <label for="image" class="form-label">Hình ảnh đính kèm</label>
+                                
+                                @if($ticket->image)
+                                    <div class="mb-2">
+                                        <img src="{{ $ticket->image_url }}" alt="Current image" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                                        <div class="form-text">Ảnh hiện tại</div>
+                                    </div>
+                                @endif
+                                
+                                <input type="file" class="form-control @error('image') is-invalid @enderror" 
+                                       id="image" name="image" accept="image/*">
+                                <div class="form-text">Định dạng: JPEG, PNG, JPG, GIF. Kích thước tối đa: 2MB. Để trống nếu không muốn thay đổi ảnh.</div>
+                                @error('image')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

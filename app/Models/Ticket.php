@@ -18,6 +18,7 @@ class Ticket extends Model
         'assigned_to',
         'title',
         'description',
+        'image',
         'priority',
         'status',
         'cancelled_at',
@@ -29,6 +30,17 @@ class Ticket extends Model
         'status' => 'string',
         'cancelled_at' => 'datetime',
     ];
+
+    /**
+     * Get the image URL
+     */
+    public function getImageUrlAttribute()
+    {
+        if ($this->image) {
+            return asset('storage/' . $this->image);
+        }
+        return null;
+    }
 
     public function organization()
     {

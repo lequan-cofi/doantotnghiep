@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TicketController extends Controller
 {
@@ -28,7 +29,8 @@ class TicketController extends Controller
                 'tickets' => collect(),
                 'units' => collect(),
                 'leases' => collect(),
-                'users' => collect()
+                'users' => collect(),
+                'properties' => collect()
             ]);
         }
 
@@ -145,6 +147,7 @@ class TicketController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'priority' => 'required|in:low,medium,high,urgent',
             'unit_id' => 'nullable|exists:units,id',
             'lease_id' => 'nullable|exists:leases,id',
@@ -154,6 +157,12 @@ class TicketController extends Controller
         try {
             DB::beginTransaction();
 
+            // Handle image upload
+            $imagePath = null;
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('tickets', 'public');
+            }
+
             $ticket = Ticket::create([
                 'organization_id' => Auth::user()->organization_id ?? 1,
                 'unit_id' => $request->unit_id,
@@ -162,6 +171,7 @@ class TicketController extends Controller
                 'assigned_to' => $request->assigned_to,
                 'title' => $request->title,
                 'description' => $request->description,
+                'image' => $imagePath,
                 'priority' => $request->priority,
                 'status' => 'open',
             ]);
@@ -263,6 +273,7 @@ class TicketController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'priority' => 'required|in:low,medium,high,urgent',
             'status' => 'required|in:open,in_progress,resolved,closed,cancelled',
             'unit_id' => 'nullable|exists:units,id',
@@ -276,9 +287,20 @@ class TicketController extends Controller
             $oldStatus = $ticket->status;
             $oldAssignedTo = $ticket->assigned_to;
 
+            // Handle image upload
+            $imagePath = $ticket->image; // Keep existing image
+            if ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($ticket->image && Storage::disk('public')->exists($ticket->image)) {
+                    Storage::disk('public')->delete($ticket->image);
+                }
+                $imagePath = $request->file('image')->store('tickets', 'public');
+            }
+
             $ticket->update([
                 'title' => $request->title,
                 'description' => $request->description,
+                'image' => $imagePath,
                 'priority' => $request->priority,
                 'status' => $request->status,
                 'unit_id' => $request->unit_id,

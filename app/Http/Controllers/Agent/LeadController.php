@@ -23,7 +23,7 @@ class LeadController extends Controller
         $assignedPropertyIds = $user->assignedProperties()->pluck('properties.id');
         
         if ($assignedPropertyIds->isEmpty()) {
-            $leads = collect()->paginate(15);
+            $leads = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
             $properties = collect();
             return view('agent.leads.index', compact('leads', 'properties', 'request'));
         }

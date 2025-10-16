@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ensure.manager' => \App\Http\Middleware\EnsureManager::class,
             'ensure.agent' => \App\Http\Middleware\EnsureAgent::class,
             'ensure.landlord' => \App\Http\Middleware\EnsureLandlord::class,
-            'ensure.tenant' => \App\Http\Middleware\EnsureTeranrt::class,
+            'ensure.tenant' => \App\Http\Middleware\EnsureTenant::class,
             'check.organization' => \App\Http\Middleware\CheckOrganizationAccess::class,
             'csrf.simple' => \App\Http\Middleware\SimpleCsrfHandler::class,
         ]);

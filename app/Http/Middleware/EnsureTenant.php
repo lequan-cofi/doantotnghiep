@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class EnsureTeranrt
+class EnsureTenant
 {
     public function handle(Request $request, Closure $next)
     {

@@ -89,6 +89,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="description-content">
                                 {!! nl2br(e($ticket->description)) !!}
                             </div>
+                            
+                            @if($ticket->image)
+                                <div class="mt-4">
+                                    <h6 class="text-muted mb-3">
+                                        <i class="fas fa-image me-2"></i>Hình ảnh đính kèm
+                                    </h6>
+                                    <img src="{{ $ticket->image_url }}" alt="Ticket image" class="img-fluid rounded shadow-sm" style="max-width: 400px; max-height: 400px; cursor: pointer;" onclick="openImageModal('{{ $ticket->image_url }}')">
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -294,4 +303,29 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Hình ảnh đính kèm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="Ticket image" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Image modal functions
+function openImageModal(imageUrl) {
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    modalImage.src = imageUrl;
+    new bootstrap.Modal(modal).show();
+}
+</script>
 @endsection

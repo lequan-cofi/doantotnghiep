@@ -52,10 +52,7 @@
                 <i class="fas fa-door-open"></i>
                 <span>Quản lý phòng</span>
             </a>
-            <a href="{{ route('agent.chat.index') }}" class="nav-item">
-                <i class="fas fa-comments"></i>
-                <span>Chat</span>
-            </a>
+           
             <a href="{{ route('agent.rented.index') }}" class="nav-item">
                 <i class="fas fa-home"></i>
                 <span>Đã cho thuê</span>
@@ -115,6 +112,10 @@
             <a href="{{ route('agent.tickets.index') }}" class="nav-item">
                 <i class="fas fa-ticket-alt"></i>
                 <span>Ticket</span>
+            </a>
+            <a href="{{ route('agent.reviews.index') }}" class="nav-item {{ request()->routeIs('agent.reviews.*') ? 'active' : '' }}">
+                <i class="fas fa-star"></i>
+                <span>Đánh giá</span>
             </a>
             <a href="{{ route('agent.meters.index') }}" class="nav-item">
                 <i class="fas fa-tachometer-alt"></i>

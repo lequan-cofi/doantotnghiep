@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Main Form Card -->
                 <div class="form-card">
                     <div class="card-body">
-                        <form method="POST" action="{{ route('tenant.tickets.store') }}" id="ticketForm">
+                        <form method="POST" action="{{ route('tenant.tickets.store') }}" id="ticketForm" enctype="multipart/form-data">
                             @csrf
                             
                             <!-- Basic Information Section -->
@@ -196,6 +196,27 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <small class="form-text text-muted">
                                     <i class="fas fa-lightbulb me-1"></i>
                                     Mô tả càng chi tiết càng giúp chúng tôi xử lý nhanh hơn
+                                </small>
+                            </div>
+
+                            <!-- Image Upload Section -->
+                            <div class="section-title">
+                                <i class="fas fa-image"></i>
+                                Hình ảnh đính kèm
+                            </div>
+
+                            <div class="form-group">
+                                <label for="image" class="form-label">
+                                    Hình ảnh minh họa
+                                </label>
+                                <input type="file" class="form-control @error('image') is-invalid @enderror" 
+                                       id="image" name="image" accept="image/*">
+                                @error('image')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Định dạng: JPEG, PNG, JPG, GIF. Kích thước tối đa: 2MB
                                 </small>
                             </div>
 

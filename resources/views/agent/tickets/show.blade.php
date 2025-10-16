@@ -36,6 +36,13 @@
                             
                             <h6 class="text-muted">Mô tả</h6>
                             <p class="mb-3">{{ $ticket->description ?: 'Không có mô tả' }}</p>
+                            
+                            @if($ticket->image)
+                                <h6 class="text-muted">Hình ảnh đính kèm</h6>
+                                <div class="mb-3">
+                                    <img src="{{ $ticket->image_url }}" alt="Ticket image" class="img-fluid rounded" style="max-width: 300px; max-height: 300px; cursor: pointer;" onclick="openImageModal('{{ $ticket->image_url }}')">
+                                </div>
+                            @endif
                         </div>
                         <div class="col-md-6">
                             <h6 class="text-muted">Trạng thái</h6>
@@ -316,5 +323,28 @@ document.getElementById('addLogForm').addEventListener('submit', function(e) {
         submitBtn.disabled = false;
     });
 });
+
+// Image modal functions
+function openImageModal(imageUrl) {
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    modalImage.src = imageUrl;
+    new bootstrap.Modal(modal).show();
+}
 </script>
 @endpush
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Hình ảnh đính kèm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="Ticket image" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>

@@ -219,7 +219,7 @@
                             </a>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <a href="{{ route('tenant.reviews') }}" class="quick-access-card">
+                            <a href="{{ route('tenant.reviews.index') }}" class="quick-access-card">
                                 <div class="card-icon reviews">
                                     <i class="fas fa-star"></i>
                                 </div>
